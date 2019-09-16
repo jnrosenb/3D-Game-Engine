@@ -1,0 +1,9 @@
+{
+  "MaterialType": "Textured",
+  "Texture": "Basic\\wall_uv.png",
+  "NormalMap": "normal_Maps\\wall_uv_NRM.jpg",
+  "Color": [ 1, 1, 1, 1 ],
+  "Roughness": 0.5,
+  "Permeability": 0.5,
+  "KSCoeff": 0.5
+}

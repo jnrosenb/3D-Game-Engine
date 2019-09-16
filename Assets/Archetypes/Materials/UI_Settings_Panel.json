@@ -1,0 +1,5 @@
+{
+  "MaterialType": "Unlit_Textured",
+  "Texture": "UI\\Controller_Panel.png",
+  "Color": [ 1, 1, 1, 1 ]
+}

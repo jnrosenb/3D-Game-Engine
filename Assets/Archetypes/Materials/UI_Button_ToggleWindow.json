@@ -1,0 +1,6 @@
+
+{
+  "MaterialType": "Unlit_Textured",
+  "Texture": "UI\\Buttons\\ToggleWindow.png",
+  "Color": [ 1, 1, 1, 1 ]
+}

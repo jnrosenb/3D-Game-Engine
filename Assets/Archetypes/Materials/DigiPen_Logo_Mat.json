@@ -1,0 +1,6 @@
+{
+  "MaterialType": "Unlit_Textured",
+  "Texture": "UI\\DigiPen_RGB_White.png",
+  "Color": [ 1, 1, 1, 1],
+  "Lit": false
+}

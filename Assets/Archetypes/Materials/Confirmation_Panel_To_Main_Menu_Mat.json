@@ -1,0 +1,6 @@
+{
+  "MaterialType": "Unlit_Textured",
+  "Texture": "UI\\Panel_02.jpg",
+  "Color": [ 1, 1, 1, 1 ],
+  "Lit": false
+}

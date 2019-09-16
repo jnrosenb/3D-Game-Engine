@@ -1,0 +1,8 @@
+{
+  "MaterialType": "PBR",
+  "Texture": "Basic\\Enemy_UV_Test.png",
+  "Color": [ 1.0, 1.0, 1.0, 1 ],
+  "Roughness": 0.1,
+  "Permeability": 0.2,
+  "KSCoeff": 0.5
+}

@@ -1,0 +1,20 @@
+{
+    "tag": "object01",
+    "components": [
+      {
+          "id": "transform",
+          "position": [0, -2, 0],
+          "rotation": [-90, 0, 0],
+          "scale": [300, 300, 1.0]
+      },
+      {
+        "id": "render",
+        "diffuse": [ 1.0, 0.0, 1.0, 1.0 ],
+        "vertex_id": 0,
+        "load_model": false,
+        "primitive": "quad",
+        "model_name": "Sphere.fbx",
+        "diffuse_texture": "floor_04.png"
+      }
+    ]
+}

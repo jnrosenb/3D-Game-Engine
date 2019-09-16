@@ -1,0 +1,9 @@
+{
+  "MaterialType": "PBR",
+  "Texture": "Basic\\crate_03.png",
+  "NormalMap": "Normal_Maps\\crate_03_NRM.jpg",
+  "Color": [ 1, 1, 1, 1 ],
+  "Roughness": 0.3,
+  "Permeability": 0.5,
+  "KSCoeff": 0.5
+}

@@ -1,0 +1,9 @@
+{
+  "MaterialType": "PBR",
+  "Texture": "Basic\\Ground.bmp",
+  "NormalMap": "Normal_Maps\\Ground_NRM.jpg",
+  "Color": [ 1, 1, 1, 1 ],
+  "Roughness": 0.5,
+  "Permeability": 0.5,
+  "KSCoeff": 0.5
+}

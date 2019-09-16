@@ -1,0 +1,21 @@
+{
+    "tag": "object01",
+  "components": [
+    {
+      "id": "transform",
+      "position": [ -5, 0, 0 ],
+      "rotation": [ 90, 0, 0 ],
+      "scale": [ 1.0, 1.0, 1.0 ]
+    },
+    {
+      "id": "render",
+      "diffuse": [ 1.0, 0.0, 1.0, 1.0 ],
+      "diffuse_texture": "metal.jpg",
+      "vertex_id": 0,
+      "load_model": true,
+      "shader": "Solid",
+      "primitive": "quad",
+      "model_name": "cube.fbx"
+    }
+  ]
+}

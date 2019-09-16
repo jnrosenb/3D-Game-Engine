@@ -1,0 +1,6 @@
+{
+  "MaterialType": "Unlit_Textured",
+  "Texture": "UI\\credit_01.png",
+  "Color": [ 1, 1, 1, 1 ],
+  "Lit": false
+}

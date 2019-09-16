@@ -1,0 +1,21 @@
+{
+    "tag": "object01",
+    "components": [
+      {
+        "id": "transform",
+        "position": [ 5, 0, 0 ],
+        "rotation": [ 0, 0, 0 ],
+        "scale": [ 1.0, 1.0, 1.0 ]
+      },
+      {
+        "id": "render",
+        "diffuse": [ 1.0, 0.0, 1.0, 1.0 ],
+        "vertex_id": 0,
+        "load_model": true,
+        "shader": "Solid",
+        "primitive": "sphere",
+        "model_name": "Sphere.fbx",
+        "diffuse_texture": "stone.jpg"
+      }
+    ]
+}

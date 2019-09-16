@@ -1,0 +1,55 @@
+{
+  "Lights": [
+    {
+      "Type": "Directional",
+      "Position": [ 0, 15, -5 ],
+      "Look": [ 0, -1, 1 ],
+      "Near": 0.01,
+      "far": 100
+    },
+    {
+      "Type": "Point",
+      "Position": [ 0, 2, 0 ],
+      "Color": [ 1, 0.5, 0 ],
+      "Radius": 3000.0
+    }
+  ],
+  "Objects": [
+    {
+      "name": "Floor01.json"
+    },
+    {
+      "name": "CameraObj.json"
+    },
+    {
+      "name": "Target.json"
+    },
+    {
+      "name": "Obj01.json"
+    },
+    {
+      "name": "Obj02.json"
+    },
+    {
+      "name": "Obj03.json"
+    },
+    {
+      "name": "Bunny01.json"
+    },
+    {
+      "name": "Bunny02.json"
+    },
+    {
+      "name": "Bunny03.json"
+    },
+    {
+      "name": "Bunny04.json"
+    },
+    {
+      "name": "Bunny05.json"
+    },
+    {
+      "name": "Bunny06.json"
+    }
+  ]
+}

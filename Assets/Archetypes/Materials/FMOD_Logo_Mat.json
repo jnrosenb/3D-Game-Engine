@@ -1,0 +1,6 @@
+{
+  "MaterialType": "Unlit_Textured",
+  "Texture": "UI\\FMOD_Logo.png",
+  "Color": [ 1, 1, 1, 1 ],
+  "Lit": false
+}
