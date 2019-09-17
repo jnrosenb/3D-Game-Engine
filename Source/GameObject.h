@@ -17,7 +17,7 @@ public:
 	virtual ~GameObject();
 
 	virtual void Update(float dt);
-	virtual void Draw();
+	//virtual void Draw();
 
 	template <typename T>
 	T* GetComponent() 
@@ -37,7 +37,9 @@ public:
 		COMPONENT_TYPES type = T::comp_class_type;
 
 		//TODO create a new comp of that type, add it, and return it
-		T* component = static_cast<T*>(factory.GetComponent(type, this));
+		///T* component = static_cast<T*>(factory.GetComponent(type, this));
+		T* component = new T(this);
+		
 		if (component)
 		{
 			this->components.push_back(component);

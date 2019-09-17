@@ -48,6 +48,6 @@ void main(void)
 	GBuffer_pos = worldPos;
 	GBuffer_normals = normalIn;
 	GBuffer_diffk = vec4(diffuse_k, 1.0);
-	GBuffer_speck_gloss = vec4(view_dir.xyz, 100.0);
+	GBuffer_speck_gloss = vec4(specular_k, 100.0);
 }
 

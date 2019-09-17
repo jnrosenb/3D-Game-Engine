@@ -42,10 +42,10 @@ void GameObject::Update(float dt)
 	}
 }
 
-void GameObject::Draw()
-{
-	//TODO
-}
+//void GameObject::Draw()
+//{
+//	//TODO
+//}
 
 /*
 template <typename T>

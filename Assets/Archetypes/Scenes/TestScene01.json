@@ -2,16 +2,16 @@
   "Lights": [
     {
       "Type": "Directional",
-      "Position": [ 0, 15, -5 ],
+      "Position": [ 0, 15, -10 ],
       "Look": [ 0, -1, 1 ],
       "Near": 0.01,
       "far": 100
     },
     {
       "Type": "Point",
-      "Position": [ 0, 2, 0 ],
+      "Position": [ 0, 10, -50 ],
       "Color": [ 1, 0.5, 0 ],
-      "Radius": 3000.0
+      "Radius": 800.0
     }
   ],
   "Objects": [

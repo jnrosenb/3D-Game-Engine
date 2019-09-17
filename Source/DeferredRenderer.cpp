@@ -247,7 +247,10 @@ void DeferredRenderer::ShadowMapPass()
 	ShadowBuffer->Bind();
 	glViewport(0, 0, ShadowBuffer->getWidth(), ShadowBuffer->getHeight());
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	//DEPTH
+	glEnable(GL_DEPTH_TEST);
 
 	//Experiment with queues
 	for (int i = 0; i < graphicQueue.size(); ++i)
@@ -296,6 +299,8 @@ void DeferredRenderer::MultiplePointLightPass(glm::mat4& projView) //Later pass 
 	DeferredPointLightShader->setTexture("GBufferNormals", GeometryBuffer->texturesHandles[1], 1);
 	DeferredPointLightShader->setTexture("GBufferDiffuse", GeometryBuffer->texturesHandles[2], 2);
 	DeferredPointLightShader->setTexture("GBufferSpecGloss", GeometryBuffer->texturesHandles[3], 3);
+	DeferredPointLightShader->setTexture("shadowMap", ShadowBuffer->depthTexture, 4);
+
 	DeferredPointLightShader->setMat4f("projViewMatrix", projView);
 
 	glm::mat4 pointLightModel = glm::mat4(1);
@@ -367,8 +372,12 @@ void DeferredRenderer::loadResources()
 	geometryPassShader->BindUniformBlock("test_gUBlock", 1);
 	
 	FSQShader = new Shader("FSQ.vert", "FSQ.frag");
-	DeferredPointLightShader = new Shader("PointLightFSQ.vert", "PointLightFSQ.frag");
+
 	DeferredAmbientShader = new Shader("DeferredAmbient.vert", "DeferredAmbient.frag");
+
+	DeferredPointLightShader = new Shader("PointLightFSQ.vert", "PointLightFSQ.frag");
+	DeferredPointLightShader->BindUniformBlock("test_gUBlock", 1);
+	
 
 	//FSQ
 	FSQ = new Quad();
@@ -385,7 +394,7 @@ void DeferredRenderer::loadResources()
 			float light_separation = 5.0f;
 			Light_Positions[lightCount] = glm::vec4(light_separation * i, 0, light_separation * j, 1);
 			Light_Colors[lightCount] = glm::vec4(static_cast<float>(rand()) / RAND_MAX, static_cast<float>(rand()) / RAND_MAX, static_cast<float>(rand()) / RAND_MAX, 1);
-			Light_Radius[lightCount++] = 10.0f +(rand() % 30);
+			Light_Radius[lightCount++] = 1.0f +(rand() % 10);
 		}
 	}
 }
@@ -400,7 +409,7 @@ void DeferredRenderer::CalculateLightProjView()
 	float ar = width / height;
 	glm::mat4 lightView = AuxMath::view(sun.eye/*currentCamera->getEye()*/, sun.look/*currentCamera->getLook()*/, glm::vec4(0, 1, 0, 0));
 	//glm::mat4 lightProj = AuxMath::orthographic(width, height, ar, sun.near, sun.far);
-	glm::mat4 lightProj = glm::ortho(-15.0f, 15.0f, -15.0f, 15.0f, sun.near, sun.far);
+	glm::mat4 lightProj = glm::ortho(-20.0f, 20.0f, -15.0f, 15.0f, sun.near, sun.far);
 
 	//Set the directional light vp matrix
 	lightProjView = lightProj * lightView;
