@@ -106,6 +106,7 @@ private:
 	Shader *FSQShader;
 	Shader *DeferredPointLightShader;
 	Shader *DeferredAmbientShader;
+	Shader *DirectionalLightShader;
 
 	//SHADOW MAP STUFF
 	glm::mat4 lightProjView;

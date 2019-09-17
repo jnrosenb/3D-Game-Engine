@@ -41,6 +41,7 @@ DeferredRenderer::~DeferredRenderer()
 	delete FSQShader;
 	delete DeferredPointLightShader;
 	delete DeferredAmbientShader;
+	delete DirectionalLightShader;
 }
 
 
@@ -244,6 +245,7 @@ void DeferredRenderer::AmbientLightPass()
 
 void DeferredRenderer::ShadowMapPass()
 {
+	//FIRST DRAW INTO THE DEPTH BUFFER------------------------------------
 	ShadowBuffer->Bind();
 	glViewport(0, 0, ShadowBuffer->getWidth(), ShadowBuffer->getHeight());
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -271,6 +273,39 @@ void DeferredRenderer::ShadowMapPass()
 		graphicQueue[i].mesh->UnbindForDraw();
 		shadowShader->UnbindShader();
 	}
+	
+
+	//NOW DRAW INTO THE SCENE---------------------------------------------
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+
+	//blending and depth
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE, GL_ONE);
+	glDisable(GL_DEPTH_TEST);
+
+	//USE SHADER AND BIND VAO
+	DirectionalLightShader->UseShader();
+	FSQ->BindForDraw();
+
+	//UNIFORM BINDING
+	DirectionalLightShader->setTexture("GBufferPos", GeometryBuffer->texturesHandles[0], 0);
+	DirectionalLightShader->setTexture("GBufferNormals", GeometryBuffer->texturesHandles[1], 1);
+	DirectionalLightShader->setTexture("GBufferSpecGloss", GeometryBuffer->texturesHandles[3], 2);
+	DirectionalLightShader->setTexture("shadowMap", ShadowBuffer->depthTexture, 3);
+
+	DirectionalLightShader->setVec4f("lightWorldPos", sun.eye.x, sun.eye.y, sun.eye.z, 1.0f);
+	DirectionalLightShader->setVec3f("lightColor", sun.color.r, sun.color.g, sun.color.b);
+	DirectionalLightShader->setFloat("Intensity", sun.color.a);
+	DirectionalLightShader->setFloat("ShadowIntensity", sun.shadowIntensity);
+
+	//DRAW
+	int faceCount = FSQ->GetFaceCount();
+	glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+
+	//TODO - UNBIND SHADER AND MESH
+	FSQ->UnbindForDraw();
+	DirectionalLightShader->UnbindShader();
 }
 
 
@@ -299,9 +334,6 @@ void DeferredRenderer::MultiplePointLightPass(glm::mat4& projView) //Later pass 
 	DeferredPointLightShader->setTexture("GBufferNormals", GeometryBuffer->texturesHandles[1], 1);
 	DeferredPointLightShader->setTexture("GBufferDiffuse", GeometryBuffer->texturesHandles[2], 2);
 	DeferredPointLightShader->setTexture("GBufferSpecGloss", GeometryBuffer->texturesHandles[3], 3);
-	DeferredPointLightShader->setTexture("shadowMap", ShadowBuffer->depthTexture, 4);
-
-	DeferredPointLightShader->setMat4f("projViewMatrix", projView);
 
 	glm::mat4 pointLightModel = glm::mat4(1);
 	for (int i = 0; i < lightCount; ++i)
@@ -375,6 +407,9 @@ void DeferredRenderer::loadResources()
 
 	DeferredAmbientShader = new Shader("DeferredAmbient.vert", "DeferredAmbient.frag");
 
+	DirectionalLightShader = new Shader("DirectionalLight.vert", "DirectionalLight.frag");
+	DirectionalLightShader->BindUniformBlock("test_gUBlock", 1);
+
 	DeferredPointLightShader = new Shader("PointLightFSQ.vert", "PointLightFSQ.frag");
 	DeferredPointLightShader->BindUniformBlock("test_gUBlock", 1);
 	
@@ -404,12 +439,11 @@ void DeferredRenderer::loadResources()
 void DeferredRenderer::CalculateLightProjView()
 {
 	//Light proj-view
-	int width = 20;
-	int height = 20;
-	float ar = width / height;
+	float halfWidth = sun.width/2.f;
+	float halfHeight = sun.height/2.f;
 	glm::mat4 lightView = AuxMath::view(sun.eye/*currentCamera->getEye()*/, sun.look/*currentCamera->getLook()*/, glm::vec4(0, 1, 0, 0));
 	//glm::mat4 lightProj = AuxMath::orthographic(width, height, ar, sun.near, sun.far);
-	glm::mat4 lightProj = glm::ortho(-20.0f, 20.0f, -15.0f, 15.0f, sun.near, sun.far);
+	glm::mat4 lightProj = glm::ortho(-halfWidth, halfWidth, -halfHeight, halfHeight, sun.near, sun.far);
 
 	//Set the directional light vp matrix
 	lightProjView = lightProj * lightView;

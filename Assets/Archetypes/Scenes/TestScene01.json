@@ -3,9 +3,14 @@
     {
       "Type": "Directional",
       "Position": [ 0, 15, -10 ],
+      "Color": [ 0.0, 1.0, 1.0 ],
       "Look": [ 0, -1, 1 ],
       "Near": 0.01,
-      "far": 100
+      "far": 100,
+      "Width": 40,
+      "Height": 30,
+      "Intensity": 0.75,
+      "ShadowIntensity": 0.5
     },
     {
       "Type": "Point",

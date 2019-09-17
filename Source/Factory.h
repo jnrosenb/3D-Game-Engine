@@ -122,6 +122,11 @@ public:
 					assert(ac0.IsArray());
 					renderer->sun.eye = glm::vec4(ac0[0].GetFloat(), ac0[1].GetFloat(), ac0[2].GetFloat(), 1.0f);
 
+					assert(attribute.HasMember("Color"));
+					const Value& ac00 = attribute["Color"];
+					assert(ac00.IsArray());
+					renderer->sun.color = glm::vec4(ac00[0].GetFloat(), ac00[1].GetFloat(), ac00[2].GetFloat(), 1.0f);
+
 					assert(attribute.HasMember("Look"));
 					const Value& ac1 = attribute["Look"];
 					assert(ac1.IsArray());
@@ -139,6 +144,37 @@ public:
 						const Value& ac3 = attribute["Far"];
 						assert(ac3.IsFloat());
 						renderer->sun.far = ac3.GetFloat();
+					}
+
+					if (attribute.HasMember("Width"))
+					{
+						const Value& ac3 = attribute["Width"];
+						assert(ac3.IsInt());
+						renderer->sun.width = ac3.GetInt();
+					}
+
+
+					if (attribute.HasMember("Height"))
+					{
+						const Value& ac3 = attribute["Height"];
+						assert(ac3.IsInt());
+						renderer->sun.height = ac3.GetInt();
+					}
+
+
+					if (attribute.HasMember("Intensity"))
+					{
+						const Value& ac3 = attribute["Intensity"];
+						assert(ac3.IsFloat());
+						renderer->sun.color.a = ac3.GetFloat();
+					}
+
+
+					if (attribute.HasMember("ShadowIntensity"))
+					{
+						const Value& ac3 = attribute["ShadowIntensity"];
+						assert(ac3.IsFloat());
+						renderer->sun.shadowIntensity = ac3.GetFloat();
 					}
 				}
 			}
