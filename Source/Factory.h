@@ -130,7 +130,8 @@ public:
 					assert(attribute.HasMember("Look"));
 					const Value& ac1 = attribute["Look"];
 					assert(ac1.IsArray());
-					renderer->sun.look = glm::vec4(ac1[0].GetFloat(), ac1[1].GetFloat(), ac1[2].GetFloat(), 0.0f);
+					glm::vec4 look = glm::vec4(ac1[0].GetFloat(), ac1[1].GetFloat(), ac1[2].GetFloat(), 0.0f);
+					renderer->sun.look = glm::normalize(look);
 
 					if (attribute.HasMember("Near")) 
 					{

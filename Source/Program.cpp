@@ -36,6 +36,8 @@
 #include "RendererComponent.h"
 #include "TransformComponent.h"
 
+//Quaternion test
+#include "Quaternion.h"
 
 //Temporary globals
 ComponentFactory factory;
@@ -110,6 +112,40 @@ int main(int argc, char **argv)
 	superFactory.LoadScene("TestScene01.json");
 	renderer->init();
 
+
+	//TEMP QUATERNION TEST
+	AuxMath::Quaternion q1 = AuxMath::Quaternion::QuaternionFromAA(90, glm::vec3(1, 0, 0));
+	AuxMath::Quaternion q1_Inverse   = q1.Inverse();
+	AuxMath::Quaternion q1_conjugate = q1.Conjugate();
+	AuxMath::Quaternion q2 = q1 * q1_Inverse;
+	AuxMath::Quaternion q3 = q1 * q1_conjugate;
+	q1.print("q1");
+	q1_Inverse.print("Inverse");
+	q1_conjugate.print("Conjugate");
+	q2.print("times conjugate");
+	q3.print("times inverse  ");
+	
+	glm::vec3 r;
+	r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(1, 0, 0));
+	r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(0, 1, 0));
+	r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(0, 0, 1));
+	
+	r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
+	r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
+	r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
+
+	//Same with matrix
+	glm::mat4 R = AuxMath::Quaternion::QuaternionFromAA(120, glm::vec3(1, 1, 1)).GetRotationMatrix();
+	glm::vec4 r2 = R * glm::vec4(0, 0, 1, 1);
+
+	r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
+	r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
+	r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
+
+	r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
+	r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
+	r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
+	
 
     #if USING_IMGUI
         //SETUP IMGUI CONTEXT----------------------------------------------------------

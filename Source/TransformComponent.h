@@ -28,14 +28,17 @@ public:
 	static COMPONENT_TYPES const comp_class_type = TRANSFORM;
 
 	//To modify the object
-	void translate(float x, float y, float z);
-	void rotate(float angle_deg, glm::vec4 const& axis);
+	void translate(float dx, float dy, float dz);
+	void translate(glm::vec3 const& translation);
+	void rotate(float pitch, float yaw, float roll);
+	void rotate(glm::vec3 const& euler);
 	void scale(float val);
 	void scale(float x, float y, float z);
+	void scale(glm::vec3 const& scale);
 
 	//Get the objects model
-	glm::mat4& GetModel();
-	glm::mat4& GetNormalModel();
+	glm::mat4 const & GetModel();
+	glm::mat4 const & GetNormalModel();
 
 private:
 	//Flag for knowing if the object moved

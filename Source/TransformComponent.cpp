@@ -39,18 +39,26 @@ void Transform::DeserializeInit()
 		AuxMath::rotate(m_rotation.z, glm::vec4(0, 0, 1, 0));
 }
 
-
-/*
-Transform* clone() 
-{
-	return new Transform();
-}
-//*/
-
 void Transform::Update(float dt)
 {
 	if (needToRecalculateModel) 
 	{
+		//Translation
+		this->T[3][0] = m_position.x;
+		this->T[3][1] = m_position.y;
+		this->T[3][2] = m_position.z;
+
+		//Rotation
+		this->R = AuxMath::rotate(m_rotation.z, glm::vec4(0, 0, 1, 0)) *
+			AuxMath::rotate(m_rotation.y, glm::vec4(0, 1, 0, 0)) *
+			AuxMath::rotate(m_rotation.x, glm::vec4(1, 0, 0, 0));
+
+		//Scale
+		this->H[0][0] = m_scale.x;
+		this->H[1][1] = m_scale.y;
+		this->H[2][2] = m_scale.z;
+
+		//Model update
 		this->model = T * R * H;
 		this->normalsModel = R;
 	}
@@ -58,49 +66,60 @@ void Transform::Update(float dt)
 	needToRecalculateModel = 0;
 }
 
-
-void Transform::translate(float x, float y, float z)
+void Transform::translate(glm::vec3 const& translation) 
 {
-	this->m_position += glm::vec4(x, y, z, 0.0f);
+	this->translate(translation.x, translation.y, translation.z);
+}
 
-	this->T[3][0] = m_position.x;
-	this->T[3][1] = m_position.y;
-	this->T[3][2] = m_position.z;
+
+void Transform::translate(float dx, float dy, float dz)
+{
+	this->m_position += glm::vec4(dx, dy, dz, 1.0f);
 
 	needToRecalculateModel = 1;
 }
 
-void Transform::rotate(float angle_deg, glm::vec4 const& axis)
+
+void Transform::rotate(glm::vec3 const& euler)
 {
-	this->R = AuxMath::rotate(angle_deg, axis);
+	this->rotate(euler.x, euler.y, euler.z);
+}
+
+
+void Transform::rotate(float pitch, float yaw, float roll)
+{
+	this->m_rotation.x += pitch;
+	this->m_rotation.y += yaw;
+	this->m_rotation.z += roll;
 
 	needToRecalculateModel = 1;
 }
 
 void Transform::scale(float val)
 {
-	scale(val, val, val);
+	this->scale(val, val, val);
+}
+
+void Transform::scale(glm::vec3 const& scale)
+{
+	this->scale(scale.x, scale.y, scale.z);
 }
 
 void Transform::scale(float x, float y, float z)
 {
 	this->m_scale = glm::vec4(x, y, z, 1.0f);
 
-	this->H[0][0] = m_scale.x;
-	this->H[1][1] = m_scale.y;
-	this->H[2][2] = m_scale.z;
-
 	needToRecalculateModel = 1;
 }
 
 
-glm::mat4& Transform::GetModel()
+glm::mat4 const& Transform::GetModel()
 {
 	return this->model;
 }
 
 
-glm::mat4& Transform::GetNormalModel()
+glm::mat4 const& Transform::GetNormalModel()
 {
 	return this->normalsModel;
 }

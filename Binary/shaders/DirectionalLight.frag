@@ -21,7 +21,7 @@ uniform sampler2D GBufferSpecGloss;
 uniform sampler2D shadowMap;
 
 //Directional light information
-uniform vec4 lightWorldPos;
+uniform vec4 lightLook;
 uniform vec3 lightColor;
 uniform float Intensity;
 uniform float ShadowIntensity;
@@ -53,20 +53,20 @@ void main(void)
 	vec4 PositionLightSpace = LightProjView * worldPos;
 
 	vec4 m = normalize(normalIn);
-	vec4 L = normalize(lightWorldPos - worldPos);
+	vec4 L = -lightLook;
 
 	//DIFFUSE
-	diffuse = max(dot(m, L), 0) * lightColor;
+	diffuse = max(dot(m, L), 0) * lightColor * Intensity;
 
 	vec4 v = normalize(viewDir);
 	vec4 h = normalize(L + v);
-	specular += pow(max(dot(h,m),0), specExponent) * specular_k * lightColor;
+	//specular += pow(max(dot(h,m),0), specExponent) * specular_k * lightColor * Intensity;
 	
     // calculate shadow
     float shadow = ShadowCalculation(PositionLightSpace);
 
 	//FINAL COLOR
-    finalColor = (1.0 - shadow) * (diffuse + specular) * Intensity; 
+    finalColor = (1.0 - shadow) * (diffuse + specular); 
 	frag_color = vec4(finalColor.xyz ,1);
 }
 
@@ -89,19 +89,19 @@ float ShadowCalculation(vec4 fragPosLightSpace)
 
     // check whether current frag pos is in shadow
 	float bias = 0.0001;
-	//float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0; 
-	float shadow = 0.0;
-	int sampleSize = 2;
-	vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
-	for(int x = -sampleSize; x <= sampleSize; ++x)
-	{
-		for(int y = -sampleSize; y <= sampleSize; ++y)
-		{
-			float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
-			shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;        
-		}    
-	}
-	shadow /= (2 * sampleSize + 1)*(2 * sampleSize + 1);
+	float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0; 
+	//float shadow = 0.0;
+	//int sampleSize = 2;
+	//vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+	//for(int x = -sampleSize; x <= sampleSize; ++x)
+	//{
+	//	for(int y = -sampleSize; y <= sampleSize; ++y)
+	//	{
+	//		float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+	//		shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;        
+	//	}    
+	//}
+	//shadow /= (2 * sampleSize + 1)*(2 * sampleSize + 1);
 
     return ShadowIntensity * shadow;
 }  

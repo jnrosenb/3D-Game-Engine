@@ -52,9 +52,10 @@ void main(void)
 	vec4 viewDir = eye - worldPos;
 
 	//Attenuation stuff
+	float edgeConstant = 1.0 / radius;
 	vec3 objToLight = lightWorldPos.xyz - worldPos.xyz;
-	float distToLight = length(objToLight) + 0.00001; //So its never zero
-	float attenuation = (radius / (distToLight*distToLight)) - (1.0 / (radius));
+	float distToLight = length(objToLight) + 0.001; //So its never zero
+	float attenuation = radius / (distToLight*distToLight) - edgeConstant;
 	//attenuation = clamp(attenuation, 0.0f, 1.0f);
 	intensity *= attenuation;
 	if (distToLight > radius)

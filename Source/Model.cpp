@@ -7,11 +7,19 @@
 #include "Mesh.h"
 #include "LoadedMesh.h"
 
+//Experiment
+#include <string>
+#include "FBXLoader.h"
+
 
 
 Model::Model(std::string path)
 {
 	load_model(path);
+
+	//Experiment
+	///std::string path2 = "gh_sample_animation.fbx";
+	///FBXLoader::ReadAssimpFile(path2);
 }
 
 

@@ -10,7 +10,7 @@
 //Just in case I dont have this as uniforms
 vec3 diffuse_k = vec3(1, 0, 1);
 vec3 specular_k = vec3(0, 1, 1);
-int gloss = 1000;
+int gloss = 100;
 
 
 layout (location = 0) out vec4 GBuffer_pos;
@@ -48,6 +48,6 @@ void main(void)
 	GBuffer_pos = worldPos;
 	GBuffer_normals = normalIn;
 	GBuffer_diffk = vec4(diffuse_k, 1.0);
-	GBuffer_speck_gloss = vec4(specular_k, 100.0);
+	GBuffer_speck_gloss = vec4(specular_k, gloss);
 }
 

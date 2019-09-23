@@ -294,7 +294,7 @@ void DeferredRenderer::ShadowMapPass()
 	DirectionalLightShader->setTexture("GBufferSpecGloss", GeometryBuffer->texturesHandles[3], 2);
 	DirectionalLightShader->setTexture("shadowMap", ShadowBuffer->depthTexture, 3);
 
-	DirectionalLightShader->setVec4f("lightWorldPos", sun.eye.x, sun.eye.y, sun.eye.z, 1.0f);
+	DirectionalLightShader->setVec4f("lightLook", sun.look.x, sun.look.y, sun.look.z, 0.0f);
 	DirectionalLightShader->setVec3f("lightColor", sun.color.r, sun.color.g, sun.color.b);
 	DirectionalLightShader->setFloat("Intensity", sun.color.a);
 	DirectionalLightShader->setFloat("ShadowIntensity", sun.shadowIntensity);
@@ -385,8 +385,8 @@ void DeferredRenderer::initFrameBuffers()
 	ShadowBuffer = new RenderTarget();
 	RenderTargetDescriptor desc2;
 	desc2.colorAttachmentCount = 0;
-	desc2.width = 1280;
-	desc2.height = 1280;
+	desc2.width = 2048;
+	desc2.height = 2048;
 	desc2.useStencil = false;
 	desc2.componentType = GL_UNSIGNED_BYTE;
 	ShadowBuffer->initFromDescriptor(desc2);
@@ -429,7 +429,7 @@ void DeferredRenderer::loadResources()
 			float light_separation = 5.0f;
 			Light_Positions[lightCount] = glm::vec4(light_separation * i, 0, light_separation * j, 1);
 			Light_Colors[lightCount] = glm::vec4(static_cast<float>(rand()) / RAND_MAX, static_cast<float>(rand()) / RAND_MAX, static_cast<float>(rand()) / RAND_MAX, 1);
-			Light_Radius[lightCount++] = 1.0f +(rand() % 10);
+			Light_Radius[lightCount++] = 5.0f +(rand() % 10);
 		}
 	}
 }
