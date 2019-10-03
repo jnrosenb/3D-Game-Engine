@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include "DeferredRenderer.h"
+#include "Stat.h"
 
 #include "RenderTarget.h"
 #include "Shader.h"
@@ -12,6 +13,10 @@
 #include "Quad.h"
 #include <cstdlib>
 
+
+#define DEBUGGING_PASS				0
+#define KERNEL_FILTER_COUNT			110
+#define KERNEL_ACTUAL_COUNT			10
 
 
 DeferredRenderer::DeferredRenderer() : 
@@ -25,6 +30,7 @@ DeferredRenderer::~DeferredRenderer()
 {
 	//TODO delete stuff
 	delete GeometryBuffer;
+	delete ShadowBuffer;
 
 	//Delete all the textures allocated by opengl
 	glDeleteTextures(numberOfTexturesLoaded, textures);
@@ -42,6 +48,13 @@ DeferredRenderer::~DeferredRenderer()
 	delete DeferredPointLightShader;
 	delete DeferredAmbientShader;
 	delete DirectionalLightShader;
+	
+	//Delete compute shader
+	delete blurShader;
+
+	//Delete the FBO's
+	glDeleteBuffers(1, &this->ubo_weights);
+	glDeleteBuffers(1, &this->ubo_test);
 }
 
 
@@ -74,8 +87,7 @@ void DeferredRenderer::init()
 void DeferredRenderer::initUniformBufferObjects()
 {
 	// FIRST UNIFORM BUFFER OBJECT (layout)-----------------------
-	int index = 0;
-
+	int index = 1;
 	// mat4						    // 0   - 64
 	// mat4						    // 64   -128
 	// vec4 eye						// 128  -144
@@ -83,16 +95,30 @@ void DeferredRenderer::initUniformBufferObjects()
 	// 1- Generate buffer and bind
 	glGenBuffers(1, &this->ubo_test);
 	glBindBuffer(GL_UNIFORM_BUFFER, this->ubo_test);
-	
 	//Allocate gpu space
 	glBufferData(GL_UNIFORM_BUFFER, 144, NULL, GL_STATIC_DRAW);
-	
 	//Map to an index
 	glBindBufferBase(GL_UNIFORM_BUFFER, index, this->ubo_test);
-	
 	//Unbind
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-	//------------------------------------------------------------
+
+
+
+	// FIRST UNIFORM BUFFER OBJECT (layout)-----------------------
+	index = 2;
+	// float array					// 0   - 16 * KERNEL_FILTER_COUNT
+	
+	// 1- Generate buffer and bind
+	glGenBuffers(1, &this->ubo_weights);
+	glBindBuffer(GL_UNIFORM_BUFFER, this->ubo_weights);
+	//Allocate gpu space
+	int size = 16 * KERNEL_FILTER_COUNT;
+	glBufferData(GL_UNIFORM_BUFFER, size, NULL, GL_STATIC_DRAW);
+	//Map to an index
+	glBindBufferBase(GL_UNIFORM_BUFFER, index, this->ubo_weights);
+
+	//Unbind crap
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 
@@ -120,7 +146,6 @@ void DeferredRenderer::Draw()
 	CalculateLightProjView();
 	
 	//TODO - Better way to pass. Uniform block should know its own indices or calculate them
-	//Pass uniforms and stuff
 	glm::mat4 projView = currentCamera->getProj() * currentCamera->getView();
 	UniformBlockBind(this->ubo_test);
 	UniformBlockPassData(this->ubo_test, 0, projView);
@@ -128,12 +153,15 @@ void DeferredRenderer::Draw()
 	UniformBlockPassData(this->ubo_test, 128, currentCamera->getEye());
 	UniformBlockUnbind();
 
+	UniformBlockBind(this->ubo_weights);
+	UniformBlockPassData(this->ubo_weights, 0, weights.size(), &weights[0]);
+	UniformBlockUnbind();
 
 	//*GEOMETRY PASS
 	GeometryPass();
 
+	#if DEBUGGING_PASS
 
-	/*DEBUGGING PASS (Back to default framebuffer)-----------------------------
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
 	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
@@ -155,22 +183,24 @@ void DeferredRenderer::Draw()
 	//TODO - UNBIND SHADER AND MESH
 	FSQ->UnbindForDraw();
 	FSQShader->UnbindShader();
-	//-------------------------------------------------------------------------*/
 	
+	#else// non DEBUGGING_PASS
 
 	//AMBIENT LIGHT PASS (Back to default framebuffer)
 	AmbientLightPass();
 
 
 	//SHADOW MAP PASS
-	ShadowMapPass(); // TODO - fill it out
+	FileteredShadowPass();
+	///ShadowMapPass(); // Normal shadow mapping
 	
 
 	//MULTIPLE POINT LIGHT PASS (Back to default framebuffer)
 	MultiplePointLightPass(projView);
 
+	#endif //DEBUGGING_PASS
 
-	//Empty both graphics queues--------------------------------
+	//Empty both graphics queues
 	graphicQueue.clear();
 	graphicQueueAlpha.clear();
 }
@@ -198,20 +228,35 @@ void DeferredRenderer::GeometryPass()
 	geometryPassShader->UseShader();
 	for (int i = 0; i < graphicQueue.size(); ++i)
 	{
-		//BINDING
-		graphicQueue[i].mesh->BindForDraw();
+		//Get the current drawNode
+		DrawData &data = graphicQueue[i];
+	
+		//Since a node has a model (and all the meshes of a model for now share bones), we pass the uniform array
+		if (graphicQueue[i].BoneTransformations)
+		{
+			geometryPassShader->setMat4fArray("BoneTransf", 100, (*(graphicQueue[i].BoneTransformations))[0]);
+		}
 
-		//UNIFORM BINDING
-		geometryPassShader->setMat4f("model", graphicQueue[i].model);
-		geometryPassShader->setMat4f("normalModel", graphicQueue[i].normalsModel);
-		geometryPassShader->setTexture("diffuseTexture", graphicQueue[i].diffuseTexture, 0);
+		for (int j = 0; j < data.meshes->size(); ++j) 
+		{
+			//BINDING
+			///graphicQueue[i].mesh->BindForDraw();
+			(*data.meshes)[j]->BindForDraw();
 
-		//DRAW
-		int faceCount = graphicQueue[i].mesh->GetFaceCount();
-		glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+			//UNIFORM BINDING
+			geometryPassShader->setMat4f("model", graphicQueue[i].model);
+			geometryPassShader->setMat4f("normalModel", graphicQueue[i].normalsModel);
+			geometryPassShader->setTexture("diffuseTexture", graphicQueue[i].diffuseTexture, 0);
 
-		//TODO - UNBIND SHADER AND MESH
-		graphicQueue[i].mesh->UnbindForDraw();
+			//DRAW
+			int faceCount = (*data.meshes)[j]->GetFaceCount();
+			///int faceCount = graphicQueue[i].mesh->GetFaceCount();
+			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+
+			//TODO - UNBIND SHADER AND MESH
+			///graphicQueue[i].mesh->UnbindForDraw(); 
+			(*data.meshes)[j]->UnbindForDraw();
+		}
 	}
 	geometryPassShader->UnbindShader();
 }
@@ -259,18 +304,27 @@ void DeferredRenderer::ShadowMapPass()
 	{
 		//BINDING
 		shadowShader->UseShader();
-		graphicQueue[i].mesh->BindForDraw();
 
-		//UNIFORM BINDING
-		shadowShader->setMat4f("projView", lightProjView);
-		shadowShader->setMat4f("model", graphicQueue[i].model);
+		DrawData &data = graphicQueue[i];
+		for (int j = 0; j < data.meshes->size(); ++j)
+		{
+			//BINDING
+			///graphicQueue[i].mesh->BindForDraw();
+			(*data.meshes)[j]->BindForDraw();
 
-		//DRAW
-		int faceCount = graphicQueue[i].mesh->GetFaceCount();
-		glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+			//UNIFORM BINDING
+			shadowShader->setMat4f("projView", lightProjView);
+			shadowShader->setMat4f("model", graphicQueue[i].model);
 
-		//TODO - UNBIND SHADER AND MESH
-		graphicQueue[i].mesh->UnbindForDraw();
+			//DRAW
+			int faceCount = (*data.meshes)[j]->GetFaceCount();
+			///int faceCount = graphicQueue[i].mesh->GetFaceCount();
+			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+
+			//TODO - UNBIND SHADER AND MESH
+			///graphicQueue[i].mesh->UnbindForDraw();
+			(*data.meshes)[j]->UnbindForDraw();
+		}
 		shadowShader->UnbindShader();
 	}
 	
@@ -307,6 +361,98 @@ void DeferredRenderer::ShadowMapPass()
 	FSQ->UnbindForDraw();
 	DirectionalLightShader->UnbindShader();
 }
+
+
+
+void DeferredRenderer::FileteredShadowPass()
+{
+	//GENERATE THE SHADOW MAP--------------------------------------------
+	ShadowBuffer->Bind();
+	glViewport(0, 0, ShadowBuffer->getWidth(), ShadowBuffer->getHeight());
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+	//DEPTH
+	glEnable(GL_DEPTH_TEST);
+	//Experiment with queues
+	for (int i = 0; i < graphicQueue.size(); ++i)
+	{
+		//BINDING
+		shadowShader->UseShader();
+
+		DrawData &data = graphicQueue[i];
+		for (int j = 0; j < data.meshes->size(); ++j)
+		{
+			//BINDING
+			///graphicQueue[i].mesh->BindForDraw();
+			(*data.meshes)[j]->BindForDraw();
+
+			//UNIFORM BINDING
+			shadowShader->setMat4f("projView", lightProjView);
+			shadowShader->setMat4f("model", graphicQueue[i].model);
+			
+			//DRAW
+			///int faceCount = graphicQueue[i].mesh->GetFaceCount();
+			int faceCount = (*data.meshes)[j]->GetFaceCount();
+			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+
+			//TODO - UNBIND SHADER AND MESH
+			///graphicQueue[i].mesh->UnbindForDraw();
+			(*data.meshes)[j]->UnbindForDraw();
+		}
+
+		shadowShader->UnbindShader();
+	}
+
+
+	
+	
+	//---
+	int width = ShadowBuffer->getWidth();
+	int height = ShadowBuffer->getHeight();
+	this->blurShader->UseShader();
+	glDispatchCompute(width / 128, height, 1); 
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); //TODO
+	this->blurShader->UnbindShader();
+
+	//Image unit stuff
+	unsigned imageUnit = 0;
+	GLuint location = glad_glGetUniformLocation(blurShader->GetId(), "src_img");
+	//Binds the texture at the image location
+	glBindImageTexture(imageUnit, ShadowBuffer->texturesHandles[0], 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+	glUniform1i(location, imageUnit); //Bind the uniform at location with the image unit
+	//*/
+
+
+
+	//NOW DRAW INTO THE SCENE---------------------------------------------
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+	//blending and depth
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE, GL_ONE);
+	glDisable(GL_DEPTH_TEST);
+	//USE SHADER AND BIND VAO
+	DirectionalLightShader->UseShader();
+	FSQ->BindForDraw();
+	//UNIFORM BINDING
+	DirectionalLightShader->setTexture("GBufferPos", GeometryBuffer->texturesHandles[0], 0);
+	DirectionalLightShader->setTexture("GBufferNormals", GeometryBuffer->texturesHandles[1], 1);
+	DirectionalLightShader->setTexture("GBufferSpecGloss", GeometryBuffer->texturesHandles[3], 2);
+	// TODO Here, pass all the moments (not just depth)
+	DirectionalLightShader->setTexture("shadowMap", ShadowBuffer->depthTexture, 3);//**************
+	//Directional light uniforms
+	DirectionalLightShader->setVec4f("lightLook", sun.look.x, sun.look.y, sun.look.z, 0.0f);
+	DirectionalLightShader->setVec3f("lightColor", sun.color.r, sun.color.g, sun.color.b);
+	DirectionalLightShader->setFloat("Intensity", sun.color.a);
+	DirectionalLightShader->setFloat("ShadowIntensity", sun.shadowIntensity);
+	//DRAW
+	int faceCount = FSQ->GetFaceCount();
+	glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+	//TODO - UNBIND SHADER AND MESH
+	FSQ->UnbindForDraw();
+	DirectionalLightShader->UnbindShader();
+}
+
 
 
 void DeferredRenderer::MultiplePointLightPass(glm::mat4& projView) //Later pass this on uniform buffer
@@ -385,8 +531,8 @@ void DeferredRenderer::initFrameBuffers()
 	ShadowBuffer = new RenderTarget();
 	RenderTargetDescriptor desc2;
 	desc2.colorAttachmentCount = 0;
-	desc2.width = 2048;
-	desc2.height = 2048;
+	desc2.width = 1024;
+	desc2.height = 1024;
 	desc2.useStencil = false;
 	desc2.componentType = GL_UNSIGNED_BYTE;
 	ShadowBuffer->initFromDescriptor(desc2);
@@ -412,7 +558,14 @@ void DeferredRenderer::loadResources()
 
 	DeferredPointLightShader = new Shader("PointLightFSQ.vert", "PointLightFSQ.frag");
 	DeferredPointLightShader->BindUniformBlock("test_gUBlock", 1);
+
+	//Compute shader creation
+	blurShader = new Shader("Blur.comp");
+	blurShader->BindUniformBlock("Weights_UBlock", 2); //TODO - That hardcoded 2 should be hash managed
 	
+	//Init the weights
+	int kernel_radius = (KERNEL_ACTUAL_COUNT - 1) * 0.5f;
+	AuxMath::genGaussianWeights(kernel_radius, this->weights);
 
 	//FSQ
 	FSQ = new Quad();
@@ -421,7 +574,7 @@ void DeferredRenderer::loadResources()
 	PointLightSphere = this->model->meshes[0];
 
 	//Many lights
-	int range = 30; //44 for near 2000
+	int range = 25; //44 for near 2000
 	for (int i = -(range/2); i < (range / 2); ++i)
 	{
 		for (int j = -(range / 2); j < (range / 2); ++j)
@@ -480,12 +633,6 @@ GLuint DeferredRenderer::generateTextureFromSurface(SDL_Surface *surface, std::s
 		}
 
 		glTexImage2D(GL_TEXTURE_2D, 0, mode, (*surface).w, (*surface).h, 0, mode, GL_UNSIGNED_BYTE, (*surface).pixels);
-		///if (glGetError() != GL_NO_ERROR)
-		///	std::cout << "PROBLEM IN LOADING TEXTURE" << std::endl;
-		///else
-		///	std::cout << "LOADING TEXTURE OK. surface: " << surface << ". Surface bytes per pixel: "
-		///		<< static_cast<int>(surface->format->BytesPerPixel) << std::endl;
-
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -510,7 +657,7 @@ GLuint DeferredRenderer::generateTextureFromSurface(SDL_Surface *surface, std::s
 
 void DeferredRenderer::UniformBlockBind(GLuint ubo)
 {
-	glBindBuffer(GL_UNIFORM_BUFFER, this->ubo_test);
+	glBindBuffer(GL_UNIFORM_BUFFER, ubo);// this->ubo_test);
 }
 
 void DeferredRenderer::UniformBlockUnbind()
@@ -523,49 +670,33 @@ void DeferredRenderer::UniformBlockUnbind()
 template<typename T>
 void DeferredRenderer::UniformBlockPassData(GLuint ubo, int begin, T data)
 {
-	//std::cout << "UniformBlockData - Simple type" << std::endl;
-
-	//glBindBuffer(GL_UNIFORM_BUFFER, this->ubo_test);
 	glBufferSubData(GL_UNIFORM_BUFFER, begin, 4, data);
-	//glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 //Arrays of both literals and vecs or mats should fall here
 template<typename T>
 void DeferredRenderer::UniformBlockPassData(GLuint ubo, int begin, int count, T *data)
 {
-	//std::cout << "UniformBlockData - Array of something" << std::endl;
-
 	int size = count * 16;
-	//glBindBuffer(GL_UNIFORM_BUFFER, this->ubo_test);
 	glBufferSubData(GL_UNIFORM_BUFFER, begin, size, data);
-	//glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void DeferredRenderer::UniformBlockPassData(GLuint ubo, int begin, glm::vec2& data)
 {
-	//glBindBuffer(GL_UNIFORM_BUFFER, this->ubo_test);
 	glBufferSubData(GL_UNIFORM_BUFFER, begin, 8, &data[0]);
-	//glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void DeferredRenderer::UniformBlockPassData(GLuint ubo, int begin, glm::vec3& data)
 {
-	//glBindBuffer(GL_UNIFORM_BUFFER, this->ubo_test);
 	glBufferSubData(GL_UNIFORM_BUFFER, begin, 16, &data[0]);
-	//glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void DeferredRenderer::UniformBlockPassData(GLuint ubo, int begin, glm::vec4& data)
 {
-	//glBindBuffer(GL_UNIFORM_BUFFER, this->ubo_test);
 	glBufferSubData(GL_UNIFORM_BUFFER, begin, 16, &data[0]);
-	//glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void DeferredRenderer::UniformBlockPassData(GLuint ubo, int begin, glm::mat4& data)
 {
-	//glBindBuffer(GL_UNIFORM_BUFFER, this->ubo_test);
 	glBufferSubData(GL_UNIFORM_BUFFER, begin, 64, &data[0][0]);
-	//glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }

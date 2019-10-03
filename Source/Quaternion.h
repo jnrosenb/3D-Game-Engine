@@ -10,9 +10,13 @@
 
 namespace AuxMath 
 {
-
 	struct Quaternion 
 	{
+		friend Quaternion operator*(float f, Quaternion const& rhs);
+		friend Quaternion operator*(Quaternion const& rhs, float f);
+		friend Quaternion operator/(Quaternion const& rhs, float f);
+		friend Quaternion operator/(float f, Quaternion const& rhs);
+
 		float s;
 		float x, y, z;
 
@@ -94,7 +98,7 @@ namespace AuxMath
 		//Addition
 		Quaternion& operator+=(Quaternion const& rhs)
 		{
-			this->s += rhs.x;
+			this->s += rhs.s;
 			this->x += rhs.x;
 			this->y += rhs.y;
 			this->z += rhs.z;
@@ -178,6 +182,15 @@ namespace AuxMath
 				return Conjugate();
 
 			return Conjugate() / SqrLen();
+		}
+
+
+		Quaternion Normalize() const
+		{
+			if (IsUnitQuaternion())
+				return Quaternion(s, x, y, z);
+
+			return Quaternion(s, x, y, z) / Len();
 		}
 
 		//Length

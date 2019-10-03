@@ -5,11 +5,19 @@
 ///#include "glm/gtx/transform.hpp"
 
 
-LoadedMesh::LoadedMesh( std::vector<glm::vec4> &vertices,
-	std::vector<glm::vec4> &normals, std::vector<glm::vec2> &uvs,
-	std::vector<Mesh::Face> &faces, std::vector<glm::vec4> &tangents, 
-	std::vector<glm::vec4> &bitangents) : Mesh()
+LoadedMesh::LoadedMesh
+( 
+	std::vector<glm::vec4> &vertices,
+	std::vector<glm::vec4> &normals, 
+	std::vector<glm::vec2> &uvs,
+	std::vector<Mesh::Face> &faces, 
+	std::vector<glm::vec4> &tangents, 
+	std::vector<glm::vec4> &bitangents,
+	std::vector<std::vector<int>>& bones_indices,
+	std::vector<std::vector<float>>& bones_weights,
+	std::unordered_map<std::string, glm::mat4>& BoneOffsetMap) : Mesh()
 {
+	//Bounding box stuff
 	/*Bounding box, initial bounding values
 	Bounding_Limits.push_back(std::numeric_limits<float>::max());
 	Bounding_Limits.push_back(-std::numeric_limits<float>::max());
@@ -19,15 +27,23 @@ LoadedMesh::LoadedMesh( std::vector<glm::vec4> &vertices,
 	Bounding_Limits.push_back(-std::numeric_limits<float>::max());
 	//*/
 
+	//Usual stuff
 	Load_Vertices(vertices);
 	Load_Normals(normals);
 	Load_TexCoords(uvs);
 	Load_Faces(faces);
+
+	//Normal map
 	///Load_Tangents_and_Bitangents(tangents, bitangents);
 	
+	//Bone information loading
+	Load_BoneIndices(bones_indices);
+	Load_BoneWeights(bones_weights);
+
 	//Once all info is loaded, setup the openGL side
 	init();
 }
+
 
 LoadedMesh::~LoadedMesh() 
 {
@@ -71,6 +87,77 @@ void LoadedMesh::Load_Faces(std::vector<Mesh::Face> &faces)
 	for (Mesh::Face const &face : faces)
 	{
 		this->faces.push_back(face);
+	}
+}
+
+void LoadedMesh::Load_BoneIndices(std::vector<std::vector<int>> const& indices)
+{
+	for (std::vector<int> const& index : indices)
+	{
+		unsigned index_count = index.size();
+		glm::ivec4 ind;
+
+		switch (index_count) 
+		{
+		case 0:
+			ind = glm::ivec4(-1, -1, -1, -1);
+			break;
+		case 1:
+			ind = glm::ivec4(index[0], -1, -1, -1);
+			break;
+		case 2:
+			ind = glm::ivec4(index[0], index[1], -1, -1);
+			break;
+		case 3:
+			ind = glm::ivec4(index[0], index[1], index[2], -1);
+			break;
+		case 4:
+			ind = glm::ivec4(index[0], index[1], index[2], index[3]);
+			break;
+		};
+
+		///if (index_count == 0)
+		///	continue;
+		///else if (index_count == 1)
+		///	ind.x = glm::ivec4(index[0], 0.0f, 0.0f, 0.0f);
+		///else if (index_count == 2)
+		///	ind = glm::ivec4(index[0], index[1], 0.0f, 0.0f);
+		///else if (index_count == 3)
+		///	ind = glm::ivec4(index[0], index[1], index[2], 0.0f);
+		///else
+		///	ind = glm::ivec4(index[0], index[1], index[2], index[3]);
+
+		this->boneIndices.push_back(ind);
+	}
+}
+
+void LoadedMesh::Load_BoneWeights(std::vector<std::vector<float>> const& weights)
+{
+	for (std::vector<float> const& weight : weights)
+	{
+		unsigned weight_count = weight.size();
+		glm::vec4 wgts = glm::vec4(0);
+
+		switch (weight_count)
+		{
+		case 0:
+			wgts = glm::vec4(-1.0f, -1.0f, -1.0f, -1.0f);
+			break;
+		case 1:
+			wgts = glm::vec4(weight[0], -1.0f, -1.0f, -1.0f);
+			break;
+		case 2:
+			wgts = glm::vec4(weight[0], weight[1], -1.0f, -1.0f);
+			break;
+		case 3:
+			wgts = glm::vec4(weight[0], weight[1], weight[2], -1.0f);
+			break;
+		case 4:
+			wgts = glm::vec4(weight[0], weight[1], weight[2], weight[3]);
+			break;
+		};
+
+		this->boneWeights.push_back(wgts);
 	}
 }
 
@@ -147,6 +234,16 @@ std::vector <glm::vec4>& LoadedMesh::GetNormals()
 std::vector <glm::vec2>& LoadedMesh::GetTexCoords()
 {
 	return this->texCoords;
+}
+
+std::vector<glm::ivec4> const& LoadedMesh::GetBoneIndices() const
+{
+	return this->boneIndices;
+}
+
+std::vector<glm::vec4> const& LoadedMesh::GetBoneWeights() const
+{
+	return this->boneWeights;
 }
 
 std::vector <Mesh::Face>& LoadedMesh::GetFaces()

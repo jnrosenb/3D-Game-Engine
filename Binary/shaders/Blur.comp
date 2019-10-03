@@ -1,0 +1,55 @@
+#version 430 // Version of OpenGL with COMPUTE shader support
+
+
+//Defines the groups sizes
+layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+
+//MACROS
+#define MAX_WEIGHTS 110
+
+
+// UNIFORMS
+layout (std140) uniform Weights_UBlock
+{
+    float weights[MAX_WEIGHTS]; 
+};
+layout (rgba32f) uniform readonly image2D src_img;		// READ ONLY  - Input image  - rgba32f img
+layout (rgba32f) uniform writeonly image2D dst;		// WRITE ONLY - Output image - rgba32f img
+
+
+// Variable shared with other threads in the same group
+shared vec4 v[128 + MAX_WEIGHTS - 1];
+
+
+//////////////////
+////   MAIN   ////
+//////////////////
+void main() 
+{
+    // ...
+    
+    ivec2 global_pos = ivec2(gl_GlobalInvocationID.xy);
+
+	// Local - thread id in the 128x1 current TG
+    uint i = gl_LocalInvocationID.x;
+    
+	//Get the kernel radius (TODO check) 
+	// TODO - pass as uniform
+	int w = (MAX_WEIGHTS - 1) / 2;
+
+	//Reads a specific location from the image into the shader
+	v[i] = imageLoad(src_img, global_pos /* + ... */);
+    
+	// In each group, we need the first 2w threads to read an extra pixel
+	// Positioned at the end of the thing
+    if (i < 2 * w)
+        v[i + 128] = imageLoad(src_img, global_pos + 0 /*...*/);
+
+    barrier(); // Wait for all threads to catchup before reading v[]
+
+    // Get data using v
+	vec4 data;
+
+    imageStore(dst, global_pos, data); // Write to destination image
+}

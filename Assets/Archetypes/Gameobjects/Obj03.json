@@ -3,18 +3,18 @@
     "components": [
       {
         "id": "transform",
-        "position": [ 5, 0, 0 ],
+        "position": [ 0, 0, 0 ],
         "rotation": [ 0, 0, 0 ],
-        "scale": [ 1.0, 1.0, 1.0 ]
+        "scale": [ 0.05, 0.05, 0.05 ]
       },
       {
         "id": "render",
         "diffuse": [ 1.0, 0.0, 1.0, 1.0 ],
         "vertex_id": 0,
-        "load_model": true,
+        "load_model": false,
         "shader": "Solid",
         "primitive": "sphere",
-        "model_name": "Sphere.fbx",
+        "model_name": "gh_sample_animation.fbx",
         "diffuse_texture": "stone.jpg"
       }
     ]

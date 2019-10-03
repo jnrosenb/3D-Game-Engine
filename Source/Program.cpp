@@ -1,7 +1,7 @@
 //ENTRY POINT
 
 //TODO - MOVE THESE INTO MACRO INCLUDE
-#define USING_IMGUI			1
+#define USING_IMGUI			0
 #define USING_GLEW			0
 #define USING_GLAD			1
 
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
     char const *glsl_version = "#version 330 core";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
     //Windows properties
@@ -110,41 +110,43 @@ int main(int argc, char **argv)
 
 	//Load the first scene
 	superFactory.LoadScene("TestScene01.json");
+	///superFactory.LoadScene("AnimationScene.json");
 	renderer->init();
 
 
 	//TEMP QUATERNION TEST
-	AuxMath::Quaternion q1 = AuxMath::Quaternion::QuaternionFromAA(90, glm::vec3(1, 0, 0));
-	AuxMath::Quaternion q1_Inverse   = q1.Inverse();
-	AuxMath::Quaternion q1_conjugate = q1.Conjugate();
-	AuxMath::Quaternion q2 = q1 * q1_Inverse;
-	AuxMath::Quaternion q3 = q1 * q1_conjugate;
-	q1.print("q1");
-	q1_Inverse.print("Inverse");
-	q1_conjugate.print("Conjugate");
-	q2.print("times conjugate");
-	q3.print("times inverse  ");
-	
-	glm::vec3 r;
-	r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(1, 0, 0));
-	r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(0, 1, 0));
-	r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(0, 0, 1));
-	
-	r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
-	r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
-	r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
+	///AuxMath::Quaternion q1 = AuxMath::Quaternion::QuaternionFromAA(90, glm::vec3(1, 0, 0));
+	///AuxMath::Quaternion q1_Inverse   = q1.Inverse();
+	///AuxMath::Quaternion q1_conjugate = q1.Conjugate();
+	///AuxMath::Quaternion q2 = q1 * q1_Inverse;
+	///AuxMath::Quaternion q3 = q1 * q1_conjugate;
+	///q1.print("q1");
+	///q1_Inverse.print("Inverse");
+	///q1_conjugate.print("Conjugate");
+	///q2.print("times conjugate");
+	///q3.print("times inverse  ");
+	///
+	///glm::vec3 r;
+	///r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(1, 0, 0));
+	///r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(0, 1, 0));
+	///r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(0, 0, 1));
+	///
+	///r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
+	///r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
+	///r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
+	///
+	/////Same with matrix
+	///glm::mat4 R = AuxMath::Quaternion::QuaternionFromAA(120, glm::vec3(1, 1, 1)).GetRotationMatrix();
+	///glm::vec4 r2 = R * glm::vec4(0, 0, 1, 1);
+	///
+	///r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
+	///r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
+	///r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
+	///
+	///r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
+	///r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
+	///r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
 
-	//Same with matrix
-	glm::mat4 R = AuxMath::Quaternion::QuaternionFromAA(120, glm::vec3(1, 1, 1)).GetRotationMatrix();
-	glm::vec4 r2 = R * glm::vec4(0, 0, 1, 1);
-
-	r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
-	r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
-	r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
-
-	r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
-	r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
-	r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
 	
 
     #if USING_IMGUI
@@ -217,9 +219,9 @@ int main(int argc, char **argv)
 		ImGui::Render();
 		#endif
 
-		//TODO - frameRate controller
-		int deltaTime = 16; //Milliseconds
-		float dt = deltaTime / 1000.0f;
+		//frameRate controller
+		float dt = frc->getFrameTime() / 1000.0f;
+		std::cout << dt << std::endl;
 
 		//Update stuff
 		inputMgr->update(dt);
@@ -241,9 +243,9 @@ int main(int argc, char **argv)
 	//Custom stuff cleanup
 	delete renderer;
 	delete inputMgr;
-	delete goMgr;
 	delete resMgr;
 	delete frc;
+	delete goMgr;
 
     // clean up
     SDL_GL_DeleteContext(context);

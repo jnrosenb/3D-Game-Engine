@@ -18,9 +18,9 @@ out vec4 frag_color;
 void main(void) 
 {
 	frag_color = vec4(0);
-	//frag_color += 0 * texture(GBufferPos, uvs);
-	//frag_color += 0 * texture(GBufferNormals, uvs);
-	frag_color += 1 * texture(GBufferDiffuse, uvs);
-	//frag_color += 0 * texture(GBufferSpecGloss, uvs);
+	frag_color += 0 * texture(GBufferPos, uvs);
+	frag_color += 0 * texture(GBufferNormals, uvs);
+	frag_color += 0 * texture(GBufferDiffuse, uvs);
+	frag_color += 1 * texture(GBufferSpecGloss, uvs);
 }
 

@@ -3,9 +3,9 @@
     "components": [
       {
         "id": "transform",
-        "position": [ 0, 0, 0 ],
-        "rotation": [ 90, 0, 90 ],
-        "scale": [ 1.0, 1.0, 1.0 ]
+        "position": [ 5, 0, 0 ],
+        "rotation": [ 0, 0, 0 ],
+        "scale": [ 0.1, 0.1, 0.1 ]
       },
       {
         "id": "render",
@@ -14,7 +14,7 @@
         "load_model": true,
         "shader": "Solid",
         "primitive": "quad",
-        "model_name": "lever.fbx",
+        "model_name": "WalkingBot.fbx",
         "diffuse_texture": "metal.jpg"
       }
     ]

@@ -10,7 +10,7 @@
       "Width": 40,
       "Height": 30,
       "Intensity": 1.0,
-      "ShadowIntensity": 0.5
+      "ShadowIntensity": 1.0
     },
     {
       "Type": "Point",
@@ -22,12 +22,6 @@
   "Objects": [
     {
       "name": "Floor01.json"
-    },
-    {
-      "name": "CameraObj.json"
-    },
-    {
-      "name": "Target.json"
     },
     {
       "name": "Obj01.json"

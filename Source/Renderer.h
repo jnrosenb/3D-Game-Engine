@@ -55,9 +55,12 @@ struct DrawData
 {
 	glm::mat4 model;
 	glm::mat4 normalsModel;
-	Mesh *mesh;
+	std::vector<Mesh*> *meshes;
 	Shader *shader;
 	GLuint diffuseTexture;
+
+	//Bones experiment
+	std::vector<glm::mat4> *BoneTransformations;
 };
 
 

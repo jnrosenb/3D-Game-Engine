@@ -30,28 +30,6 @@ Shader::Shader(char const *vertexPath, char const *fragmentPath)
 	std::string shaderString;
 
 	// Compile vertex shader
-	/*
-	const char *vertex_shader_text =
-	"#version 330 core\n\
-     layout(location = 0) in vec4 position;\n\
-     layout(location = 1) in vec4 normal;\n\
-	 layout(std140) uniform viewProj\n\
-	 {\n\
-		mat4 ProjView;		// 0  - 64		\n\
-		float abc;			// 64 - 68		\n\
-		vec3  lightColor;	// 68 - 84		\n\
-	 };\n\
-     uniform mat4 model_matrix;\n\
-     uniform mat4 normal_matrix;\n\
-     uniform vec4 color;\n\
-     out vec4 vcolor;\n\
-     void main()\n\
-	 {\n\
-       //gl_Position = ProjView * model_matrix * position;\n\
-       gl_Position = ProjView * position;\n\
-       vcolor = vec4(1, 0, 0, 1);\n\
-     }";
-	//*/
 	shaderString = loadFile(vertexPath);
 	const char *vertex_shader_text = shaderString.c_str();
 	GLuint vshader = glCreateShader(GL_VERTEX_SHADER);
@@ -66,17 +44,6 @@ Shader::Shader(char const *vertexPath, char const *fragmentPath)
 	}
 
 	// Compile fragment shader
-	/*
-	const char *fragment_shader_text =
-	 "#version 330 core\n\
-     in vec4 vcolor;\
-     out vec4 frag_color;\
-	 \
-     void main(void)\
-	 {\
-       frag_color = vcolor;\
-     }";
-	//*/
 	shaderString = loadFile(fragmentPath);
 	const char *fragment_shader_text = shaderString.c_str();
 	GLuint fshader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -105,11 +72,44 @@ Shader::Shader(char const *vertexPath, char const *fragmentPath)
 
 	glDeleteShader(fshader);
 	glDeleteShader(vshader);
+}
 
+//CONSTRUCTOR
+Shader::Shader(char const *ComputetPath)
+{
+	std::cout << "Shader Constructor - " << ComputetPath << std::endl;
 
-	// TODO - Find right place for this
-	//BIND UNIFORM BLOCK TO INDEX (if present)
-	///this->BindUniformBlock("test_ubo", 0);	//need some sort of mapping so the '0' isnt hardcoded
+	int value;
+	char infolog[1024];
+	std::string shaderString;
+
+	// Compile compute shader
+	shaderString = loadFile(ComputetPath);
+	const char *compute_shader_text = shaderString.c_str();
+	GLuint cshader = glCreateShader(GL_COMPUTE_SHADER);
+	glShaderSource(cshader, 1, &compute_shader_text, 0);
+	glCompileShader(cshader);
+	glGetShaderiv(cshader, GL_COMPILE_STATUS, &value);
+	if (!value)
+	{
+		std::cerr << "compute shader failed to compile.\nError described next: " << std::endl;
+		glGetShaderInfoLog(cshader, 1024, 0, infolog);
+		std::cerr << infolog << std::endl;
+	}
+
+	// (I.C) link shaders
+	this->programId = glCreateProgram();
+	glAttachShader(this->programId, cshader);
+	glLinkProgram(this->programId);
+	glGetProgramiv(this->programId, GL_LINK_STATUS, &value);
+	if (!value)
+	{
+		std::cerr << "PROGRAM failed to link.\nError described next: " << std::endl;
+		glGetProgramInfoLog(this->programId, 1024, 0, infolog);
+		std::cerr << infolog << std::endl;
+	}
+
+	glDeleteShader(cshader);
 }
 
 
@@ -188,6 +188,13 @@ void Shader::setMat4f(const std::string &name, glm::mat4& matrix)
 }
 
 
+void Shader::setMat4fArray(const std::string &name, unsigned count, glm::mat4& matrix)
+{
+	GLuint location = GetCachedUniformLocation(name);
+	glUniformMatrix4fv(location, count, GL_FALSE, &matrix[0][0]);
+}
+
+
 //Texture uniform binding
 void Shader::setTexture(std::string const& name, GLuint texture, int unit)
 {
@@ -207,7 +214,7 @@ void Shader::BindUniformBlock(std::string const& name, int bind_index)
 
 	if (uniformBlockLocation != -1)
 	{
-		glUniformBlockBinding(this->programId, bind_index, static_cast<GLuint>(uniformBlockLocation));
+		glUniformBlockBinding(this->programId, static_cast<GLuint>(uniformBlockLocation), bind_index);
 	}
 	else
 		std::cout << "ERROR retrieving uniform block location!" << std::endl;

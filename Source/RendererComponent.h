@@ -27,6 +27,10 @@ public:
 	virtual void DeserializeInit() override;
 
 
+	//For now, animation component will be set here
+	void SetupAnimationComponent();
+
+
 public:
 	//To compare when using templates
 	static COMPONENT_TYPES const comp_class_type = RENDERER;

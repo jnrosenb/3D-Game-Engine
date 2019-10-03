@@ -156,18 +156,28 @@ void ForwardRenderer::Draw()
 	{
 		//BINDING
 		shadowShader->UseShader();
-		graphicQueue[i].mesh->BindForDraw();
 
-		//UNIFORM BINDING
-		shadowShader->setMat4f("projView", lightProjView);
-		shadowShader->setMat4f("model", graphicQueue[i].model);
+		DrawData &data = graphicQueue[i];
+		for (int j = 0; j < data.meshes->size(); ++j)
+		{
+			//BINDING
+			///graphicQueue[i].mesh->BindForDraw();
+			(*data.meshes)[j]->BindForDraw();
 
-		//DRAW
-		int faceCount = graphicQueue[i].mesh->GetFaceCount();
-		glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+			//UNIFORM BINDING
+			shadowShader->setMat4f("projView", lightProjView);
+			shadowShader->setMat4f("model", graphicQueue[i].model);
 
-		//TODO - UNBIND SHADER AND MESH
-		graphicQueue[i].mesh->UnbindForDraw();
+			//DRAW
+			int faceCount = (*data.meshes)[j]->GetFaceCount();
+			///int faceCount = graphicQueue[i].mesh->GetFaceCount();
+			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+
+			//TODO - UNBIND SHADER AND MESH
+			///graphicQueue[i].mesh->UnbindForDraw();
+			(*data.meshes)[j]->UnbindForDraw();
+		}
+
 		shadowShader->UnbindShader();
 	}
 	//---------------------------------------------------------*/
@@ -182,23 +192,31 @@ void ForwardRenderer::Draw()
 	//Experiment with queues
 	for (int i = 0; i < graphicQueue.size(); ++i) 
 	{
-		//BINDING
-		graphicQueue[i].shader->UseShader();
-		graphicQueue[i].mesh->BindForDraw();
-		
-		//UNIFORM BINDING
-		graphicQueue[i].shader->setMat4f("model", graphicQueue[i].model);
-		graphicQueue[i].shader->setMat4f("normalModel", graphicQueue[i].normalsModel);
-		graphicQueue[i].shader->setTexture("diffuseTexture", graphicQueue[i].diffuseTexture, 0);
-		graphicQueue[i].shader->setTexture("shadowMap", framebuffer->depthTexture, 1);
 
-		//DRAW
-		int faceCount = graphicQueue[i].mesh->GetFaceCount();
-		glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
-		
-		//TODO - UNBIND SHADER AND MESH
-		graphicQueue[i].mesh->UnbindForDraw();
-		graphicQueue[i].shader->UnbindShader();
+		DrawData &data = graphicQueue[i];
+		for (int j = 0; j < data.meshes->size(); ++j)
+		{
+			//BINDING
+			graphicQueue[i].shader->UseShader();
+			///graphicQueue[i].mesh->BindForDraw();
+			(*data.meshes)[j]->BindForDraw();
+
+			//UNIFORM BINDING
+			graphicQueue[i].shader->setMat4f("model", graphicQueue[i].model);
+			graphicQueue[i].shader->setMat4f("normalModel", graphicQueue[i].normalsModel);
+			graphicQueue[i].shader->setTexture("diffuseTexture", graphicQueue[i].diffuseTexture, 0);
+			graphicQueue[i].shader->setTexture("shadowMap", framebuffer->depthTexture, 1);
+
+			//DRAW
+			int faceCount = (*data.meshes)[j]->GetFaceCount();
+			///int faceCount = graphicQueue[i].mesh->GetFaceCount();
+			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+
+			//TODO - UNBIND SHADER AND MESH
+			(*data.meshes)[j]->BindForDraw();
+			///graphicQueue[i].mesh->UnbindForDraw();
+			graphicQueue[i].shader->UnbindShader();
+		}
 	}
 	
 	//Experiment with queues
@@ -233,6 +251,7 @@ void ForwardRenderer::initFrameBuffers()
 	desc.width = 1024;
 	desc.height = 1024;
 	desc.useStencil = false;
+	desc.componentType = GL_UNSIGNED_BYTE;
 	framebuffer->initFromDescriptor(desc);
 }
 

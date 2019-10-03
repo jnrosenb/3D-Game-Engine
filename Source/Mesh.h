@@ -15,6 +15,10 @@ enum vbo_index
 	VERTICES = 0,
 	NORMALS,
 	TEXCOORDS,
+	TANGENTS,
+	BITANGENTS,
+	BONE_INDICES,
+	BONE_WEIGHTS,
 	NUM
 };
 
@@ -80,6 +84,14 @@ protected:
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[TEXCOORDS]);
 		glBufferData(GL_ARRAY_BUFFER, GetVertexCount() * 2 * sizeof(GLfloat), &texCoords[0][0], GL_STATIC_DRAW);
 
+		//BONE STUFF-----------------
+		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BONE_INDICES]);
+		glBufferData(GL_ARRAY_BUFFER, GetVertexCount() * 4 * sizeof(GLint), &boneIndices[0][0], GL_STATIC_DRAW);
+
+		//BONE STUFF-----------------
+		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BONE_WEIGHTS]);
+		glBufferData(GL_ARRAY_BUFFER, GetVertexCount() * 4 * sizeof(GLfloat), &boneWeights[0][0], GL_STATIC_DRAW);
+
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->ebo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->GetFaceCount() * sizeof(Mesh::Face), &faces[0][0], GL_STATIC_DRAW);
 
@@ -96,10 +108,17 @@ protected:
 		glVertexAttribPointer(2, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), (void*)0);
 		glEnableVertexAttribArray(2);
 
+		//BONE STUFF----------------- Use location 3 and 4 for bones
+		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BONE_INDICES]);
+		glVertexAttribIPointer(3, 4, GL_INT, 4 * sizeof(GLint), (void*)0);
+		glEnableVertexAttribArray(3);
+
+		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BONE_WEIGHTS]);
+		glVertexAttribPointer(4, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
+		glEnableVertexAttribArray(4);
+
 		//Unbind Everything
 		glBindVertexArray(0);
-		///glBindBuffer(GL_ARRAY_BUFFER, 0);
-		///glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	}
 
 //VARIABLES
@@ -109,6 +128,10 @@ protected:
 	std::vector <glm::vec4> normals;
 	std::vector <glm::vec2> texCoords; //Alignment?
 	std::vector <Mesh::Face> faces;
+
+	//Skeletal info
+	std::vector <glm::ivec4> boneIndices;
+	std::vector <glm::vec4> boneWeights;
 
 	//VAO, VBO, EBO
 	GLuint vao;

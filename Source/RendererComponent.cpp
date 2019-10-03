@@ -8,6 +8,7 @@
 #include "Quad.h"
 #include "Shader.h"
 #include "TransformComponent.h"
+#include "AnimationComponent.h"
 #include "GameObject.h"
 
 
@@ -33,13 +34,6 @@ Render::~Render()
 		delete model;
 }
 
-/*
-Render* clone()
-{
-	return new Render();
-}
-//*/
-
 
 void Render::DeserializeInit()
 {
@@ -52,14 +46,21 @@ void Render::Update(float dt)
 {
 	// Pass shader (material) and mesh (model) info to GraphicsManager
 	Transform *T = this->m_owner->GetComponent<Transform>();
+	AnimationComponent *Anim = this->m_owner->GetComponent<AnimationComponent>();
 
 	// Pack it maybe on a struct
 	DrawData data;
-	data.mesh = mesh;
+	data.meshes = &this->model->meshes;
 	data.shader = shader;
 	data.model = T->GetModel();
 	data.normalsModel = T->GetNormalModel();
 	data.diffuseTexture = renderer->GetTexture(this->diffuseTexture);
+
+	//Bones experiment SHITTY WAY
+	if (Anim)
+		data.BoneTransformations = &(Anim->BoneTransformations);
+	else
+		data.BoneTransformations = 0;
 
 	// Pass it to renderer's queue
 	renderer->QueueForDraw(data);
@@ -87,13 +88,31 @@ void Render::initModel()
 	{
 		std::string const abs_path_prefix = "C:\\Users\\Jose\\Desktop\\OpenGl_Framework\\Assets\\Models\\";
 		this->model = new Model(abs_path_prefix + modelPath);
-		this->mesh = this->model->meshes[0];
+
+		// Dirty way for now. If the loaded stuff 
+		// has animation info, we can create a animationComp
+		if (model && model->animMap.size() > 0) 
+			SetupAnimationComponent();
 	}
 	else 
 	{
+		this->model = new Model();
 		if (this->primitive == "quad")
-			this->mesh = new Quad();
+			this->model->meshes.push_back(new Quad());
 		else if (this->primitive == "sphere")
-			this->mesh = new Sphere(32);
+			this->model->meshes.push_back(new Sphere(32));
+	}
+}
+
+
+
+//Since it is difficult to setup the whole fbx - separation between mesh and animations, this will be
+//done automatically. If the model loads animations, a animationComp will be created and passed the relevant info
+void Render::SetupAnimationComponent()
+{
+	AnimationComponent *animComp = this->m_owner->AddComponent<AnimationComponent>();
+	if (animComp)
+	{
+		animComp->PassAnimationInfo();
 	}
 }

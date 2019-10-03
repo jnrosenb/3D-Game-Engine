@@ -13,8 +13,8 @@
 #define EPSILON			0.000001f
 #define	DEF_WIDTH		1280
 #define DEF_HEIGHT		720
-#define DEF_NEAR		0.1f
-#define DEF_FAR			1000.0f		//Units still not defined
+#define DEF_NEAR		1.0f
+#define DEF_FAR			100.0f		//Units still not defined
 #define DEF_FOV			75.0f		//In degrees for now
 
 //GLOBALS

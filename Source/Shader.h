@@ -18,6 +18,7 @@ class Shader
 //PUBLIC INTERFACE
 public:
 	Shader(char const *vertexPath, char const *fragmentPath);
+	Shader(char const *ComputetPath);
 	virtual ~Shader();
 
 	GLint GetId() const;
@@ -30,6 +31,7 @@ public:
 	void setVec3f(const std::string &name, float x, float y, float z);
 	void setVec4f(const std::string &name, float x, float y, float z, float w);
 	void setMat4f(const std::string &name, glm::mat4& matrix);
+	void setMat4fArray(const std::string &name, unsigned count, glm::mat4& matrix);
 
 	//Texture uniform passing
 	void setTexture(std::string const& name, GLuint texture, int unit);

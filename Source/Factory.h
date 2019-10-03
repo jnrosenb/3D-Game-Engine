@@ -308,6 +308,7 @@ public:
 ////////////////////////////
 #include "TransformComponent.h"
 #include "RendererComponent.h"
+#include "AnimationComponent.h"
 class ComponentFactory 
 {
 
@@ -320,7 +321,8 @@ public:
 			ComponentTypeMap.push_back(0);
 
 		ComponentTypeMap[TRANSFORM] = new Transform(0);
-		ComponentTypeMap[RENDERER]  = new Render(0);
+		ComponentTypeMap[RENDERER] = new Render(0);
+		ComponentTypeMap[ANIMATION] = new AnimationComponent(0);
 
 		std::cout << "Created component clone factory" << std::endl;
 	}

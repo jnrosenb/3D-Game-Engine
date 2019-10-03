@@ -64,6 +64,7 @@ private:
 	void GeometryPass();
 	void AmbientLightPass();
 	void ShadowMapPass();
+	void FileteredShadowPass();
 	void MultiplePointLightPass(glm::mat4& projView);
 
 	//Uniform buffer object (LATER TAKE OUT OF HERE)
@@ -97,7 +98,7 @@ private:
 	//Deferred FSQ
 	Model *model;
 	Mesh *FSQ;
-	Mesh *PointLightSphere;
+	Mesh *PointLightSphere; //Deleted by model
 
 	//Deferred shaders
 	Shader *shadowShader;
@@ -107,6 +108,10 @@ private:
 	Shader *DeferredPointLightShader;
 	Shader *DeferredAmbientShader;
 	Shader *DirectionalLightShader;
+
+	//Compute shader for blurring
+	Shader *blurShader;
+	std::vector<float> weights;
 
 	//SHADOW MAP STUFF
 	glm::mat4 lightProjView;
@@ -121,6 +126,8 @@ private:
 
 	//UBO
 	GLuint ubo_test;
+	GLuint ubo_weights;
+	GLuint ubo_bones;
 
 	//Framebuffer
 	RenderTarget *GeometryBuffer;
