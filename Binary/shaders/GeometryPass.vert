@@ -14,9 +14,9 @@
 layout(location = 0) in vec4 position;
 layout(location = 1) in vec4 normal;
 layout(location = 2) in vec2 uv;
-// (3), (4) are tgs and bi_tgs
 layout(location = 3) in ivec4 bonesInd;
 layout(location = 4) in vec4 boneWgts;
+// (5), (6) will be tgs and bitgs
 
 
 layout(std140) uniform test_gUBlock
@@ -42,21 +42,17 @@ out VS_OUT
 void main()
 {
 	vec4 localPos = vec4(0, 0, 0, 1);
+	
 	if(bonesInd[0] == -1)
-	{
 		localPos = position;
-	}
-	else
-	{
-		for (int i = 0; i < 4; i++)
-		{
-			int index = bonesInd[i];
-			if (index == -1) break;
-
-			vec4 boneshit = BoneTransf[index] * position;
-			localPos += boneWgts[i] * boneshit;
-		}
-	}
+	if(bonesInd[0] != -1)
+		localPos += boneWgts[0] * BoneTransf[bonesInd.x] * position;
+	if(bonesInd[1] != -1)
+		localPos += boneWgts[1] * BoneTransf[bonesInd.y] * position;
+	if(bonesInd[2] != -1)
+		localPos += boneWgts[2] * BoneTransf[bonesInd.z] * position;
+	if(bonesInd[3] != -1)
+		localPos += boneWgts[3] * BoneTransf[bonesInd.w] * position;
 
 	worldPos = model * localPos;
 	gl_Position = ProjView * worldPos;
