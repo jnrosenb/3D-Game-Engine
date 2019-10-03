@@ -42,7 +42,6 @@ out VS_OUT
 void main()
 {
 	vec4 localPos = vec4(0, 0, 0, 1);
-	
 	if(bonesInd[0] == -1)
 		localPos = position;
 	if(bonesInd[0] != -1)

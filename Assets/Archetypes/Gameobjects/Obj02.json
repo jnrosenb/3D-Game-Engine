@@ -1,9 +1,9 @@
 {
-    "tag": "object01",
+    "tag": "YBot",
     "components": [
       {
         "id": "transform",
-        "position": [ 5, 0, 0 ],
+        "position": [ 5, -2, 0 ],
         "rotation": [ 0, 0, 0 ],
         "scale": [ 0.1, 0.1, 0.1 ]
       },
@@ -14,8 +14,8 @@
         "load_model": true,
         "shader": "Solid",
         "primitive": "quad",
-        "model_name": "WalkingBot.fbx",
-        "diffuse_texture": "metal.jpg"
+        "model_name": "Grenade Throw.fbx",
+        "diffuse_texture": "crate.png"
       }
     ]
 }

@@ -1,21 +1,21 @@
 {
-    "tag": "object01",
+    "tag": "HarronHuman",
     "components": [
       {
         "id": "transform",
-        "position": [ 0, 0, 0 ],
+        "position": [ 0, -2, 0 ],
         "rotation": [ 0, 0, 0 ],
-        "scale": [ 0.05, 0.05, 0.05 ]
+        "scale": [ 0.075, 0.075, 0.075 ]
       },
       {
         "id": "render",
         "diffuse": [ 1.0, 0.0, 1.0, 1.0 ],
         "vertex_id": 0,
-        "load_model": false,
+        "load_model": true,
         "shader": "Solid",
         "primitive": "sphere",
-        "model_name": "gh_sample_animation.fbx",
-        "diffuse_texture": "stone.jpg"
+        "model_name": "WalkingBot.fbx",
+        "diffuse_texture": "crate.png"
       }
     ]
 }

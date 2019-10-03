@@ -3,19 +3,19 @@
   "components": [
     {
       "id": "transform",
-      "position": [ -5, 0, 0 ],
-      "rotation": [ 90, 0, 0 ],
-      "scale": [ 1.0, 1.0, 1.0 ]
+      "position": [ -5, -2, 0 ],
+      "rotation": [ 0, 0, 0 ],
+      "scale": [ 0.1, 0.1, 0.1 ]
     },
     {
       "id": "render",
       "diffuse": [ 1.0, 0.0, 1.0, 1.0 ],
-      "diffuse_texture": "metal.jpg",
       "vertex_id": 0,
       "load_model": true,
       "shader": "Solid",
       "primitive": "quad",
-      "model_name": "cube.fbx"
+      "model_name": "Stable Sword Outward Slash.fbx",
+      "diffuse_texture": "crate.png"
     }
   ]
 }

@@ -3,7 +3,7 @@
 #include "Interpolation.h"
 #include "Quaternion.h"
 
-#define EPSILON		0.0005f
+#define EPSILON		0.05f
 
 
 namespace AuxMath
@@ -24,6 +24,7 @@ namespace AuxMath
 	Quaternion Slerp(Quaternion const& origin, Quaternion const& destination, float alpha) 
 	{
 		Quaternion interp = origin;
+		Quaternion orig_aux = origin;
 
 		float d = origin.Dot(destination);
 		float a;
@@ -34,14 +35,17 @@ namespace AuxMath
 			return interp.Normalize();
 		}
 		else if (d < 0) 
+		{
+			orig_aux = -origin;
 			a = acosf(-d);
+		}
 		else 
 			a = acosf(d);
 
 		//Continue and return
 		float sin_a = sinf(a);
 		float sin_ta = sinf(alpha * a);
-		interp = ((origin * sinf((1 - alpha) * a) + destination * sin_ta)) / sin_a;
+		interp = ((orig_aux * sinf((1 - alpha) * a) + destination * sin_ta)) / sin_a;
 		return interp;
 	}
 

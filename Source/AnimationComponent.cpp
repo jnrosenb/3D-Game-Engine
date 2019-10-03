@@ -88,7 +88,7 @@ void AnimationComponent::Update(float dt)
 
 	//Restart animation
 	if (AnimationTime > duration && looping)
-		AnimationTime = 0.0f;
+		AnimationTime = AnimationTime - duration;
 }
 
 

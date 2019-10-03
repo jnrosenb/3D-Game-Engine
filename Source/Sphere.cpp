@@ -73,6 +73,12 @@ Sphere::Sphere(int size)
 		faces.push_back(face);
 	}
 
+	//Bones indices
+	this->boneIndices.push_back(glm::ivec4(-1));
+	this->boneIndices.push_back(glm::ivec4(-1));
+	this->boneIndices.push_back(glm::ivec4(-1));
+	this->boneIndices.push_back(glm::ivec4(-1));
+
 	this->init();
 }
 

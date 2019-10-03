@@ -144,6 +144,16 @@ namespace AuxMath
 			return *this;
 		}
 
+		Quaternion operator-() const
+		{
+			Quaternion q;
+			q.s = -this->s;
+			q.x = -this->x;
+			q.y = -this->y;
+			q.z = -this->z;
+			return q;
+		}
+
 		Quaternion operator*(Quaternion const& rhs) const
 		{
 			Quaternion copy = Quaternion(*this);
@@ -248,6 +258,12 @@ namespace AuxMath
 			matrix[1][2] = _2yz + _2sx;
 
 			return matrix;
+		}
+		
+		//Rotation
+		static Quaternion Unit()
+		{
+			return Quaternion (1, 0, 0, 0);
 		}
 
 		//Rotation

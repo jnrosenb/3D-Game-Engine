@@ -294,7 +294,7 @@ void DeferredRenderer::ShadowMapPass()
 	ShadowBuffer->Bind();
 	glViewport(0, 0, ShadowBuffer->getWidth(), ShadowBuffer->getHeight());
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//DEPTH
 	glEnable(GL_DEPTH_TEST);
@@ -305,11 +305,16 @@ void DeferredRenderer::ShadowMapPass()
 		//BINDING
 		shadowShader->UseShader();
 
+		//Since a node has a model (and all the meshes of a model for now share bones), we pass the uniform array
+		if (graphicQueue[i].BoneTransformations)
+		{
+			shadowShader->setMat4fArray("BoneTransf", 100, (*(graphicQueue[i].BoneTransformations))[0]);
+		}
+
 		DrawData &data = graphicQueue[i];
 		for (int j = 0; j < data.meshes->size(); ++j)
 		{
 			//BINDING
-			///graphicQueue[i].mesh->BindForDraw();
 			(*data.meshes)[j]->BindForDraw();
 
 			//UNIFORM BINDING
@@ -318,11 +323,9 @@ void DeferredRenderer::ShadowMapPass()
 
 			//DRAW
 			int faceCount = (*data.meshes)[j]->GetFaceCount();
-			///int faceCount = graphicQueue[i].mesh->GetFaceCount();
 			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
 
 			//TODO - UNBIND SHADER AND MESH
-			///graphicQueue[i].mesh->UnbindForDraw();
 			(*data.meshes)[j]->UnbindForDraw();
 		}
 		shadowShader->UnbindShader();
@@ -370,7 +373,8 @@ void DeferredRenderer::FileteredShadowPass()
 	ShadowBuffer->Bind();
 	glViewport(0, 0, ShadowBuffer->getWidth(), ShadowBuffer->getHeight());
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	//DEPTH
 	glEnable(GL_DEPTH_TEST);
 	//Experiment with queues
@@ -378,6 +382,12 @@ void DeferredRenderer::FileteredShadowPass()
 	{
 		//BINDING
 		shadowShader->UseShader();
+
+		//Since a node has a model (and all the meshes of a model for now share bones), we pass the uniform array
+		if (graphicQueue[i].BoneTransformations)
+		{
+			shadowShader->setMat4fArray("BoneTransf", 100, (*(graphicQueue[i].BoneTransformations))[0]);
+		}
 
 		DrawData &data = graphicQueue[i];
 		for (int j = 0; j < data.meshes->size(); ++j)

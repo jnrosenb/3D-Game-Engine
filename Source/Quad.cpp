@@ -39,6 +39,12 @@ Quad::Quad()
 	faces.push_back(upperTriangle);
 	faces.push_back(bottomTriangle);
 
+	//Bones indices
+	this->boneIndices.push_back(glm::ivec4(-1));
+	this->boneIndices.push_back(glm::ivec4(-1));
+	this->boneIndices.push_back(glm::ivec4(-1));
+	this->boneIndices.push_back(glm::ivec4(-1));
+
     init();
 }
 
