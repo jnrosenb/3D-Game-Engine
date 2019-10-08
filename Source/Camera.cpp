@@ -21,6 +21,8 @@
 glm::vec4 const rup = {0, 1, 0, 0};
 //For now, camera will handle all input
 extern InputManager *inputMgr;
+#include "DeferredRenderer.h"
+extern Renderer *renderer;
 
 
 
@@ -218,6 +220,21 @@ void Camera::handleInput(float dt)
 	if (inputMgr->getKeyTrigger(SDL_SCANCODE_P))
 	{
 		this->flagOrthographic = !this->flagOrthographic;
+	}
+
+
+	//Increase, decrease deferredRenderer kernel size
+	if (inputMgr->getKeyTrigger(SDL_SCANCODE_I))
+	{
+		int k = renderer->GetKernelCount();
+		renderer->SetKernelCount(k - 1);
+		std::cout << "KERNEL COUNT NOW" << renderer->GetKernelCount() << std::endl;
+	}
+	if (inputMgr->getKeyTrigger(SDL_SCANCODE_O))
+	{
+		int k = renderer->GetKernelCount();
+		renderer->SetKernelCount(k + 1);
+		std::cout << "KERNEL COUNT NOW : " << renderer->GetKernelCount() << std::endl;
 	}
 
 	//MOUSE DRAG STUFF

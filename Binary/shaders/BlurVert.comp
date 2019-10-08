@@ -1,0 +1,54 @@
+#version 430 // Version of OpenGL with COMPUTE shader support
+
+//MACROS
+#define GROUP_SIZE		128
+#define MAX_WEIGHTS		100
+
+//Defines the groups sizes
+layout (local_size_x = 1, local_size_y = GROUP_SIZE, local_size_z = 1) in;
+
+
+layout (rgba32f) uniform readonly image2D src;		// READ ONLY  - Input image  - rgba32f img
+layout (rgba32f) uniform writeonly image2D dst;			// WRITE ONLY - Output image - rgba32f img
+uniform float weights[MAX_WEIGHTS];
+uniform int actualWeightCount;
+
+// Variable shared by threads of this group.
+// We write to this variable, and at the end, use this variable to fill dest
+shared vec4 v[GROUP_SIZE + MAX_WEIGHTS - 1];
+
+
+//////////////////
+////   MAIN   ////
+//////////////////
+void main() 
+{
+    // ...
+    
+	// Position of the group in the whole image
+    ivec2 global_pos = ivec2(gl_GlobalInvocationID.xy);
+
+	// Local - thread index goes from 0 to GROUP_SIZE
+    uint i = gl_LocalInvocationID.y;
+    
+	// Calculate the group's radius (not counting center value) 
+	// TODO - pass as uniform
+	int w = (actualWeightCount - 1) / 2;
+
+	// Read a specific location from the image into v
+	v[i] = imageLoad(src, global_pos + ivec2(0, -w));
+	if (i < 2 * w)
+        v[i + GROUP_SIZE] = imageLoad(src, global_pos + ivec2(0, GROUP_SIZE - w));
+
+	// Wait for all threads to catchup before reading v[]
+    barrier();
+
+    // Get data using v
+	vec4 data = vec4(0);
+	int realWeightCount =  2 * w + 1;
+	for(int j = 0; j < realWeightCount; ++j)
+		data += weights[j] * v[i + j];
+
+	//Finally, fill dst with data from v (I think)
+    imageStore(dst, global_pos, data); // Write to destination image
+}

@@ -26,7 +26,9 @@ namespace AuxMath
 
 	void normalizeWeights(std::vector<float>& weights, float sum) 
 	{
-		float sumInv = 1.0f / sum;
+		float sumInv = 0.0f;
+		if (sum != 0.0f)
+			sumInv = 1.0f / sum;
 
 		for (int i = 0; i < weights.size(); ++i) 
 			weights[i] = weights[i] * sumInv;

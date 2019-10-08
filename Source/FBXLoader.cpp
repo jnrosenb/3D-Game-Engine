@@ -63,7 +63,12 @@ namespace FBXLoader
 		for (auto& node : boneMap)
 		{
 			Bone& bone = node.second;
-			bone.offsetMatrix = BoneOffsetMap[bone.name];
+
+			auto iter = BoneOffsetMap.find(bone.name);
+			if (iter != BoneOffsetMap.end())
+				bone.offsetMatrix = iter->second;
+			else
+				bone.offsetMatrix = glm::mat4(1);
 		}
 
 

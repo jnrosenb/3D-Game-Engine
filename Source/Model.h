@@ -35,4 +35,7 @@ public:
 	std::vector<Mesh*> meshes;
 	std::unordered_map<std::string, Bone> boneMap;
 	std::unordered_map<std::string, Animation> animMap;
+
+	//DEBUG DRAW OF BONES
+	///std::vector<glm::vec4> bonesDrawPositions;
 };

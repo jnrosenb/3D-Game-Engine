@@ -60,11 +60,14 @@ public:
 private:
 	DeferredRenderer(DeferredRenderer& rhs);
 
+	//Bone debug drawing
+	void DebugDrawSkeleton(DrawData const& data);
+
 	//PASSES
 	void GeometryPass();
 	void AmbientLightPass();
 	void ShadowMapPass();
-	void FileteredShadowPass();
+	void FilteredShadowPass();
 	void MultiplePointLightPass(glm::mat4& projView);
 
 	//Uniform buffer object (LATER TAKE OUT OF HERE)
@@ -108,10 +111,7 @@ private:
 	Shader *DeferredPointLightShader;
 	Shader *DeferredAmbientShader;
 	Shader *DirectionalLightShader;
-
-	//Compute shader for blurring
-	Shader *blurShader;
-	std::vector<float> weights;
+	Shader *LineShader;
 
 	//SHADOW MAP STUFF
 	glm::mat4 lightProjView;

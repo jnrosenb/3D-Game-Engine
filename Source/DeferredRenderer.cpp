@@ -9,14 +9,14 @@
 #include "Camera.h"
 
 #include "Model.h"
+#include "Mesh.h"
 #include "Sphere.h"
 #include "Quad.h"
 #include <cstdlib>
 
 
 #define DEBUGGING_PASS				0
-#define KERNEL_FILTER_COUNT			110
-#define KERNEL_ACTUAL_COUNT			10
+#define KERNEL_FILTER_COUNT			100
 
 
 DeferredRenderer::DeferredRenderer() : 
@@ -48,9 +48,11 @@ DeferredRenderer::~DeferredRenderer()
 	delete DeferredPointLightShader;
 	delete DeferredAmbientShader;
 	delete DirectionalLightShader;
-	
+	delete LineShader;
+
 	//Delete compute shader
-	delete blurShader;
+	delete blurShaderHoriz;
+	delete blurShaderVert;
 
 	//Delete the FBO's
 	glDeleteBuffers(1, &this->ubo_weights);
@@ -128,6 +130,7 @@ void DeferredRenderer::QueueForDraw(DrawData& data)
 	graphicQueue.push_back(data);
 }
 
+
 void DeferredRenderer::QueueForDrawAlpha(DrawData& data)
 {
 	//TODO
@@ -144,7 +147,6 @@ void DeferredRenderer::Draw()
 {
 	//CALCULATE THE DIRECTIONAL LIGHT MATRICES
 	CalculateLightProjView();
-	
 	//TODO - Better way to pass. Uniform block should know its own indices or calculate them
 	glm::mat4 projView = currentCamera->getProj() * currentCamera->getView();
 	UniformBlockBind(this->ubo_test);
@@ -153,52 +155,29 @@ void DeferredRenderer::Draw()
 	UniformBlockPassData(this->ubo_test, 128, currentCamera->getEye());
 	UniformBlockUnbind();
 
-	UniformBlockBind(this->ubo_weights);
-	UniformBlockPassData(this->ubo_weights, 0, weights.size(), &weights[0]);
-	UniformBlockUnbind();
 
 	//*GEOMETRY PASS
 	GeometryPass();
 
-	#if DEBUGGING_PASS
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
-	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	FSQShader->UseShader();
-	FSQ->BindForDraw();
-
-	//UNIFORM BINDING
-	FSQShader->setTexture("GBufferPos", GeometryBuffer->texturesHandles[0], 0);
-	FSQShader->setTexture("GBufferNormals", GeometryBuffer->texturesHandles[1], 1);
-	FSQShader->setTexture("GBufferDiffuse", GeometryBuffer->texturesHandles[2], 2);
-	FSQShader->setTexture("GBufferSpecGloss", GeometryBuffer->texturesHandles[3], 3);
-
-	//DRAW
-	int faceCount = FSQ->GetFaceCount();
-	glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
-
-	//TODO - UNBIND SHADER AND MESH
-	FSQ->UnbindForDraw();
-	FSQShader->UnbindShader();
-	
-	#else// non DEBUGGING_PASS
 
 	//AMBIENT LIGHT PASS (Back to default framebuffer)
 	AmbientLightPass();
 
 
 	//SHADOW MAP PASS
-	FileteredShadowPass();
-	///ShadowMapPass(); // Normal shadow mapping
+	FilteredShadowPass();
 	
 
 	//MULTIPLE POINT LIGHT PASS (Back to default framebuffer)
 	MultiplePointLightPass(projView);
 
-	#endif //DEBUGGING_PASS
+
+	//BONE DEBUG SHIT
+	///glDisable(GL_DEPTH_TEST);
+	///for (int i = 0; i < graphicQueue.size(); ++i)
+	///	if (graphicQueue[i].boneCount > 0) 
+	///		DebugDrawSkeleton(graphicQueue[i]);
+
 
 	//Empty both graphics queues
 	graphicQueue.clear();
@@ -233,14 +212,11 @@ void DeferredRenderer::GeometryPass()
 	
 		//Since a node has a model (and all the meshes of a model for now share bones), we pass the uniform array
 		if (graphicQueue[i].BoneTransformations)
-		{
 			geometryPassShader->setMat4fArray("BoneTransf", 100, (*(graphicQueue[i].BoneTransformations))[0]);
-		}
 
 		for (int j = 0; j < data.meshes->size(); ++j) 
 		{
 			//BINDING
-			///graphicQueue[i].mesh->BindForDraw();
 			(*data.meshes)[j]->BindForDraw();
 
 			//UNIFORM BINDING
@@ -250,11 +226,9 @@ void DeferredRenderer::GeometryPass()
 
 			//DRAW
 			int faceCount = (*data.meshes)[j]->GetFaceCount();
-			///int faceCount = graphicQueue[i].mesh->GetFaceCount();
 			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
 
 			//TODO - UNBIND SHADER AND MESH
-			///graphicQueue[i].mesh->UnbindForDraw(); 
 			(*data.meshes)[j]->UnbindForDraw();
 		}
 	}
@@ -288,86 +262,8 @@ void DeferredRenderer::AmbientLightPass()
 }
 
 
-void DeferredRenderer::ShadowMapPass()
-{
-	//FIRST DRAW INTO THE DEPTH BUFFER------------------------------------
-	ShadowBuffer->Bind();
-	glViewport(0, 0, ShadowBuffer->getWidth(), ShadowBuffer->getHeight());
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	//DEPTH
-	glEnable(GL_DEPTH_TEST);
-
-	//Experiment with queues
-	for (int i = 0; i < graphicQueue.size(); ++i)
-	{
-		//BINDING
-		shadowShader->UseShader();
-
-		//Since a node has a model (and all the meshes of a model for now share bones), we pass the uniform array
-		if (graphicQueue[i].BoneTransformations)
-		{
-			shadowShader->setMat4fArray("BoneTransf", 100, (*(graphicQueue[i].BoneTransformations))[0]);
-		}
-
-		DrawData &data = graphicQueue[i];
-		for (int j = 0; j < data.meshes->size(); ++j)
-		{
-			//BINDING
-			(*data.meshes)[j]->BindForDraw();
-
-			//UNIFORM BINDING
-			shadowShader->setMat4f("projView", lightProjView);
-			shadowShader->setMat4f("model", graphicQueue[i].model);
-
-			//DRAW
-			int faceCount = (*data.meshes)[j]->GetFaceCount();
-			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
-
-			//TODO - UNBIND SHADER AND MESH
-			(*data.meshes)[j]->UnbindForDraw();
-		}
-		shadowShader->UnbindShader();
-	}
-	
-
-	//NOW DRAW INTO THE SCENE---------------------------------------------
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
-
-	//blending and depth
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_ONE, GL_ONE);
-	glDisable(GL_DEPTH_TEST);
-
-	//USE SHADER AND BIND VAO
-	DirectionalLightShader->UseShader();
-	FSQ->BindForDraw();
-
-	//UNIFORM BINDING
-	DirectionalLightShader->setTexture("GBufferPos", GeometryBuffer->texturesHandles[0], 0);
-	DirectionalLightShader->setTexture("GBufferNormals", GeometryBuffer->texturesHandles[1], 1);
-	DirectionalLightShader->setTexture("GBufferSpecGloss", GeometryBuffer->texturesHandles[3], 2);
-	DirectionalLightShader->setTexture("shadowMap", ShadowBuffer->depthTexture, 3);
-
-	DirectionalLightShader->setVec4f("lightLook", sun.look.x, sun.look.y, sun.look.z, 0.0f);
-	DirectionalLightShader->setVec3f("lightColor", sun.color.r, sun.color.g, sun.color.b);
-	DirectionalLightShader->setFloat("Intensity", sun.color.a);
-	DirectionalLightShader->setFloat("ShadowIntensity", sun.shadowIntensity);
-
-	//DRAW
-	int faceCount = FSQ->GetFaceCount();
-	glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
-
-	//TODO - UNBIND SHADER AND MESH
-	FSQ->UnbindForDraw();
-	DirectionalLightShader->UnbindShader();
-}
-
-
-
-void DeferredRenderer::FileteredShadowPass()
+void DeferredRenderer::FilteredShadowPass()
 {
 	//GENERATE THE SHADOW MAP--------------------------------------------
 	ShadowBuffer->Bind();
@@ -377,7 +273,11 @@ void DeferredRenderer::FileteredShadowPass()
 
 	//DEPTH
 	glEnable(GL_DEPTH_TEST);
-	//Experiment with queues
+
+	//glEnable(GL_BLEND);
+	//glBlendFunc(GL_ONE, GL_ONE_MINUS_DST_COLOR);
+
+	//Opaque objects queue
 	for (int i = 0; i < graphicQueue.size(); ++i)
 	{
 		//BINDING
@@ -385,15 +285,12 @@ void DeferredRenderer::FileteredShadowPass()
 
 		//Since a node has a model (and all the meshes of a model for now share bones), we pass the uniform array
 		if (graphicQueue[i].BoneTransformations)
-		{
 			shadowShader->setMat4fArray("BoneTransf", 100, (*(graphicQueue[i].BoneTransformations))[0]);
-		}
 
 		DrawData &data = graphicQueue[i];
 		for (int j = 0; j < data.meshes->size(); ++j)
 		{
 			//BINDING
-			///graphicQueue[i].mesh->BindForDraw();
 			(*data.meshes)[j]->BindForDraw();
 
 			//UNIFORM BINDING
@@ -401,12 +298,10 @@ void DeferredRenderer::FileteredShadowPass()
 			shadowShader->setMat4f("model", graphicQueue[i].model);
 			
 			//DRAW
-			///int faceCount = graphicQueue[i].mesh->GetFaceCount();
 			int faceCount = (*data.meshes)[j]->GetFaceCount();
 			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
 
 			//TODO - UNBIND SHADER AND MESH
-			///graphicQueue[i].mesh->UnbindForDraw();
 			(*data.meshes)[j]->UnbindForDraw();
 		}
 
@@ -416,21 +311,28 @@ void DeferredRenderer::FileteredShadowPass()
 
 	
 	
-	//---
+	//-----------------------------
 	int width = ShadowBuffer->getWidth();
 	int height = ShadowBuffer->getHeight();
-	this->blurShader->UseShader();
-	glDispatchCompute(width / 128, height, 1); 
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); //TODO
-	this->blurShader->UnbindShader();
 
-	//Image unit stuff
-	unsigned imageUnit = 0;
-	GLuint location = glad_glGetUniformLocation(blurShader->GetId(), "src_img");
-	//Binds the texture at the image location
-	glBindImageTexture(imageUnit, ShadowBuffer->texturesHandles[0], 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-	glUniform1i(location, imageUnit); //Bind the uniform at location with the image unit
-	//*/
+	//Use compute shader
+	this->blurShaderHoriz->UseShader();
+	this->blurShaderHoriz->setImage("src", ShadowBuffer->texturesHandles[0], 0, GL_READ_ONLY, GL_RGBA32F);
+	this->blurShaderHoriz->setImage("dst", ShadowBuffer->texturesHandles[1], 1, GL_WRITE_ONLY, GL_RGBA32F);
+	this->blurShaderHoriz->setFloatArray("weights", kernelCount, &weights[0]);
+	this->blurShaderHoriz->setInt("actualWeightCount", kernelCount);
+	glDispatchCompute(width / 128, height, 1);
+
+	//Use compute shader
+	this->blurShaderVert->UseShader();
+	this->blurShaderVert->setImage("src", ShadowBuffer->texturesHandles[1], 2, GL_READ_ONLY, GL_RGBA32F);
+	this->blurShaderVert->setImage("dst", ShadowBuffer->texturesHandles[0], 3, GL_WRITE_ONLY, GL_RGBA32F);
+	this->blurShaderVert->setFloatArray("weights", kernelCount, &weights[0]);
+	this->blurShaderVert->setInt("actualWeightCount", kernelCount);
+	glDispatchCompute(width, height / 128, 1);
+	
+	this->blurShaderVert->UnbindShader();
+	//--------------------
 
 
 
@@ -448,8 +350,7 @@ void DeferredRenderer::FileteredShadowPass()
 	DirectionalLightShader->setTexture("GBufferPos", GeometryBuffer->texturesHandles[0], 0);
 	DirectionalLightShader->setTexture("GBufferNormals", GeometryBuffer->texturesHandles[1], 1);
 	DirectionalLightShader->setTexture("GBufferSpecGloss", GeometryBuffer->texturesHandles[3], 2);
-	// TODO Here, pass all the moments (not just depth)
-	DirectionalLightShader->setTexture("shadowMap", ShadowBuffer->depthTexture, 3);//**************
+	DirectionalLightShader->setTexture("shadowMoments", ShadowBuffer->texturesHandles[0], 3);
 	//Directional light uniforms
 	DirectionalLightShader->setVec4f("lightLook", sun.look.x, sun.look.y, sun.look.z, 0.0f);
 	DirectionalLightShader->setVec3f("lightColor", sun.color.r, sun.color.g, sun.color.b);
@@ -538,13 +439,16 @@ void DeferredRenderer::initFrameBuffers()
 	desc.imageFormat = GL_RGBA;
 	GeometryBuffer->initFromDescriptor(desc);
 
+	//Comments refer to how it would be for normal shadow map
 	ShadowBuffer = new RenderTarget();
 	RenderTargetDescriptor desc2;
-	desc2.colorAttachmentCount = 0;
+	desc2.colorAttachmentCount = 2;			// 0
 	desc2.width = 1024;
 	desc2.height = 1024;
 	desc2.useStencil = false;
-	desc2.componentType = GL_UNSIGNED_BYTE;
+	desc2.componentType = GL_FLOAT;			// GL_UNSIGNED_BYTE
+	desc2.imageInternalFormat = GL_RGBA32F;	// GL_RGBA
+	desc2.imageFormat = GL_RGBA;			// GL_RGBA
 	ShadowBuffer->initFromDescriptor(desc2);
 }
 
@@ -569,13 +473,15 @@ void DeferredRenderer::loadResources()
 	DeferredPointLightShader = new Shader("PointLightFSQ.vert", "PointLightFSQ.frag");
 	DeferredPointLightShader->BindUniformBlock("test_gUBlock", 1);
 
+	LineShader = new Shader("Line.vert", "Line.frag");
+	LineShader->BindUniformBlock("test_gUBlock", 1);
+
 	//Compute shader creation
-	blurShader = new Shader("Blur.comp");
-	blurShader->BindUniformBlock("Weights_UBlock", 2); //TODO - That hardcoded 2 should be hash managed
-	
-	//Init the weights
-	int kernel_radius = (KERNEL_ACTUAL_COUNT - 1) * 0.5f;
-	AuxMath::genGaussianWeights(kernel_radius, this->weights);
+	blurShaderHoriz = new Shader("BlurHoriz.comp");
+	blurShaderVert = new Shader("BlurVert.comp");
+
+	//Set weights
+	SetKernelCount(5);
 
 	//FSQ
 	FSQ = new Quad();
@@ -584,7 +490,7 @@ void DeferredRenderer::loadResources()
 	PointLightSphere = this->model->meshes[0];
 
 	//Many lights
-	int range = 25; //44 for near 2000
+	int range = 0; //44 for near 2000
 	for (int i = -(range/2); i < (range / 2); ++i)
 	{
 		for (int j = -(range / 2); j < (range / 2); ++j)
@@ -709,4 +615,46 @@ void DeferredRenderer::UniformBlockPassData(GLuint ubo, int begin, glm::vec4& da
 void DeferredRenderer::UniformBlockPassData(GLuint ubo, int begin, glm::mat4& data)
 {
 	glBufferSubData(GL_UNIFORM_BUFFER, begin, 64, &data[0][0]);
+}
+
+
+
+//BONE DEBUG DRAWING
+void DeferredRenderer::DebugDrawSkeleton(DrawData const& data)
+{
+	//Loop through the bones and draw them
+	for (int i = 0; i < data.boneCount; ++i)
+	{
+		float vertices[8] =
+		{
+			0.0f, 0.0f, 0.0f, 1.0f,
+			0.0f, 1000.0f, 0.0f, 1.0f
+		};
+
+		GLuint lineVAO, LineVBO = static_cast<unsigned>(-1);
+		glGenVertexArrays(1, &lineVAO);
+		glGenBuffers(1, &LineVBO);
+		LineShader->UseShader();
+		int num_verts = 2;
+
+		glBindVertexArray(lineVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, LineVBO);
+		glBufferData(GL_ARRAY_BUFFER, num_verts * 4 * sizeof(float), vertices, GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
+		glEnableVertexAttribArray(0);
+
+
+		/////////////////////////////////////////////////////////////////
+		glm::mat4 const& boneTransformation = (*data.BoneTransformations)[i];
+		LineShader->setMat4f("boneTransform", boneTransformation);
+		LineShader->setMat4f("model", data.model);
+		glDrawArrays(GL_LINES, 0, 2);
+		/////////////////////////////////////////////////////////////////
+
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		LineShader->UnbindShader();
+		glDeleteVertexArrays(1, &lineVAO);
+		glDeleteBuffers(1, &LineVBO);
+	}
 }

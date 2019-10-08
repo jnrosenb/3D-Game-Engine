@@ -57,10 +57,17 @@ void Render::Update(float dt)
 	data.diffuseTexture = renderer->GetTexture(this->diffuseTexture);
 
 	//Bones experiment SHITTY WAY
-	if (Anim)
+	if (Anim) 
+	{
 		data.BoneTransformations = &(Anim->BoneTransformations);
+		data.boneCount = this->model->boneMap.size();
+		data.root = &(this->model->boneMap["RootNode"]);
+	}
 	else
+	{
 		data.BoneTransformations = 0;
+		data.boneCount = 0;
+	}
 
 	// Pass it to renderer's queue
 	renderer->QueueForDraw(data);

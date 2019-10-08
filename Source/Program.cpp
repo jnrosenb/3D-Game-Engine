@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 
 	//Load the first scene
 	superFactory.LoadScene("TestScene01.json");
-	///superFactory.LoadScene("AnimationScene.json");
+	//superFactory.LoadScene("AnimationScene.json");
 	renderer->init();
 
 
@@ -221,7 +221,7 @@ int main(int argc, char **argv)
 
 		//frameRate controller
 		float dt = frc->getFrameTime() / 1000.0f;
-		std::cout << dt << std::endl;
+		//std::cout << static_cast<int>(1 / dt) << std::endl;
 
 		//Update stuff
 		inputMgr->update(dt);

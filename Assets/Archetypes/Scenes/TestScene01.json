@@ -2,11 +2,11 @@
   "Lights": [
     {
       "Type": "Directional",
-      "Position": [ 0, 15, -10 ],
+      "Position": [ 0, 105, -100 ],
       "Color": [ 0.15, 0.15, 0.15 ],
       "Look": [ 0, -1, 1 ],
-      "Near": 0.01,
-      "far": 100,
+      "Near": 0.1,
+      "far": 1000.0,
       "Width": 40,
       "Height": 30,
       "Intensity": 1.0,

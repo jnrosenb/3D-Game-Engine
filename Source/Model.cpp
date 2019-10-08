@@ -15,6 +15,7 @@
 
 
 
+
 Model::Model()
 {}
 
@@ -26,6 +27,9 @@ Model::Model(std::string path)
 
 	//NEW WAY----------------------------------------------
 	FBXLoader::ReadAssimpFile(path, meshes, boneMap, animMap);
+
+	//DEBUG DRAW OF BONES
+	///bonesDrawPositions.resize(boneMap.size());
 }
 
 
@@ -42,7 +46,6 @@ Model::~Model()
 void Model::ProcessRecursiveTransformationFromRoot(Bone& node, 
 	glm::mat4 const& parentTransf, std::vector<glm::mat4>& BoneTransformations)
 {
-
 	//If bone had VQS calculated, we use that instead of nodeTransformation
 	if (node.updatedVQS) 
 	{

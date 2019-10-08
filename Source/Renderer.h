@@ -10,6 +10,7 @@
 #include "../External/Includes/glm/glm.hpp"
 #include <vector>
 #include <unordered_map>
+#include "Stat.h"
 
 
 #define VIEWPORT_WIDTH						1280
@@ -23,6 +24,7 @@ class Shader;
 class Mesh;
 class Camera;
 class RenderTarget;
+class Bone;
 
 
 //Lights (UNUSED FOR NOW)
@@ -58,6 +60,9 @@ struct DrawData
 	std::vector<Mesh*> *meshes;
 	Shader *shader;
 	GLuint diffuseTexture;
+
+	unsigned boneCount;
+	Bone *root;
 
 	//Bones experiment
 	std::vector<glm::mat4> *BoneTransformations;
@@ -95,9 +100,34 @@ public:
 	virtual void Update(float dt) = 0;
 	virtual void Draw() = 0;
 
+//LATER MOVE TO PROTECTED
+public:
+
+	//Compute shader for blurring
+	void SetKernelCount(int newVal) 
+	{
+		kernelCount = newVal;
+		OnChangingKernelCount();
+	}
+	int GetKernelCount() const
+	{
+		return kernelCount;
+	}
 
 //VARIABLES
 protected:
+
+	//Compute shader for blurring
+	void OnChangingKernelCount() 
+	{
+		this->weights.clear();
+		int kernel_radius = (kernelCount - 1) * 0.5f;
+		AuxMath::genGaussianWeights(kernel_radius, this->weights);
+	}
+	Shader *blurShaderHoriz;
+	Shader *blurShaderVert;
+	std::vector<float> weights;
+	int kernelCount;
 
 	//LIGHTS
 	glm::vec4 Light_Colors[MAX_LIGHT_COUNT];

@@ -169,6 +169,18 @@ void Shader::setFloat(const std::string &name, float value)
 	glUniform1f(location, value);
 }
 
+void Shader::setInt(const std::string &name, int value)
+{
+	GLuint location = GetCachedUniformLocation(name);
+	glUniform1i(location, value);
+}
+
+void Shader::setFloatArray(const std::string &name, int count, float *address)
+{
+	GLuint location = GetCachedUniformLocation(name);
+	glUniform1fv(location, count, address);
+}
+
 void Shader::setVec3f(const std::string &name, float x, float y, float z)
 {
 	GLuint location = GetCachedUniformLocation(name);
@@ -181,14 +193,14 @@ void Shader::setVec4f(const std::string &name, float x, float y, float z, float 
 	glUniform4f(location, x, y, z, w);
 }
 
-void Shader::setMat4f(const std::string &name, glm::mat4& matrix) 
+void Shader::setMat4f(const std::string &name, glm::mat4 const& matrix)
 {
 	GLuint location = GetCachedUniformLocation(name);
 	glUniformMatrix4fv(location, 1, GL_FALSE, &matrix[0][0]);
 }
 
 
-void Shader::setMat4fArray(const std::string &name, unsigned count, glm::mat4& matrix)
+void Shader::setMat4fArray(const std::string &name, unsigned count, glm::mat4 const& matrix)
 {
 	GLuint location = GetCachedUniformLocation(name);
 	glUniformMatrix4fv(location, count, GL_FALSE, &matrix[0][0]);
@@ -204,6 +216,16 @@ void Shader::setTexture(std::string const& name, GLuint texture, int unit)
 	glUniform1i(location, unit);
 	glActiveTexture(GL_TEXTURE0 + unit);
 	glBindTexture(GL_TEXTURE_2D, texture);
+}
+
+
+//For image, used in compute shaders
+void Shader::setImage(std::string const& name, GLuint texture, unsigned imageUnit, GLenum operationType, GLenum components)
+{
+	GLuint location = GetCachedUniformLocation(name);
+
+	glUniform1i(location, imageUnit);
+	glBindImageTexture(imageUnit, texture, 0, GL_FALSE, 0, operationType, components);
 }
 
 

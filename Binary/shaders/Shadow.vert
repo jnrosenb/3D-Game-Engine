@@ -19,6 +19,9 @@ uniform mat4 BoneTransf[MAX_BONES]; //MAX_BONES 100
 uniform mat4 projView;
 uniform mat4 model;
 
+
+out float NDC_depth;
+
 void main()
 {
 	vec4 localPos = vec4(0, 0, 0, 1);
@@ -34,5 +37,6 @@ void main()
 		localPos += boneWgts[3] * BoneTransf[bonesInd.w] * position;
 		
 	gl_Position = projView * model * localPos;
-	//gl_Position = projView * model * position;
+
+	NDC_depth = gl_Position.z / gl_Position.w;
 };
