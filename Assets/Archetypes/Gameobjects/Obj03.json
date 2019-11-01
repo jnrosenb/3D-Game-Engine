@@ -3,13 +3,13 @@
     "components": [
       {
         "id": "transform",
-        "position": [ 0, -2, 0 ],
+        "position": [ 0, -2, -2 ],
         "rotation": [ 0, 0, 0 ],
         "scale": [ 0.075, 0.075, 0.075 ]
       },
       {
         "id": "render",
-        "diffuse": [ 1.0, 0.0, 1.0, 1.0 ],
+        "diffuse": [ 1.0, 0.0, 0.0, 1.0 ],
         "vertex_id": 0,
         "load_model": true,
         "shader": "Solid",

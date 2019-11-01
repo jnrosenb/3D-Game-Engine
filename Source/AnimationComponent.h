@@ -32,12 +32,17 @@ public:
 	virtual void Update(float dt) override;
 	virtual void DeserializeInit() override;
 
+	void SwitchAnimation(std::string clipName, bool loops = true);
 	void PassAnimationInfo();
 
 private:
 	glm::vec3 CalculateInterpPos(float AnimationTime, AnimChannel const& animChannel);
 	AuxMath::Quaternion CalculateInterpRot(float AnimationTime, AnimChannel const& animChannel);
 	glm::vec3 CalculateInterpScale(float AnimationTime, AnimChannel const& animChannel);
+
+	//Temporary TODO REMOVE
+	std::string pausedClip;
+	void handleInput(float dt);
 
 public:
 	//To compare when using templates

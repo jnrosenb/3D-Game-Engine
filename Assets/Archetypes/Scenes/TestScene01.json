@@ -1,4 +1,8 @@
 {
+  "Skydome": {
+    "Texture": "Factory_Catwalk_2k.hdr",
+    "Irradiance": "Factory_Catwalk_Env.hdr"
+  },
   "Lights": [
     {
       "Type": "Directional",
@@ -16,7 +20,7 @@
       "Type": "Point",
       "Position": [ 15, 0, -100 ],
       "Color": [ 1, 1, 0 ],
-      "Radius": 100.0
+      "Radius": 10.0
     }
   ],
   "Objects": [
@@ -33,7 +37,7 @@
       "name": "Obj03.json"
     },
     {
-      "name": "Bunny01.json"
+      "name": "Obj04.json"
     },
     {
       "name": "Bunny02.json"

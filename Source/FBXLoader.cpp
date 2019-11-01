@@ -180,6 +180,7 @@ namespace FBXLoader
 
 
 
+
 	// Process an animation and stores all the channels and info in myAnimList
 	void ProcessAnimation(aiAnimation* aiAnim, std::unordered_map<std::string, Animation>& myAnimMap)
 	{
@@ -209,6 +210,7 @@ namespace FBXLoader
 
 		myAnimMap[animation.animName] = animation;
 	}
+
 
 
 
@@ -244,6 +246,7 @@ namespace FBXLoader
 		//Push bone (copy) to the vector
 		myBoneMap[bone.name] = bone;
 	}
+
 
 
 

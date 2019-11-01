@@ -11,6 +11,8 @@
 #include <vector>
 #include <unordered_map>
 #include "Stat.h"
+#include "Shader.h"
+#include "Mesh.h"
 
 
 #define VIEWPORT_WIDTH						1280
@@ -20,11 +22,10 @@
 
 
 //Forward decl
-class Shader;
-class Mesh;
 class Camera;
 class RenderTarget;
 class Bone;
+struct HDRImageDesc;
 
 
 //Lights (UNUSED FOR NOW)
@@ -52,17 +53,58 @@ struct DirectionalLight
 };
 
 
+struct SkyDome 
+{
+	Mesh *geometry;
+	Shader *shader;
+	GLuint texture;
+	GLuint irradiance;
+	glm::mat4 model;
+
+	SkyDome() : geometry(0), shader(0), 
+		texture(-1), irradiance(-1), 
+		model(glm::mat4(1))
+	{}
+
+	~SkyDome()
+	{
+		delete shader;
+		delete geometry;
+	}
+
+	void Draw(/*GLuint geoDepth*/) 
+	{
+		//BINDING
+		shader->UseShader();
+		geometry->BindForDraw();
+
+		//UNIFORM BINDING
+		shader->setMat4f("model", model);
+		shader->setTexture("skyMap", texture, 0);
+
+		//DRAW
+		int faceCount = geometry->GetFaceCount();
+		glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+
+		//TODO - UNBIND SHADER AND MESH
+		geometry->UnbindForDraw();
+		shader->UnbindShader();
+	}
+};
+
+
 //Struct with the data needed by renderer to draw everything
 struct DrawData 
 {
 	glm::mat4 model;
 	glm::mat4 normalsModel;
+	glm::vec4 diffuseColor;
 	std::vector<Mesh*> *meshes;
 	Shader *shader;
 	GLuint diffuseTexture;
 
 	unsigned boneCount;
-	Bone *root;
+	std::unordered_map<std::string, Bone> *BoneMap; //Only for debug drawing, temporary
 
 	//Bones experiment
 	std::vector<glm::mat4> *BoneTransformations;
@@ -90,11 +132,16 @@ public:
 	virtual void QueueForDraw(DrawData& data) = 0;
 	virtual void QueueForDrawAlpha(DrawData& data) = 0;
 
-	///virtual void loadResources();
-	///virtual void CalculateLightProjView();
+	//Skydome creation
+	virtual void CreateSkydome(HDRImageDesc const& texPath,
+		HDRImageDesc const& irrPath) 
+	{
+		//TODO - check wether make it abstract
+	}
 
 	//TEXTURE LOADING
-	virtual GLuint generateTextureFromSurface(SDL_Surface *surface, std::string key) = 0;
+	virtual GLuint generateTextureFromSurface(SDL_Surface *surface, 
+		std::string key) = 0;
 	virtual GLuint GetTexture(std::string key) = 0;
 
 	virtual void Update(float dt) = 0;
@@ -102,6 +149,10 @@ public:
 
 //LATER MOVE TO PROTECTED
 public:
+
+	//Bone debug drawing
+	bool DrawSkin;
+	bool DrawSkeleton;
 
 	//Compute shader for blurring
 	void SetKernelCount(int newVal) 

@@ -30,7 +30,12 @@ class Mesh
 //PUBLIC INTERFACE
 public:
 	Mesh() {}
-	virtual ~Mesh() {}
+	virtual ~Mesh() 
+	{
+		glDeleteVertexArrays(1, &vao);
+		glDeleteBuffers(vbo_index::NUM, vbo);
+		glDeleteBuffers(1, &ebo);
+	}
 	
 	//Struct representing a polygon (alligned 16 bytes)
 	struct Face
@@ -84,11 +89,9 @@ protected:
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[TEXCOORDS]);
 		glBufferData(GL_ARRAY_BUFFER, GetVertexCount() * 2 * sizeof(GLfloat), &texCoords[0][0], GL_STATIC_DRAW);
 
-		//BONE STUFF-----------------
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BONE_INDICES]);
 		glBufferData(GL_ARRAY_BUFFER, GetVertexCount() * 4 * sizeof(GLint), &boneIndices[0][0], GL_STATIC_DRAW);
 
-		//BONE STUFF-----------------
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BONE_WEIGHTS]);
 		glBufferData(GL_ARRAY_BUFFER, GetVertexCount() * 4 * sizeof(GLfloat), &boneWeights[0][0], GL_STATIC_DRAW);
 
@@ -98,23 +101,23 @@ protected:
 		//PASS ATTRIBUTES AND ENABLE
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[VERTICES]);
 		glVertexAttribPointer(0, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
-		glEnableVertexAttribArray(0);
 
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[NORMALS]);
 		glVertexAttribPointer(1, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
-		glEnableVertexAttribArray(1);
 
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[TEXCOORDS]);
 		glVertexAttribPointer(2, 2, GL_FLOAT, false, 2 * sizeof(GLfloat), (void*)0);
-		glEnableVertexAttribArray(2);
 
-		//BONE STUFF----------------- Use location 3 and 4 for bones
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BONE_INDICES]);
 		glVertexAttribIPointer(3, 4, GL_INT, 4 * sizeof(GLint), (void*)0);
-		glEnableVertexAttribArray(3);
 
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BONE_WEIGHTS]);
 		glVertexAttribPointer(4, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
+		
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		glEnableVertexAttribArray(2);
+		glEnableVertexAttribArray(3);
 		glEnableVertexAttribArray(4);
 
 		//Unbind Everything

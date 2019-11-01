@@ -6,8 +6,11 @@
 #include <iostream>
 #include "Camera.h"
 #include "Affine.h"
+#include "Renderer.h"
 
+//For now, camera will handle all input
 #include "InputManager.h"
+extern InputManager *inputMgr;
 
 ///MACROS
 #define EPSILON			0.000001f
@@ -19,8 +22,6 @@
 
 //GLOBALS
 glm::vec4 const rup = {0, 1, 0, 0};
-//For now, camera will handle all input
-extern InputManager *inputMgr;
 #include "DeferredRenderer.h"
 extern Renderer *renderer;
 
@@ -50,8 +51,8 @@ void Camera::initCamera()
 	this->flagOrthographic = false;
 
 	//Look and eye
-	m_eye = glm::vec4(0, 0, 5, 1);
-	m_look = glm::vec4(0, 0, -1, 0);
+	m_eye = glm::vec4(0, 10, 30, 1);
+	m_look = glm::vec4(0, -0.25, -1, 0);
 
 	//Temporarily do it like this
 	m_aspectRatio = static_cast<double>(mViewport_width) / mViewport_height;
@@ -65,6 +66,7 @@ void Camera::initCamera()
 //DESTRUCTOR
 Camera::~Camera()
 {
+	delete sky;
 }
 
 
@@ -78,6 +80,8 @@ void Camera::Update(float dt)
 		UpdateOrthographic();
 	else
 		UpdatePerspective();
+
+	this->sky->model = AuxMath::translate(this->m_eye);
 }
 
 
@@ -102,6 +106,17 @@ glm::vec4& Camera::getEye()
 glm::mat4& Camera::getProj()
 {
 	return m_proj;
+}
+
+
+void Camera::SetSkydome(SkyDome *sky)
+{
+	this->sky = sky;
+}
+
+SkyDome *Camera::GetSkydome() 
+{
+	return this->sky;
 }
 
 
@@ -221,6 +236,18 @@ void Camera::handleInput(float dt)
 	{
 		this->flagOrthographic = !this->flagOrthographic;
 	}
+
+
+	//TOGGLE SKELETON DRAWING
+	if (inputMgr->getKeyTrigger(SDL_SCANCODE_Q))
+	{
+		renderer->DrawSkeleton = !renderer->DrawSkeleton;
+	}
+	if (inputMgr->getKeyTrigger(SDL_SCANCODE_E))
+	{
+		renderer->DrawSkin = !renderer->DrawSkin;
+	}
+
 
 
 	//Increase, decrease deferredRenderer kernel size

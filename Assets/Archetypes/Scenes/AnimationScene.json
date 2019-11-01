@@ -2,13 +2,13 @@
   "Lights": [
     {
       "Type": "Directional",
-      "Position": [ 0, 15, -10 ],
+      "Position": [ 0, 15, 10 ],
       "Color": [ 0.15, 0.15, 0.15 ],
-      "Look": [ 0, -1, 1 ],
-      "Near": 0.01,
-      "far": 100,
-      "Width": 40,
-      "Height": 30,
+      "Look": [ 0, -1, -1 ],
+      "Near": 0.1,
+      "far": 1000,
+      "Width": 60,
+      "Height": 60,
       "Intensity": 1.0,
       "ShadowIntensity": 1.0
     }
@@ -18,7 +18,7 @@
       "name": "Floor01.json"
     },
     {
-      "name": "Obj03.json"
+      "name": "Obj04.json"
     }
   ]
 }

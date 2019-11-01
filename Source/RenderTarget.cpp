@@ -151,6 +151,11 @@ void RenderTarget::Bind()
 	}
 }
 
+void RenderTarget::Bind(GLenum renderMode)
+{
+	glBindFramebuffer(renderMode, this->fbo);
+}
+
 int RenderTarget::getWidth() const 
 {
 	return this->width;

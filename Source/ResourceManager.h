@@ -9,6 +9,14 @@
 #include <string>
 
 
+struct HDRImageDesc
+{
+	std::string name;
+	int width, height, nComponents;
+	float *data;
+};
+
+
 //PROJECT DIR
 static std::string const projectDir = "C:\\Users\\Jose\\Desktop\\OpenGl_Framework\\Source\\";
 
@@ -19,10 +27,10 @@ static std::string const TextureBackgroundDir	= TextureDir + "Background\\";
 static std::string const TextureNormalMapDir	= TextureDir + "Normal_Maps\\";
 static std::string const TextureParticleDir		= TextureDir + "Particles\\";
 static std::string const TextureUIDir			= TextureDir + "UI\\";
+static std::string const HDRDir					= TextureDir + "HDR\\";
 
 //MODEL DIR
 static std::string const ModelDir = "C:\\Users\\Jose\\Desktop\\OpenGl_Framework\\Assets\\Models\\";
-
 
 class ResourceManager 
 {
@@ -34,10 +42,12 @@ public:
 
 	void Unload();
 
+	HDRImageDesc loadHDR(std::string path);
 	SDL_Surface *loadSurface(std::string path);
 	Shader *loadShader(std::string& path);
 
 private:
 	std::unordered_map<std::string, SDL_Surface *> mSurfaces;
+	std::unordered_map<std::string, HDRImageDesc> mHDRTextures;
 	std::unordered_map<std::string, Shader *> mShadersDic;
 };

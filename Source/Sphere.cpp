@@ -89,9 +89,6 @@ Sphere::Sphere(int size)
 
 Sphere::~Sphere()
 {
-	glDeleteVertexArrays(1, &vao);
-	glDeleteBuffers(vbo_index::NUM, vbo);
-	glDeleteBuffers(1, &ebo);
 }
 
 

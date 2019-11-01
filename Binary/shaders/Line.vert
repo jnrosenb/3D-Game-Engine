@@ -17,11 +17,8 @@ layout(std140) uniform test_gUBlock
 };
 
 uniform mat4 model;
-uniform mat4 boneTransform;
 
 void main()
 {
-	//gl_Position = vec4(boneTransform[3][0], boneTransform[3][1], boneTransform[3][2], 1);
-	//gl_Position = ProjView * position;// * vec4(boneTransform[3][0], boneTransform[3][1], boneTransform[3][2], 1);
-	gl_Position = ProjView * model * vec4(boneTransform[3][0], boneTransform[3][1], boneTransform[3][2], 1);
+	gl_Position = ProjView * model * position;
 };

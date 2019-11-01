@@ -17,7 +17,6 @@ layout(std140) uniform test_gUBlock
 };
 
 //Uniforms
-//uniform mat4 projViewMatrix;
 uniform mat4 lightModel;
 
 //Outputs

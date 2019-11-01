@@ -5,6 +5,8 @@
 ///INCLUDES
 #include "BaseComponent.h"
 
+#include "../External/Includes/glm/glm.hpp"
+
 class Model;
 class Mesh;
 class Shader;
@@ -45,6 +47,7 @@ public:	//TODO - Change for a public interface
 	std::string modelPath;
 	std::string ShaderName;
 	std::string diffuseTexture;
+	glm::vec4 diffuseColor;
 	bool use_loaded_mesh;
 	std::string primitive;
 	Mesh *mesh = NULL;

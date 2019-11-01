@@ -1,5 +1,6 @@
 ///HEADER
 
+#include <iostream>
 #include "LoadedMesh.h"
 ///#include "Helper\Transformations3D.h"
 ///#include "glm/gtx/transform.hpp"
@@ -141,16 +142,16 @@ void LoadedMesh::Load_BoneWeights(std::vector<std::vector<float>> const& weights
 		switch (weight_count)
 		{
 		case 0:
-			wgts = glm::vec4(-1.0f, -1.0f, -1.0f, -1.0f);
+			wgts = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
 			break;
 		case 1:
-			wgts = glm::vec4(weight[0], -1.0f, -1.0f, -1.0f);
+			wgts = glm::vec4(weight[0], 0.0f, 0.0f, 0.0f);
 			break;
 		case 2:
-			wgts = glm::vec4(weight[0], weight[1], -1.0f, -1.0f);
+			wgts = glm::vec4(weight[0], weight[1], 0.0f, 0.0f);
 			break;
 		case 3:
-			wgts = glm::vec4(weight[0], weight[1], weight[2], -1.0f);
+			wgts = glm::vec4(weight[0], weight[1], weight[2], 0.0f);
 			break;
 		case 4:
 			wgts = glm::vec4(weight[0], weight[1], weight[2], weight[3]);
@@ -158,6 +159,7 @@ void LoadedMesh::Load_BoneWeights(std::vector<std::vector<float>> const& weights
 		};
 
 		this->boneWeights.push_back(wgts);
+		///this->boneWeights.push_back(glm::normalize(wgts));
 	}
 }
 

@@ -1,0 +1,20 @@
+{
+  "tag": "Anim901",
+  "components": [
+    {
+      "id": "transform",
+      "position": [ 0, -1, 5 ],
+      "rotation": [ 0, 0, 0 ],
+      "scale": [ 1.01, 1.01, 1.01 ]
+    },
+    {
+      "id": "render",
+      "diffuse": [ 1.0, 1.0, 1.0, 1.0 ],
+      "vertex_id": 0,
+      "load_model": false,
+      "shader": "Solid",
+      "primitive": "polar",
+      "model_name": "Albert.fbx"
+    }
+  ]
+}

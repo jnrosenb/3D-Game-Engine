@@ -16,14 +16,15 @@
 #define VIEWPORT_WIDTH						1280
 #define VIEWPORT_HEIGHT						720
 #define MAX_NUMBER_TEXTURES					512			//Arbitrary value
+#define MAX_SPECULAR_IBL_SAMPLES			100			//Arbitrary number
 
 
 //Forward decl
 class Model;
-class Shader;
-class Mesh;
 class Camera;
 class RenderTarget;
+struct HDRImageDesc;
+struct HammersleyBlock;
 
 
 //RENDERER CLASS
@@ -32,7 +33,7 @@ class DeferredRenderer : public Renderer
 public:
 	friend class Factory;
 
-//PUBLIC INTERFACE
+	//PUBLIC INTERFACE
 public:
 	DeferredRenderer();
 	virtual ~DeferredRenderer();
@@ -49,30 +50,43 @@ public:
 	void loadResources();
 	void CalculateLightProjView();
 
+	//Skydome creation
+	virtual void CreateSkydome(HDRImageDesc const& hdrTexDesc,
+		HDRImageDesc const& irradianceDesc) override;
+
 	//TEXTURE LOADING
 	GLuint generateTextureFromSurface(SDL_Surface *surface, std::string key);
+	GLuint genHDRTexHandle(HDRImageDesc const& desc);
 	GLuint GetTexture(std::string key);
 
 	virtual void Update(float dt);
 	virtual void Draw();
 
-//PRIVATE METHODS
+	//PRIVATE METHODS
 private:
 	DeferredRenderer(DeferredRenderer& rhs);
 
 	//Bone debug drawing
 	void DebugDrawSkeleton(DrawData const& data);
+	void DrawBoneToChildren(std::unordered_map<std::string, Bone> const& map,
+		Bone const& node, glm::vec3& origin, DrawData const& data);
+	void DrawLineSegment(glm::vec3 const& orig, glm::vec3 const& dest,
+		glm::mat4 const& model);
 
 	//PASSES
 	void GeometryPass();
 	void AmbientLightPass();
-	void ShadowMapPass();
+	void AmbientIBLPass();
+	void SkydomePass();
 	void FilteredShadowPass();
 	void MultiplePointLightPass(glm::mat4& projView);
 
 	//Uniform buffer object (LATER TAKE OUT OF HERE)
 	void initUniformBufferObjects();
 
+	//IBL preparation
+	void prepareSpecularRandomPairs();
+	AuxMath::HammersleyBlock *specularBlock;
 
 	//TEXTURE LOADING
 	//Map that pairs surface to glTexture
@@ -112,6 +126,7 @@ private:
 	Shader *DeferredAmbientShader;
 	Shader *DirectionalLightShader;
 	Shader *LineShader;
+	Shader *IBLShader;
 
 	//SHADOW MAP STUFF
 	glm::mat4 lightProjView;
@@ -122,11 +137,11 @@ private:
 
 	//First person camera
 	Camera *currentCamera; //Future version. Will hold the current camera to render scene
-	Camera *FPCamera;
 
 	//UBO
 	GLuint ubo_test;
 	GLuint ubo_weights;
+	GLuint ubo_IBLSpecular;
 	GLuint ubo_bones;
 
 	//Framebuffer

@@ -6,6 +6,7 @@
 #include "Model.h"
 #include "Sphere.h"
 #include "Quad.h"
+#include "Polar.h"
 #include "Shader.h"
 #include "TransformComponent.h"
 #include "AnimationComponent.h"
@@ -55,13 +56,16 @@ void Render::Update(float dt)
 	data.model = T->GetModel();
 	data.normalsModel = T->GetNormalModel();
 	data.diffuseTexture = renderer->GetTexture(this->diffuseTexture);
+	
+	data.diffuseColor = this->diffuseColor;
 
 	//Bones experiment SHITTY WAY
 	if (Anim) 
 	{
 		data.BoneTransformations = &(Anim->BoneTransformations);
 		data.boneCount = this->model->boneMap.size();
-		data.root = &(this->model->boneMap["RootNode"]);
+
+		data.BoneMap = &(this->model->boneMap);
 	}
 	else
 	{
@@ -108,6 +112,8 @@ void Render::initModel()
 			this->model->meshes.push_back(new Quad());
 		else if (this->primitive == "sphere")
 			this->model->meshes.push_back(new Sphere(32));
+		else if (this->primitive == "polar")
+			this->model->meshes.push_back(new PolarPlane(64));
 	}
 }
 

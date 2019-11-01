@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 
 	//Load the first scene
 	superFactory.LoadScene("TestScene01.json");
-	//superFactory.LoadScene("AnimationScene.json");
+	///superFactory.LoadScene("AnimationScene.json");
 	renderer->init();
 
 
@@ -212,8 +212,13 @@ int main(int argc, char **argv)
 		ImGui::NewFrame();
 
 		// 1. Show big demo window. Sample code in ImGui::ShowDemoWindow()
-		if (showDemoWin)
-			ImGui::ShowDemoWindow(&showDemoWin);
+		/*if (showDemoWin)
+			ImGui::ShowDemoWindow(&showDemoWin);*/
+
+		ImGui::Begin("Controller");
+
+
+		ImGui::End();
 
 		//RENDER - BLIT BITMAP------------------
 		ImGui::Render();

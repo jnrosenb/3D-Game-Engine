@@ -5,6 +5,7 @@
 ///INCLUDES
 #include "../External/Includes/glm/glm.hpp"
 
+class SkyDome;
 
 class Camera 
 {
@@ -20,6 +21,9 @@ public:
 	virtual glm::mat4& getView();
 	virtual glm::mat4& getProj();
 	virtual glm::vec4& getEye();
+
+	virtual SkyDome *GetSkydome();
+	virtual void SetSkydome(SkyDome *sky);
 
 private:
 	virtual void handleInput(float dt);
@@ -47,4 +51,6 @@ private:
 	bool pressedLastFrame;
 	int thresshold;
 
+	//Camera holds a skydome
+	SkyDome *sky;
 };

@@ -239,7 +239,7 @@ void Shader::BindUniformBlock(std::string const& name, int bind_index)
 		glUniformBlockBinding(this->programId, static_cast<GLuint>(uniformBlockLocation), bind_index);
 	}
 	else
-		std::cout << "ERROR retrieving uniform block location!" << std::endl;
+		std::cout << "ERROR retrieving uniform block location! >> " << name << std::endl;
 }
 
 

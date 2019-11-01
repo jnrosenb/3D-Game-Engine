@@ -46,7 +46,8 @@ public:
 
 	//TODO - Map to a different enum so you do not 
 	//have opengl in public interface
-	void Bind();
+	void Bind(); 
+	void Bind(GLenum renderMode);
 	void Unbind();
 
 	int getWidth() const;

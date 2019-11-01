@@ -2,27 +2,32 @@
 
 #include <iostream>
 #include "DeferredRenderer.h"
-#include "Stat.h"
+#include "ResourceManager.h"
 
 #include "RenderTarget.h"
-#include "Shader.h"
 #include "Camera.h"
 
 #include "Model.h"
-#include "Mesh.h"
+#include "Polar.h"
 #include "Sphere.h"
 #include "Quad.h"
 #include <cstdlib>
+#include "Stat.h"
 
 
 #define DEBUGGING_PASS				0
 #define KERNEL_FILTER_COUNT			100
+#define SPECULAR_SAMPLES			1
 
 
-DeferredRenderer::DeferredRenderer() : 
+DeferredRenderer::DeferredRenderer() :
 	numberOfTexturesLoaded(0)
 {
 	std::cout << "Renderer Constructor" << std::endl;
+
+	//Draw the skin, not the bones
+	DrawSkin = true;
+	DrawSkeleton = false;
 }
 
 
@@ -37,6 +42,10 @@ DeferredRenderer::~DeferredRenderer()
 	texturesDict.clear();
 	numberOfTexturesLoaded = 0;
 
+	//Delete camera
+	if (currentCamera)
+		delete currentCamera;
+
 	//TODO - for now
 	delete FSQ;
 	delete model;
@@ -49,14 +58,19 @@ DeferredRenderer::~DeferredRenderer()
 	delete DeferredAmbientShader;
 	delete DirectionalLightShader;
 	delete LineShader;
+	delete IBLShader;
 
 	//Delete compute shader
 	delete blurShaderHoriz;
 	delete blurShaderVert;
 
+	//Delete blocm with low discrepancy random points
+	delete specularBlock;
+
 	//Delete the FBO's
 	glDeleteBuffers(1, &this->ubo_weights);
 	glDeleteBuffers(1, &this->ubo_test);
+	glDeleteBuffers(1, &this->ubo_IBLSpecular);
 }
 
 
@@ -68,7 +82,6 @@ void DeferredRenderer::init()
 	////////////////////////////
 
 	initFrameBuffers();
-	initCamera();
 	initUniformBufferObjects(); 
 	loadResources();
 
@@ -119,6 +132,23 @@ void DeferredRenderer::initUniformBufferObjects()
 	//Map to an index
 	glBindBufferBase(GL_UNIFORM_BUFFER, index, this->ubo_weights);
 
+
+
+	// IBL SPECULAR LOW DISCREPANCY PAIRS (layout)-----------------------
+	index = 0;
+	// int					// 0  -  4
+	// vec2 array[100]		// 4  -  4 + 16 * MAX_SPECULAR_IBL_SAMPLES
+
+	// 1- Generate buffer and bind
+	glGenBuffers(1, &this->ubo_IBLSpecular);
+	glBindBuffer(GL_UNIFORM_BUFFER, this->ubo_IBLSpecular);
+	//Allocate gpu space
+	size = 4 + 16 * MAX_SPECULAR_IBL_SAMPLES;
+	glBufferData(GL_UNIFORM_BUFFER, size, NULL, GL_STATIC_DRAW);
+	//Map to an index
+	glBindBufferBase(GL_UNIFORM_BUFFER, index, this->ubo_IBLSpecular);
+
+
 	//Unbind crap
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
@@ -153,6 +183,10 @@ void DeferredRenderer::Draw()
 	UniformBlockPassData(this->ubo_test, 0, projView);
 	UniformBlockPassData(this->ubo_test, 64, lightProjView);
 	UniformBlockPassData(this->ubo_test, 128, currentCamera->getEye());
+	//Passing the IBL specular low discrepancy pairs
+	UniformBlockBind(this->ubo_IBLSpecular);
+	UniformBlockPassData(this->ubo_IBLSpecular, 0, &(specularBlock->N));
+	UniformBlockPassData(this->ubo_IBLSpecular, 4, specularBlock->N, &(specularBlock->pairs[0]));
 	UniformBlockUnbind();
 
 
@@ -161,22 +195,34 @@ void DeferredRenderer::Draw()
 
 
 	//AMBIENT LIGHT PASS (Back to default framebuffer)
-	AmbientLightPass();
+	///AmbientLightPass();
+	AmbientIBLPass();
 
 
-	//SHADOW MAP PASS
-	FilteredShadowPass();
-	
+	//Draw skydome
+	SkydomePass();
 
-	//MULTIPLE POINT LIGHT PASS (Back to default framebuffer)
-	MultiplePointLightPass(projView);
-
-
-	//BONE DEBUG SHIT
-	///glDisable(GL_DEPTH_TEST);
-	///for (int i = 0; i < graphicQueue.size(); ++i)
-	///	if (graphicQueue[i].boneCount > 0) 
-	///		DebugDrawSkeleton(graphicQueue[i]);
+	/*-------------------------------------------------------------*\
+															   ---	|
+	//SHADOW MAP PASS										   ---	|
+	FilteredShadowPass();									   ---	|
+															   ---	|
+															   ---	|
+	//MULTIPLE POINT LIGHT PASS (Back to default framebuffer)  ---	|
+	MultiplePointLightPass(projView);						   ---	|
+															   ---	|
+															   ---	|
+	//BONE DEBUG SHIT										   ---	|
+	#if DEBUGGING_PASS										   ---	|
+	if (DrawSkeleton) 										   ---	|
+	{														   ---	|
+		for (int i = 0; i < graphicQueue.size(); ++i)		   ---	|
+			if (graphicQueue[i].boneCount > 0)				   ---	|
+				DebugDrawSkeleton(graphicQueue[i]);			   ---	|
+	}														   ---	|
+	#endif													   ---  |
+															   ---  |
+	//-------------------------------------------------------------*/
 
 
 	//Empty both graphics queues
@@ -201,18 +247,23 @@ void DeferredRenderer::GeometryPass()
 	glCullFace(GL_BACK);
 
 	glViewport(0, 0, GeometryBuffer->getWidth(), GeometryBuffer->getHeight()); //TODO - Change test values of width and height
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	//Draw normal objects
 	geometryPassShader->UseShader();
 	for (int i = 0; i < graphicQueue.size(); ++i)
 	{
 		//Get the current drawNode
 		DrawData &data = graphicQueue[i];
-	
+
 		//Since a node has a model (and all the meshes of a model for now share bones), we pass the uniform array
 		if (graphicQueue[i].BoneTransformations)
+		{
 			geometryPassShader->setMat4fArray("BoneTransf", 100, (*(graphicQueue[i].BoneTransformations))[0]);
+			if (!DrawSkin)
+				continue;
+		}
 
 		for (int j = 0; j < data.meshes->size(); ++j) 
 		{
@@ -223,6 +274,8 @@ void DeferredRenderer::GeometryPass()
 			geometryPassShader->setMat4f("model", graphicQueue[i].model);
 			geometryPassShader->setMat4f("normalModel", graphicQueue[i].normalsModel);
 			geometryPassShader->setTexture("diffuseTexture", graphicQueue[i].diffuseTexture, 0);
+			geometryPassShader->setVec4f("diffuseColor", graphicQueue[i].diffuseColor.r, 
+				graphicQueue[i].diffuseColor.g, graphicQueue[i].diffuseColor.b, graphicQueue[i].diffuseColor.a);
 
 			//DRAW
 			int faceCount = (*data.meshes)[j]->GetFaceCount();
@@ -240,17 +293,22 @@ void DeferredRenderer::AmbientLightPass()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClear(GL_COLOR_BUFFER_BIT);// | GL_DEPTH_BUFFER_BIT); //Not really necessary to
 
 	//DEPTH
 	glDisable(GL_DEPTH_TEST);
+
+	//weird artifact with moments shadow map
+	///glEnable(GL_BLEND);
+	///glBlendFunc(GL_ONE, GL_ONE);
 
 	DeferredAmbientShader->UseShader();
 	FSQ->BindForDraw();
 
 	//UNIFORM BINDING
 	DeferredAmbientShader->setTexture("GBufferDiffuse", GeometryBuffer->texturesHandles[2], 2);
+	DeferredAmbientShader->setTexture("geoDepthBuffer", GeometryBuffer->depthTexture, 3);
 
 	//DRAW
 	int faceCount = FSQ->GetFaceCount();
@@ -259,6 +317,54 @@ void DeferredRenderer::AmbientLightPass()
 	//TODO - UNBIND SHADER AND MESH
 	FSQ->UnbindForDraw();
 	DeferredAmbientShader->UnbindShader();
+}
+
+
+void DeferredRenderer::AmbientIBLPass()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClear(GL_COLOR_BUFFER_BIT);// | GL_DEPTH_BUFFER_BIT); //Not really necessary to
+
+	//DEPTH
+	glDisable(GL_DEPTH_TEST);
+
+	//weird artifact with moments shadow map
+	///glEnable(GL_BLEND);
+	///glBlendFunc(GL_ONE, GL_ONE);
+
+	//Shader and VAO BINDING
+	IBLShader->UseShader();
+	FSQ->BindForDraw();
+
+	//GBUFFER BINDINGS
+	IBLShader->setTexture("GBufferPos", GeometryBuffer->texturesHandles[0], 0);
+	IBLShader->setTexture("GBufferNormals", GeometryBuffer->texturesHandles[1], 1);
+	IBLShader->setTexture("GBufferDiffuse", GeometryBuffer->texturesHandles[2], 2);
+	IBLShader->setTexture("GBufferSpecGloss", GeometryBuffer->texturesHandles[3], 3);
+	//SKYDOME BINDINGS
+	IBLShader->setTexture("skyMap", currentCamera->GetSkydome()->texture, 4);
+	IBLShader->setTexture("irradianceMap", currentCamera->GetSkydome()->irradiance, 5);
+	IBLShader->setTexture("geoDepthBuffer", GeometryBuffer->depthTexture, 6);
+
+	//DRAW
+	int faceCount = FSQ->GetFaceCount();
+	glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+
+	//TODO - UNBIND SHADER AND MESH
+	FSQ->UnbindForDraw();
+	IBLShader->UnbindShader();
+}
+
+
+void DeferredRenderer::SkydomePass() 
+{	
+	//Pass depth as a texture to the thing
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
+	this->currentCamera->GetSkydome()->Draw(/*GeometryBuffer->depthTexture*/);
+	glDisable(GL_BLEND);
 }
 
 
@@ -273,9 +379,6 @@ void DeferredRenderer::FilteredShadowPass()
 
 	//DEPTH
 	glEnable(GL_DEPTH_TEST);
-
-	//glEnable(GL_BLEND);
-	//glBlendFunc(GL_ONE, GL_ONE_MINUS_DST_COLOR);
 
 	//Opaque objects queue
 	for (int i = 0; i < graphicQueue.size(); ++i)
@@ -419,10 +522,7 @@ void DeferredRenderer::MultiplePointLightPass(glm::mat4& projView) //Later pass 
 void DeferredRenderer::initCamera()
 {
 	//Temporary, erase later somehow
-	FPCamera = new Camera();
-
-	//This is the one we will use
-	currentCamera = FPCamera;
+	currentCamera = new Camera();
 }
 
 
@@ -476,12 +576,20 @@ void DeferredRenderer::loadResources()
 	LineShader = new Shader("Line.vert", "Line.frag");
 	LineShader->BindUniformBlock("test_gUBlock", 1);
 
+	IBLShader = new Shader("DeferredIBL.vert", "DeferredIBL.frag");
+	IBLShader->BindUniformBlock("test_gUBlock", 1);
+	IBLShader->BindUniformBlock("SpecularSamples", 0);
+
 	//Compute shader creation
 	blurShaderHoriz = new Shader("BlurHoriz.comp");
 	blurShaderVert = new Shader("BlurVert.comp");
 
 	//Set weights
 	SetKernelCount(5);
+
+	//Hammersley low discrepancy rands
+	this->specularBlock = new AuxMath::HammersleyBlock();
+	AuxMath::genLowDiscrepancyPairs(SPECULAR_SAMPLES, this->specularBlock);
 
 	//FSQ
 	FSQ = new Quad();
@@ -564,6 +672,32 @@ GLuint DeferredRenderer::generateTextureFromSurface(SDL_Surface *surface, std::s
 
 
 
+GLuint DeferredRenderer::genHDRTexHandle(HDRImageDesc const& desc)
+{
+	//First check if the map has the texture
+	GLint mTexture = texturesDict[desc.name];
+
+	if (mTexture == 0)
+	{
+		glGenTextures(1, textures + numberOfTexturesLoaded);
+		glBindTexture(GL_TEXTURE_2D, textures[numberOfTexturesLoaded]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, desc.width, desc.height, 0, GL_RGB, GL_FLOAT, desc.data);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		++numberOfTexturesLoaded;
+		texturesDict[desc.name] = textures[numberOfTexturesLoaded - 1];
+		mTexture = texturesDict[desc.name];
+	}
+
+	return mTexture;
+}
+
+
+
 
 
 ////////////////////////////////////////
@@ -619,42 +753,101 @@ void DeferredRenderer::UniformBlockPassData(GLuint ubo, int begin, glm::mat4& da
 
 
 
-//BONE DEBUG DRAWING
+//////////////////////////////////////////////////////////////////////////////
+////                    BONE DEBUG DRAWING                                ////
+//////////////////////////////////////////////////////////////////////////////
 void DeferredRenderer::DebugDrawSkeleton(DrawData const& data)
 {
-	//Loop through the bones and draw them
-	for (int i = 0; i < data.boneCount; ++i)
+	//Extract the map
+	std::unordered_map<std::string, Bone> const& map = static_cast<std::unordered_map<std::string, Bone>>(*data.BoneMap);
+
+	//Set starting position
+	glm::vec3 originPoint = glm::vec3(0);
+
+	//Get the root
+	Bone const& root = map.find("RootNode")->second;
+
+	//Call recursive function
+	DrawBoneToChildren(map, root, originPoint, data);
+}
+
+
+void DeferredRenderer::DrawBoneToChildren(std::unordered_map<std::string, Bone> const& map, 
+	Bone const& node, glm::vec3& origin, DrawData const& data)
+{
+	//For every child, calculate the final pos, draw line, and call recursively
+	for (std::string const& childName : node.children)
 	{
-		float vertices[8] =
-		{
-			0.0f, 0.0f, 0.0f, 1.0f,
-			0.0f, 1000.0f, 0.0f, 1.0f
-		};
+		//Get the child
+		Bone const& child = map.find(childName)->second;
 
-		GLuint lineVAO, LineVBO = static_cast<unsigned>(-1);
-		glGenVertexArrays(1, &lineVAO);
-		glGenBuffers(1, &LineVBO);
-		LineShader->UseShader();
-		int num_verts = 2;
+		//Calculate final position
+		glm::vec3 dest = child.accumTransformation * glm::vec4(0, 0, 0, 0.5f);
+		glm::vec3 d = (dest - origin);
 
-		glBindVertexArray(lineVAO);
-		glBindBuffer(GL_ARRAY_BUFFER, LineVBO);
-		glBufferData(GL_ARRAY_BUFFER, num_verts * 4 * sizeof(float), vertices, GL_STATIC_DRAW);
-		glVertexAttribPointer(0, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
-		glEnableVertexAttribArray(0);
+		//Draw the line
+		this->DrawLineSegment(origin, d, data.model);
 
-
-		/////////////////////////////////////////////////////////////////
-		glm::mat4 const& boneTransformation = (*data.BoneTransformations)[i];
-		LineShader->setMat4f("boneTransform", boneTransformation);
-		LineShader->setMat4f("model", data.model);
-		glDrawArrays(GL_LINES, 0, 2);
-		/////////////////////////////////////////////////////////////////
-
-		glBindVertexArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		LineShader->UnbindShader();
-		glDeleteVertexArrays(1, &lineVAO);
-		glDeleteBuffers(1, &LineVBO);
+		//call recursive function for child
+		DrawBoneToChildren(map, child, origin + d, data);
 	}
+}
+
+
+void DeferredRenderer::DrawLineSegment(glm::vec3 const& orig, 
+	glm::vec3 const& d, glm::mat4 const& model) 
+{
+	float vertices[8] =
+	{
+		orig.x, orig.y, orig.z, 1.0f,
+		orig.x + d.x, orig.y + d.y, orig.z + d.z, 1.0f
+	};
+
+	GLuint lineVAO, LineVBO = static_cast<unsigned>(-1);
+	glGenVertexArrays(1, &lineVAO);
+	glGenBuffers(1, &LineVBO);
+	LineShader->UseShader();
+	int num_verts = 2;
+
+	glBindVertexArray(lineVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, LineVBO);
+	glBufferData(GL_ARRAY_BUFFER, num_verts * 4 * sizeof(float), vertices, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	//Draw
+	LineShader->setMat4f("model", model);
+	glDrawArrays(GL_LINES, 0, 2);
+
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	LineShader->UnbindShader();
+	glDeleteVertexArrays(1, &lineVAO);
+	glDeleteBuffers(1, &LineVBO);
+}
+//------------------------------------------------------------------
+
+
+//Skydome creation
+void DeferredRenderer::CreateSkydome(HDRImageDesc const& hdrTexDesc,
+	HDRImageDesc const& irradianceDesc)
+{
+	//Create openGlTexture
+	GLuint tex = genHDRTexHandle(hdrTexDesc);
+	GLuint irr = genHDRTexHandle(irradianceDesc);
+
+	//Set initial stuff for skydome
+	SkyDome *sky = new SkyDome();
+	sky->geometry = new PolarPlane(32);
+	sky->shader = new Shader("Sky.vert", "Sky.frag");
+	sky->shader->BindUniformBlock("test_gUBlock", 1);
+	
+	//sky->irradiance = tex;
+	//sky->texture = irr;
+	sky->irradiance = irr;
+	sky->texture = tex;
+	
+	//Pass to the camera
+	this->initCamera();
+	this->currentCamera->SetSkydome(sky);
 }

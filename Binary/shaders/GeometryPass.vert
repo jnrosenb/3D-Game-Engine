@@ -42,21 +42,37 @@ out VS_OUT
 void main()
 {
 	vec4 localPos = vec4(0, 0, 0, 1);
+	vec4 localN = vec4(0, 0, 0, 1);
 	if(bonesInd[0] == -1)
+	{
 		localPos = position;
+		localN = normal;
+	}
 	if(bonesInd[0] != -1)
+	{
 		localPos += boneWgts[0] * BoneTransf[bonesInd.x] * position;
+		localN += boneWgts[0] * BoneTransf[bonesInd.x] * normal;
+	}
 	if(bonesInd[1] != -1)
+	{
 		localPos += boneWgts[1] * BoneTransf[bonesInd.y] * position;
+		localN += boneWgts[1] * BoneTransf[bonesInd.y] * normal;
+	}
 	if(bonesInd[2] != -1)
+	{
 		localPos += boneWgts[2] * BoneTransf[bonesInd.z] * position;
+		localN += boneWgts[2] * BoneTransf[bonesInd.z] * normal;
+	}
 	if(bonesInd[3] != -1)
+	{
 		localPos += boneWgts[3] * BoneTransf[bonesInd.w] * position;
+		localN += boneWgts[3] * BoneTransf[bonesInd.w] * normal;
+	}
 
 	worldPos = model * localPos;
 	gl_Position = ProjView * worldPos;
 	
-	normalIn = normalModel * normal;
+	normalIn = normalModel * localN;
 	texCoords = uv;
 	view_dir = eye - worldPos;
 };

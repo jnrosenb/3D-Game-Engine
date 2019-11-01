@@ -4,7 +4,6 @@
 #include "ForwardRenderer.h"
 
 #include "RenderTarget.h"
-#include "Shader.h"
 #include "Camera.h"
 #include "Sphere.h"
 

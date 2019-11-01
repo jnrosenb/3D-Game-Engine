@@ -2,9 +2,11 @@
 
 #include "ResourceManager.h"
 #include <iostream>
+#include <assert.h>
 
 #include "../External/Includes/SDL2/SDL_surface.h"
 #include "../External/Includes/SDL2/SDL_image.h"
+#include "../External/Includes/stbImage/stb_image.h"
 
 
 
@@ -97,4 +99,37 @@ SDL_Surface *ResourceManager::loadSurface(std::string path)
 	}
 
 	return pSurface;
+}
+
+
+HDRImageDesc ResourceManager::loadHDR(std::string path)
+{
+	path = HDRDir + path;
+	auto iter = mHDRTextures.find(path);
+	if (iter == mHDRTextures.end())
+	{
+		std::cout << "HDR Image not loaded yet. Proceeding to load." << std::endl;
+
+		HDRImageDesc desc = {};
+		desc.name = path;
+		stbi_set_flip_vertically_on_load(true);
+		desc.data = stbi_loadf(path.c_str(), &desc.width, &desc.height, &desc.nComponents, 0);
+		if (desc.data)
+		{
+			std::cout << "HDR Image loaded succesfully. Adding to HDRDescriptor dictionary." << std::endl;
+			mHDRTextures[path] = desc;
+			return desc;
+		}
+		else
+		{
+			std::cout << "Load failed." << std::endl;
+			assert(1);
+			return HDRImageDesc();
+		}
+	}
+	else
+	{
+		std::cout << "HDR Image was already loaded. Proceeding to return descriptor." << std::endl;
+		return iter->second;
+	}
 }

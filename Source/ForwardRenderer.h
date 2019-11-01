@@ -19,8 +19,6 @@
 
 
 //Forward decl
-class Shader;
-class Mesh;
 class Camera;
 class RenderTarget;
 

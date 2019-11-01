@@ -79,6 +79,34 @@ public:
 			}
 		}
 
+		//SKYBOX
+		if (d.HasMember("Skydome"))
+		{
+			Value& v = d["Skydome"];
+			assert(v.IsObject());
+
+			std::string hdrtex = "";
+			std::string hdrirr = "";
+
+			if (v.HasMember("Texture")) 
+			{
+				const Value& acc = v["Texture"];
+				assert(acc.IsString());
+				hdrtex = acc.GetString();
+			}
+			if (v.HasMember("Irradiance"))
+			{
+				const Value& acc = v["Irradiance"];
+				assert(acc.IsString());
+				hdrirr = acc.GetString();
+			}
+
+			//Create the skydome obj and keep it in renderer
+			HDRImageDesc descTex = resMgr->loadHDR(hdrtex);
+			HDRImageDesc descIrr = resMgr->loadHDR(hdrirr);
+			renderer->CreateSkydome(descTex, descIrr);
+		}
+
 		//ALSO, LIGHT INFORMATION
 		if (d.HasMember("Lights")) 
 		{
@@ -257,6 +285,14 @@ public:
 					SDL_Surface *surf = resMgr->loadSurface(diffuseTexture);
 					renderer->generateTextureFromSurface(surf, diffuseTexture);
 					render->diffuseTexture = diffuseTexture;
+				}
+
+				if (attribute.HasMember("diffuse"))
+				{
+					assert(attribute.HasMember("diffuse"));
+					const Value& ac4 = attribute["diffuse"];
+					assert(ac4.IsArray());
+					render->diffuseColor = glm::vec4(ac4[0].GetFloat(), ac4[1].GetFloat(), ac4[2].GetFloat(), 1.0f);
 				}
 
 				render->use_loaded_mesh = use_model;

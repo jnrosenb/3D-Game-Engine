@@ -7,9 +7,13 @@
 #include "Model.h"
 #include "Interpolation.h"
 
-//Temporary (while no world exists)
+// TODO Temporary (while no world exists)
 #include "ResourceManager.h"
 extern ResourceManager *resMgr;
+
+// TODO For now, camera will handle all input
+#include "InputManager.h"
+extern InputManager *inputMgr;
 
 
 AnimationComponent::AnimationComponent(GameObject *owner) :
@@ -33,18 +37,9 @@ void AnimationComponent::PassAnimationInfo()
 
 void AnimationComponent::DeserializeInit()
 {
-	Render *renderComp = this->m_owner->GetComponent<Render>();
-	std::unordered_map<std::string, Bone> const& boneMap = renderComp->model->boneMap;
-	std::unordered_map<std::string, Animation> const& animMap = renderComp->model->animMap;
-
 	///FOR NOW, HARDCODE THE CURRENT ANIMATION
-	//this->currentAnimation = "Armature|walk";
-	this->currentAnimation = "mixamo.com";
-
-	this->currentTPS = animMap.find(currentAnimation)->second.ticksPerSecond;
-	this->duration = animMap.find(currentAnimation)->second.duration;
-	this->AnimationTime = 0.0f;
-	this->looping = true;
+	//this->SwitchAnimation("Armature|walk");
+	this->SwitchAnimation("mixamo.com");
 
 
 	//SHITTY WAY------------------------------------
@@ -52,8 +47,26 @@ void AnimationComponent::DeserializeInit()
 }
 
 
+void AnimationComponent::SwitchAnimation(std::string clipName, bool loops) 
+{
+	// TODO - This is temporary, should be stuff the anim comp has access to
+	Render *renderComp = this->m_owner->GetComponent<Render>();
+	std::unordered_map<std::string, Bone> const& boneMap = renderComp->model->boneMap;
+	std::unordered_map<std::string, Animation> const& animMap = renderComp->model->animMap;
+
+	this->currentAnimation = clipName;
+	this->currentTPS = animMap.find(currentAnimation)->second.ticksPerSecond;
+	this->duration = animMap.find(currentAnimation)->second.duration;
+	this->AnimationTime = 0.0f;
+	this->looping = loops;
+}
+
+
 void AnimationComponent::Update(float dt)
 {
+	//TODO temporal
+	handleInput(dt);
+
 	//TODO - Cache somehow this, cause it is inneficient
 	Render *renderComp = this->m_owner->GetComponent<Render>();
 	std::unordered_map<std::string, Bone>& boneMap = renderComp->model->boneMap;
@@ -167,6 +180,27 @@ glm::vec3 AnimationComponent::CalculateInterpScale(float AnimationTime, AnimChan
 
 	//If we exit the loop and do not find, just return last key for now
 	return prevKey.scale;
+}
+
+
+
+////////////////////////////////
+////	HANDLE INPUT	    ////
+////////////////////////////////
+void AnimationComponent::handleInput(float dt)
+{
+	if (inputMgr->getKeyPress(SDL_SCANCODE_1))
+	{
+		this->SwitchAnimation("Armature|start", false);
+	}
+	if (inputMgr->getKeyPress(SDL_SCANCODE_2))
+	{
+		this->SwitchAnimation("Armature|walk", true);
+	}
+	if (inputMgr->getKeyPress(SDL_SCANCODE_3))
+	{
+		this->SwitchAnimation("Armature|stop", false);
+	}
 }
 
 

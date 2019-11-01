@@ -6,10 +6,8 @@
 //////////////////////////////////////////
 
 #version 330 core
-uniform sampler2D GBufferPos;
-uniform sampler2D GBufferNormals;
+uniform sampler2D geoDepthBuffer;
 uniform sampler2D GBufferDiffuse;
-uniform sampler2D GBufferSpecGloss;
 
 in vec2 uvs;
 out vec4 frag_color;
@@ -17,5 +15,9 @@ out vec4 frag_color;
 //MAIN
 void main(void) 
 {
-	frag_color = 0.3 * texture(GBufferDiffuse, uvs);
+	float depth = texture(geoDepthBuffer, uvs).x;
+	if (depth >= 1.0)
+		discard;
+
+	frag_color = vec4(0.3 * texture(GBufferDiffuse, uvs).xyz, 1);
 }

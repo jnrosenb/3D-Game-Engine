@@ -32,6 +32,16 @@ InputManager::~InputManager()
 
 void InputManager::update(float dt)
 {
+	///if (ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
+	///{
+	///	SDL_memset(m_Keyboard_Current_State, 0, 512 * sizeof(Uint8));
+	///	SDL_memset(m_Keyboard_Previous_State, 0, 512 * sizeof(Uint8));
+	///	m_Mouse_Current_State = 0;
+	///	m_Mouse_Previous_State = 0;
+	///	m_wheel_y = 0.f;
+	///	return;
+	///}
+
 	//Keyboard update
 	int keyboardLen;
 	Uint8 const *keyboardState = SDL_GetKeyboardState(&keyboardLen);

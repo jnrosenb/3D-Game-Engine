@@ -28,6 +28,7 @@ layout(std140) uniform test_gUBlock
 
 
 uniform sampler2D diffuseTexture;
+uniform vec4 diffuseColor;
 
 
 //INPUT BLOCK
@@ -44,6 +45,7 @@ in VS_OUT
 void main(void) 
 {		
 	diffuse_k = texture(diffuseTexture, texCoords).xyz;
+	diffuse_k += diffuseColor.rgb;
 
 	GBuffer_pos = worldPos;
 	GBuffer_normals = normalIn;
