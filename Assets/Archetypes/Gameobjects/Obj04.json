@@ -13,6 +13,7 @@
       "vertex_id": 0,
       "load_model": false,
       "shader": "Solid",
+      "roughness": 0.5,
       "primitive": "polar",
       "model_name": "Albert.fbx"
     }

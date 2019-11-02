@@ -73,7 +73,7 @@ void AnimationComponent::Update(float dt)
 	std::unordered_map<std::string, Animation> const& animMap = renderComp->model->animMap;
 
 
-	AnimationTime += dt * currentTPS;
+	AnimationTime = 0.0f; // += dt * currentTPS;
 	Animation const& animation = animMap.find(currentAnimation)->second;
 
 	//Loop through the channels, find the interp, and do something with it

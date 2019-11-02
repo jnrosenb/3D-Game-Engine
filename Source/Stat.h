@@ -9,7 +9,7 @@ namespace AuxMath
 	struct HammersleyBlock
 	{
 		int N;
-		std::vector<glm::vec2> pairs;
+		std::vector<glm::vec4> pairs;
 	};
 
 	void genGaussianWeights(int kernelRadius, std::vector<float>& weights);

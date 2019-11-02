@@ -10,12 +10,17 @@
     {
       "id": "render",
       "diffuse": [ 0.0, 0.0, 0.0, 1.0 ],
+      "specular": [ 0.0, 1.0, 1.0, 1.0 ],
       "vertex_id": 0,
       "load_model": true,
       "shader": "Solid",
+      "roughness": 0.001,
+      "metallic": 1.0,
       "primitive": "quad",
       "model_name": "Stable Sword Outward Slash.fbx",
-      "diffuse_texture": "crate.png"
+      "diffuse_texture": "Metal03_col.jpg",
+      "roughness_texture": "Metal03_rgh.jpg",
+      "metallic_texture": "Metal03_met.jpg"
     }
   ]
 }

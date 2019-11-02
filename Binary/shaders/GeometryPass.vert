@@ -30,6 +30,9 @@ uniform mat4 model;
 uniform mat4 normalModel;
 uniform mat4 BoneTransf[MAX_BONES]; //MAX_BONES 100
 
+uniform int xTiling;
+uniform int yTiling;
+
 //OUTPUT BLOCK
 out VS_OUT
 {
@@ -68,11 +71,13 @@ void main()
 		localPos += boneWgts[3] * BoneTransf[bonesInd.w] * position;
 		localN += boneWgts[3] * BoneTransf[bonesInd.w] * normal;
 	}
+	//localPos.w = 1;
+	//localN.w = 1;
 
 	worldPos = model * localPos;
 	gl_Position = ProjView * worldPos;
 	
 	normalIn = normalModel * localN;
-	texCoords = uv;
+	texCoords = vec2(uv.x * xTiling, uv.y * yTiling);
 	view_dir = eye - worldPos;
 };

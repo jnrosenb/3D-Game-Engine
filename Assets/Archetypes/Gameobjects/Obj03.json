@@ -10,9 +10,12 @@
       {
         "id": "render",
         "diffuse": [ 1.0, 0.0, 0.0, 1.0 ],
+        "specular": [ 1.0, 0.0, 1.0, 1.0 ],
         "vertex_id": 0,
         "load_model": true,
         "shader": "Solid",
+        "roughness": 0.2,
+        "metallic": 0.5,
         "primitive": "sphere",
         "model_name": "WalkingBot.fbx",
         "diffuse_texture": "crate.png"

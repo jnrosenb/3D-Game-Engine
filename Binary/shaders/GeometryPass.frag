@@ -7,11 +7,6 @@
 
 #version 330 core
 
-//Just in case I dont have this as uniforms
-vec3 diffuse_k = vec3(1, 0, 1);
-vec3 specular_k = vec3(0, 1, 1);
-int gloss = 100;
-
 
 layout (location = 0) out vec4 GBuffer_pos;
 layout (location = 1) out vec4 GBuffer_normals;
@@ -28,7 +23,13 @@ layout(std140) uniform test_gUBlock
 
 
 uniform sampler2D diffuseTexture;
+uniform sampler2D metallicTexture;
+uniform sampler2D roughnessTexture;
+
 uniform vec4 diffuseColor;
+uniform vec4 specularColor;
+uniform float roughness;
+uniform float metallic;
 
 
 //INPUT BLOCK
@@ -44,12 +45,16 @@ in VS_OUT
 //MAIN
 void main(void) 
 {		
-	diffuse_k = texture(diffuseTexture, texCoords).xyz;
+	vec3 diffuse_k = texture(diffuseTexture, texCoords).xyz;
 	diffuse_k += diffuseColor.rgb;
 
 	GBuffer_pos = worldPos;
 	GBuffer_normals = normalIn;
-	GBuffer_diffk = vec4(diffuse_k, 1.0);
-	GBuffer_speck_gloss = vec4(specular_k, gloss);
+	
+	float metal = max(metallic, texture(metallicTexture, texCoords).x);
+	float rough = max(roughness, texture(roughnessTexture, texCoords).x);
+
+	GBuffer_diffk = vec4(diffuse_k, metal);
+	GBuffer_speck_gloss = vec4(specularColor.xyz, rough);
 }
 

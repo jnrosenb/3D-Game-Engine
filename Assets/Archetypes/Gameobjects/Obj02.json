@@ -10,9 +10,12 @@
       {
         "id": "render",
         "diffuse": [ 1.0, 1.0, 1.0, 1.0 ],
+        "specular": [ 1.0, 1.0, 0.0, 1.0 ],
         "vertex_id": 0,
         "load_model": true,
         "shader": "Solid",
+        "roughness": 1.0,
+        "metallic": 0.0,
         "primitive": "quad",
         "model_name": "Grenade Throw.fbx",
         "diffuse_texture": "crate.png"

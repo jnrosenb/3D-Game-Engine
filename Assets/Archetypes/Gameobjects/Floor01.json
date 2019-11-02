@@ -5,16 +5,22 @@
           "id": "transform",
           "position": [0, -2, 0],
           "rotation": [-90, 0, 0],
-          "scale": [300, 300, 1.0]
+          "scale": [ 300, 300, 1.0 ]
       },
       {
         "id": "render",
-        "diffuse": [ 0.2, 0.2, 0.2, 1.0 ],
+        "diffuse": [ 0.95, 0.5, 0.65, 1.0 ],
+        "specular": [ 1.0, 1.0, 1.0, 1.0 ],
         "vertex_id": 0,
         "load_model": false,
+        "roughness": 0.01,
+        "metallic": 0.005,
         "primitive": "quad",
         "model_name": "Sphere.fbx",
-        "diffuse_texture": "floor_04.png"
+        "diffuse_texture": "Bricks_diff.jpg",
+        "roughness_texture": "Bricks_rgh.jpg",
+        "x_tiling": 50,
+        "y_tiling": 50
       }
     ]
 }

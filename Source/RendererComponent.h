@@ -41,16 +41,28 @@ private:
 	virtual void initShader();
 	virtual void initModel();
 
+	void SetClampedRoughness(float r);
+
 public:	//TODO - Change for a public interface
-	//TODO - Replace for model
+	
 	Model *model = NULL;
 	std::string modelPath;
 	std::string ShaderName;
-	std::string diffuseTexture;
 	glm::vec4 diffuseColor;
+	glm::vec4 specularColor;
 	bool use_loaded_mesh;
 	std::string primitive;
 	Mesh *mesh = NULL;
-	//TODO - Replace for material
 	Shader *shader = NULL;
+
+	//maps
+	std::string diffuseTexture;
+	std::string roughnessTex;
+	std::string metallicTex;
+
+	int xTiling, yTiling;
+
+	//PBR-IBL params
+	float roughness;
+	float metallic;
 };

@@ -43,13 +43,15 @@ namespace AuxMath
 		{
 			float u = 0.0f;
 			float p = 0.0f;
-			for (p = 0.5f, kk = k; kk; p *= 0.5f, kk >>= 1) 
+			for (p = 0.5f, kk = k; kk; p *= 0.5f, kk >>= 1)
+			{
 				if (kk & 1)
 					u += p;
-			float v = (k + 0.5) / N;
-
-			glm::vec2 pair(u, v); 
-			pair = glm::normalize(pair);
+			}
+			if (N == 0)
+				continue;
+			float v = (k + 0.5f) / N;
+			glm::vec4 pair(u, v, 0, 0); 
 			block->pairs.push_back(pair);
 		}
 	}

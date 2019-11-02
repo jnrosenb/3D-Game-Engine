@@ -25,6 +25,14 @@ Render::Render(GameObject *owner) :
 {
 	//In case it is not overrided
 	this->ShaderName = "Solid";
+
+	//For some vars which may or may not be defined in json
+	SetClampedRoughness(1.0f);
+	this->metallic = 0.0f;
+	this->specularColor = glm::vec4(1);
+	this->diffuseColor = glm::vec4(1);
+	xTiling = 1;
+	yTiling = 1;
 }
 
 Render::~Render()
@@ -55,9 +63,19 @@ void Render::Update(float dt)
 	data.shader = shader;
 	data.model = T->GetModel();
 	data.normalsModel = T->GetNormalModel();
+	
 	data.diffuseTexture = renderer->GetTexture(this->diffuseTexture);
+	data.roughnessTexture = renderer->GetTexture(this->roughnessTex);
+	data.metallicTexture = renderer->GetTexture(this->metallicTex);
+	
+	data.roughness = this->roughness;
+	data.metallic = this->metallic;
+
+	data.xTiling = this->xTiling;
+	data.yTiling = this->yTiling;
 	
 	data.diffuseColor = this->diffuseColor;
+	data.specularColor = this->specularColor;
 
 	//Bones experiment SHITTY WAY
 	if (Anim) 
@@ -115,6 +133,18 @@ void Render::initModel()
 		else if (this->primitive == "polar")
 			this->model->meshes.push_back(new PolarPlane(64));
 	}
+}
+
+
+
+void Render::SetClampedRoughness(float r)
+{
+	if (r < 0.0001f)
+		this->roughness = 0.0001f;
+	else if (r > 1.0f)
+		this->roughness = 1.0f;
+	else
+		this->roughness = r;
 }
 
 

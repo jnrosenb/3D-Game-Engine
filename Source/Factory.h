@@ -276,6 +276,35 @@ public:
 				assert(ac3.IsString());
 				std::string primitive = ac3.GetString();
 
+
+				if (attribute.HasMember("x_tiling"))
+				{
+					const Value& ac4 = attribute["x_tiling"];
+					assert(ac4.IsInt());
+					render->xTiling = ac4.GetInt();
+				}
+
+				if (attribute.HasMember("y_tiling"))
+				{
+					const Value& ac4 = attribute["y_tiling"];
+					assert(ac4.IsInt());
+					render->yTiling = ac4.GetInt();
+				}
+
+				if (attribute.HasMember("roughness"))
+				{
+					const Value& ac4 = attribute["roughness"];
+					assert(ac4.IsFloat());
+					render->SetClampedRoughness(ac4.GetFloat());
+				}
+
+				if (attribute.HasMember("metallic"))
+				{
+					const Value& ac4 = attribute["metallic"];
+					assert(ac4.IsFloat());
+					render->metallic = ac4.GetFloat();
+				}
+
 				if (attribute.HasMember("diffuse_texture")) 
 				{
 					const Value& ac4 = attribute["diffuse_texture"];
@@ -283,8 +312,36 @@ public:
 					std::string diffuseTexture = ac4.GetString();
 					
 					SDL_Surface *surf = resMgr->loadSurface(diffuseTexture);
-					renderer->generateTextureFromSurface(surf, diffuseTexture);
+					renderer->generateTextureFromSurface(surf, diffuseTexture, 5);
 					render->diffuseTexture = diffuseTexture;
+				}
+
+				if (attribute.HasMember("roughness_texture"))
+				{
+					const Value& ac4 = attribute["roughness_texture"];
+					assert(ac4.IsString());
+					std::string roughnessTexture = ac4.GetString();
+
+					SDL_Surface *surf = resMgr->loadSurface(roughnessTexture);
+					renderer->generateTextureFromSurface(surf, roughnessTexture, 5);
+					render->roughnessTex = roughnessTexture;
+
+					//This is so its not considered in shader
+					render->roughness = -1.0f;
+				}
+
+				if (attribute.HasMember("metallic_texture"))
+				{
+					const Value& ac4 = attribute["metallic_texture"];
+					assert(ac4.IsString());
+					std::string metallicTexture = ac4.GetString();
+
+					SDL_Surface *surf = resMgr->loadSurface(metallicTexture);
+					renderer->generateTextureFromSurface(surf, metallicTexture, 5);
+					render->metallicTex = metallicTexture;
+
+					//This is so its not considered in shader
+					render->metallic = -1.0f;
 				}
 
 				if (attribute.HasMember("diffuse"))
@@ -293,6 +350,14 @@ public:
 					const Value& ac4 = attribute["diffuse"];
 					assert(ac4.IsArray());
 					render->diffuseColor = glm::vec4(ac4[0].GetFloat(), ac4[1].GetFloat(), ac4[2].GetFloat(), 1.0f);
+				}
+
+				if (attribute.HasMember("specular"))
+				{
+					assert(attribute.HasMember("specular"));
+					const Value& ac4 = attribute["specular"];
+					assert(ac4.IsArray());
+					render->specularColor = glm::vec4(ac4[0].GetFloat(), ac4[1].GetFloat(), ac4[2].GetFloat(), 1.0f);
 				}
 
 				render->use_loaded_mesh = use_model;

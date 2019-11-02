@@ -241,11 +241,22 @@ void Camera::handleInput(float dt)
 	//TOGGLE SKELETON DRAWING
 	if (inputMgr->getKeyTrigger(SDL_SCANCODE_Q))
 	{
-		renderer->DrawSkeleton = !renderer->DrawSkeleton;
+		if (renderer->anisoLevel > 0.0f)
+			renderer->anisoLevel--;
+		std::cout << "ANISO LEVEL NOW" << renderer->anisoLevel << std::endl;
 	}
 	if (inputMgr->getKeyTrigger(SDL_SCANCODE_E))
 	{
-		renderer->DrawSkin = !renderer->DrawSkin;
+		if (renderer->anisoLevel < renderer->GetMaxAnisotropicLevel())
+			renderer->anisoLevel++;
+		std::cout << "ANISO LEVEL NOW" << renderer->anisoLevel << std::endl;
+	}
+
+	//MSAA ON
+	if (inputMgr->getKeyTrigger(SDL_SCANCODE_T))
+	{
+		renderer->ToggleMSAA();
+		std::cout << "MSAA ON: " << renderer->IsMSAAOn() << std::endl;
 	}
 
 

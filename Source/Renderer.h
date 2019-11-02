@@ -59,11 +59,12 @@ struct SkyDome
 	Shader *shader;
 	GLuint texture;
 	GLuint irradiance;
+	int specularMipmap;
 	glm::mat4 model;
 
-	SkyDome() : geometry(0), shader(0), 
+	SkyDome(int SpecMipmaps) : geometry(0), shader(0),
 		texture(-1), irradiance(-1), 
-		model(glm::mat4(1))
+		model(glm::mat4(1)), specularMipmap(SpecMipmaps)
 	{}
 
 	~SkyDome()
@@ -99,9 +100,22 @@ struct DrawData
 	glm::mat4 model;
 	glm::mat4 normalsModel;
 	glm::vec4 diffuseColor;
+	glm::vec4 specularColor;
 	std::vector<Mesh*> *meshes;
 	Shader *shader;
+
+	//Maps
 	GLuint diffuseTexture;
+	GLuint roughnessTexture;
+	GLuint metallicTexture;
+
+	//PBR PARAMS
+	float roughness;
+	float metallic;
+
+	//tiling
+	int xTiling;
+	int yTiling;
 
 	unsigned boneCount;
 	std::unordered_map<std::string, Bone> *BoneMap; //Only for debug drawing, temporary
@@ -120,7 +134,15 @@ public:
 //PUBLIC INTERFACE
 public:
 	Renderer() : lightCount(0)
-	{}
+	{
+		//ANISO TODO - find how to move from here to init
+		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &fLargest_aniso);
+		anisoLevel = 0.0f;
+
+		//MSAA
+		msaa = true;
+		glEnable(GL_MULTISAMPLE);
+	}
 	virtual ~Renderer() {}
 
 	//Initialization
@@ -139,16 +161,39 @@ public:
 		//TODO - check wether make it abstract
 	}
 
+	//ANISO
+	float GetMaxAnisotropicLevel() const 
+	{
+		return this->fLargest_aniso;
+	}
+
 	//TEXTURE LOADING
 	virtual GLuint generateTextureFromSurface(SDL_Surface *surface, 
-		std::string key) = 0;
+		std::string key, int mipmaps = 0) = 0;
 	virtual GLuint GetTexture(std::string key) = 0;
+
+	//MSAA
+	void ToggleMSAA() 
+	{
+		if (msaa)
+			glDisable(GL_MULTISAMPLE);
+		else
+			glEnable(GL_MULTISAMPLE);
+		msaa = !msaa;
+	}
+	bool IsMSAAOn() const
+	{
+		return msaa;
+	}
 
 	virtual void Update(float dt) = 0;
 	virtual void Draw() = 0;
 
 //LATER MOVE TO PROTECTED
 public:
+
+	//ANISO
+	float anisoLevel;
 
 	//Bone debug drawing
 	bool DrawSkin;
@@ -186,4 +231,10 @@ protected:
 	float Light_Radius[MAX_LIGHT_COUNT];
 	int lightCount;
 	DirectionalLight sun;
+
+	//ANISO
+	GLfloat fLargest_aniso;
+
+	//MSAA
+	bool msaa;
 };

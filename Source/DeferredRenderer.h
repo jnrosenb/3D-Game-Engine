@@ -16,7 +16,6 @@
 #define VIEWPORT_WIDTH						1280
 #define VIEWPORT_HEIGHT						720
 #define MAX_NUMBER_TEXTURES					512			//Arbitrary value
-#define MAX_SPECULAR_IBL_SAMPLES			100			//Arbitrary number
 
 
 //Forward decl
@@ -55,8 +54,9 @@ public:
 		HDRImageDesc const& irradianceDesc) override;
 
 	//TEXTURE LOADING
-	GLuint generateTextureFromSurface(SDL_Surface *surface, std::string key);
-	GLuint genHDRTexHandle(HDRImageDesc const& desc);
+	GLuint generateTextureFromSurface(SDL_Surface *surface, std::string key, 
+		int mipmapLevels = 0);
+	GLuint genHDRTexHandle(HDRImageDesc const& desc, int mipmapLevels = 0);
 	GLuint GetTexture(std::string key);
 
 	virtual void Update(float dt);

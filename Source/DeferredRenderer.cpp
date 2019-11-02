@@ -17,7 +17,8 @@
 
 #define DEBUGGING_PASS				0
 #define KERNEL_FILTER_COUNT			100
-#define SPECULAR_SAMPLES			1
+#define MAX_SPECULAR_IBL_SAMPLES	64			//Arbitrary number
+#define SPECULAR_SAMPLES			20
 
 
 DeferredRenderer::DeferredRenderer() :
@@ -136,14 +137,14 @@ void DeferredRenderer::initUniformBufferObjects()
 
 	// IBL SPECULAR LOW DISCREPANCY PAIRS (layout)-----------------------
 	index = 0;
-	// int					// 0  -  4
-	// vec2 array[100]		// 4  -  4 + 16 * MAX_SPECULAR_IBL_SAMPLES
+	// int					// 0   -  16
+	// vec2 array[100]		// 16  -  4 + 16 * MAX_SPECULAR_IBL_SAMPLES
 
 	// 1- Generate buffer and bind
 	glGenBuffers(1, &this->ubo_IBLSpecular);
 	glBindBuffer(GL_UNIFORM_BUFFER, this->ubo_IBLSpecular);
 	//Allocate gpu space
-	size = 4 + 16 * MAX_SPECULAR_IBL_SAMPLES;
+	size = 16 + 16 * MAX_SPECULAR_IBL_SAMPLES;
 	glBufferData(GL_UNIFORM_BUFFER, size, NULL, GL_STATIC_DRAW);
 	//Map to an index
 	glBindBufferBase(GL_UNIFORM_BUFFER, index, this->ubo_IBLSpecular);
@@ -186,8 +187,23 @@ void DeferredRenderer::Draw()
 	//Passing the IBL specular low discrepancy pairs
 	UniformBlockBind(this->ubo_IBLSpecular);
 	UniformBlockPassData(this->ubo_IBLSpecular, 0, &(specularBlock->N));
-	UniformBlockPassData(this->ubo_IBLSpecular, 4, specularBlock->N, &(specularBlock->pairs[0]));
+	UniformBlockPassData(this->ubo_IBLSpecular, 16, specularBlock->N, &(specularBlock->pairs[0]));
 	UniformBlockUnbind();
+
+	//----------------------------------------
+	/// glm::vec3 r = glm::vec3(0.5f, 1.0f, -0.4f);
+	/// glm::vec3 up = glm::normalize(r);											// Y axis in rot
+	/// glm::vec3 forward = glm::normalize(glm::cross(up, glm::vec3(0, 1, 0)));		// Z axis in rot
+	/// glm::vec3 right = glm::normalize(glm::cross(up, forward));					// X axis in rot
+	/// glm::mat3 rot;
+	/// rot[0] = right;
+	/// rot[1] = up;
+	/// rot[2] = forward;
+	/// glm::vec3 test01 = glm::vec3(0, 0.5f, 0);
+	/// glm::vec3 res = rot * test01;
+	/// res = glm::normalize(res);
+	/// int a = 243;
+	//----------------------------------------
 
 
 	//*GEOMETRY PASS
@@ -202,27 +218,27 @@ void DeferredRenderer::Draw()
 	//Draw skydome
 	SkydomePass();
 
-	/*-------------------------------------------------------------*\
-															   ---	|
-	//SHADOW MAP PASS										   ---	|
-	FilteredShadowPass();									   ---	|
-															   ---	|
-															   ---	|
-	//MULTIPLE POINT LIGHT PASS (Back to default framebuffer)  ---	|
-	MultiplePointLightPass(projView);						   ---	|
-															   ---	|
-															   ---	|
-	//BONE DEBUG SHIT										   ---	|
-	#if DEBUGGING_PASS										   ---	|
-	if (DrawSkeleton) 										   ---	|
-	{														   ---	|
-		for (int i = 0; i < graphicQueue.size(); ++i)		   ---	|
-			if (graphicQueue[i].boneCount > 0)				   ---	|
-				DebugDrawSkeleton(graphicQueue[i]);			   ---	|
-	}														   ---	|
-	#endif													   ---  |
-															   ---  |
-	//-------------------------------------------------------------*/
+	//---------------------------------------------------------
+															   
+	//SHADOW MAP PASS										   
+	FilteredShadowPass();									   
+															   
+															   
+	//MULTIPLE POINT LIGHT PASS (Back to default framebuffer)  
+	MultiplePointLightPass(projView);						   
+															   
+															   
+	//BONE DEBUG SHIT										   
+	#if DEBUGGING_PASS										   
+	if (DrawSkeleton) 										   
+	{														   
+		for (int i = 0; i < graphicQueue.size(); ++i)		   
+			if (graphicQueue[i].boneCount > 0)				   
+				DebugDrawSkeleton(graphicQueue[i]);			   
+	}														   
+	#endif													   
+															   
+	//---------------------------------------------------------
 
 
 	//Empty both graphics queues
@@ -265,7 +281,7 @@ void DeferredRenderer::GeometryPass()
 				continue;
 		}
 
-		for (int j = 0; j < data.meshes->size(); ++j) 
+		for (int j = 0; j < data.meshes->size(); ++j)
 		{
 			//BINDING
 			(*data.meshes)[j]->BindForDraw();
@@ -273,9 +289,27 @@ void DeferredRenderer::GeometryPass()
 			//UNIFORM BINDING
 			geometryPassShader->setMat4f("model", graphicQueue[i].model);
 			geometryPassShader->setMat4f("normalModel", graphicQueue[i].normalsModel);
+
 			geometryPassShader->setTexture("diffuseTexture", graphicQueue[i].diffuseTexture, 0);
+			
+			//Roughness and metallic
+			if (graphicQueue[i].metallic == -1.0f)
+			{
+				geometryPassShader->setTexture("metallicTexture", graphicQueue[i].metallicTexture, 1);
+			}
+			if (graphicQueue[i].roughness == -1.0f)
+			{
+				geometryPassShader->setTexture("roughnessTexture", graphicQueue[i].roughnessTexture, 2);
+			}			
+			geometryPassShader->setFloat("roughness", graphicQueue[i].roughness);
+			geometryPassShader->setFloat("metallic", graphicQueue[i].metallic);
+
+			geometryPassShader->setVec4f("specularColor", graphicQueue[i].specularColor.r,
+				graphicQueue[i].specularColor.g, graphicQueue[i].specularColor.b, graphicQueue[i].specularColor.a);
 			geometryPassShader->setVec4f("diffuseColor", graphicQueue[i].diffuseColor.r, 
 				graphicQueue[i].diffuseColor.g, graphicQueue[i].diffuseColor.b, graphicQueue[i].diffuseColor.a);
+			geometryPassShader->setInt("xTiling", graphicQueue[i].xTiling);
+			geometryPassShader->setInt("yTiling", graphicQueue[i].yTiling);
 
 			//DRAW
 			int faceCount = (*data.meshes)[j]->GetFaceCount();
@@ -347,6 +381,8 @@ void DeferredRenderer::AmbientIBLPass()
 	IBLShader->setTexture("skyMap", currentCamera->GetSkydome()->texture, 4);
 	IBLShader->setTexture("irradianceMap", currentCamera->GetSkydome()->irradiance, 5);
 	IBLShader->setTexture("geoDepthBuffer", GeometryBuffer->depthTexture, 6);
+	//Other uniforms
+	IBLShader->setInt("maxMipmapLevel", currentCamera->GetSkydome()->specularMipmap);
 
 	//DRAW
 	int faceCount = FSQ->GetFaceCount();
@@ -639,7 +675,7 @@ GLuint DeferredRenderer::GetTexture(std::string key)
 }
 
 
-GLuint DeferredRenderer::generateTextureFromSurface(SDL_Surface *surface, std::string key)
+GLuint DeferredRenderer::generateTextureFromSurface(SDL_Surface *surface, std::string key, int mipmapLevels)
 {
 	//First check if the map has the texture
 	GLint mTexture = texturesDict[key];
@@ -656,11 +692,27 @@ GLuint DeferredRenderer::generateTextureFromSurface(SDL_Surface *surface, std::s
 			std::cout << "LOADING TEXTURE IS RGBA MODE" << std::endl;
 		}
 
-		glTexImage2D(GL_TEXTURE_2D, 0, mode, (*surface).w, (*surface).h, 0, mode, GL_UNSIGNED_BYTE, (*surface).pixels);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		// NEW WAY
+		for (int i = 0; i <= mipmapLevels; ++i)
+		{
+			glTexImage2D(GL_TEXTURE_2D, i, mode, (*surface).w, (*surface).h, 0, mode, GL_UNSIGNED_BYTE, 
+				(*surface).pixels);
+
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, this->anisoLevel);
+		}
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		// OLD WAY
+		///glTexImage2D(GL_TEXTURE_2D, 0, mode, (*surface).w, (*surface).h, 0, mode, GL_UNSIGNED_BYTE, (*surface).pixels);
+		///glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		///glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		///glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		///glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); 
+		///glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, this->anisoLevel);
 
 		++numberOfTexturesLoaded;
 		texturesDict[key] = textures[numberOfTexturesLoaded - 1];
@@ -671,8 +723,7 @@ GLuint DeferredRenderer::generateTextureFromSurface(SDL_Surface *surface, std::s
 }
 
 
-
-GLuint DeferredRenderer::genHDRTexHandle(HDRImageDesc const& desc)
+GLuint DeferredRenderer::genHDRTexHandle(HDRImageDesc const& desc, int mipmapLevels)
 {
 	//First check if the map has the texture
 	GLint mTexture = texturesDict[desc.name];
@@ -681,12 +732,20 @@ GLuint DeferredRenderer::genHDRTexHandle(HDRImageDesc const& desc)
 	{
 		glGenTextures(1, textures + numberOfTexturesLoaded);
 		glBindTexture(GL_TEXTURE_2D, textures[numberOfTexturesLoaded]);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, desc.width, desc.height, 0, GL_RGB, GL_FLOAT, desc.data);
+		for (int i = 0; i <= mipmapLevels; ++i) 
+		{
+			glTexImage2D(GL_TEXTURE_2D, i, GL_RGB16F, desc.width, desc.height, 0, GL_RGB, GL_FLOAT, desc.data);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		}
+		glGenerateMipmap(GL_TEXTURE_2D);
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		///glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		///glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		///glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		///glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		++numberOfTexturesLoaded;
 		texturesDict[desc.name] = textures[numberOfTexturesLoaded - 1];
@@ -833,11 +892,12 @@ void DeferredRenderer::CreateSkydome(HDRImageDesc const& hdrTexDesc,
 	HDRImageDesc const& irradianceDesc)
 {
 	//Create openGlTexture
-	GLuint tex = genHDRTexHandle(hdrTexDesc);
+	int mipmaps = 5;
+	GLuint tex = genHDRTexHandle(hdrTexDesc, mipmaps);
 	GLuint irr = genHDRTexHandle(irradianceDesc);
 
 	//Set initial stuff for skydome
-	SkyDome *sky = new SkyDome();
+	SkyDome *sky = new SkyDome(mipmaps);
 	sky->geometry = new PolarPlane(32);
 	sky->shader = new Shader("Sky.vert", "Sky.frag");
 	sky->shader->BindUniformBlock("test_gUBlock", 1);
