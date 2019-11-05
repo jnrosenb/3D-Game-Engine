@@ -35,7 +35,7 @@ LoadedMesh::LoadedMesh
 	Load_Faces(faces);
 
 	//Normal map
-	///Load_Tangents_and_Bitangents(tangents, bitangents);
+	Load_Tangents_and_Bitangents(tangents, bitangents);
 	
 	//Bone information loading
 	Load_BoneIndices(bones_indices);
@@ -115,6 +115,9 @@ void LoadedMesh::Load_BoneIndices(std::vector<std::vector<int>> const& indices)
 		case 4:
 			ind = glm::ivec4(index[0], index[1], index[2], index[3]);
 			break;
+		default:
+			ind = glm::ivec4(index[0], index[1], index[2], index[3]);
+			break;
 		};
 
 		///if (index_count == 0)
@@ -136,6 +139,7 @@ void LoadedMesh::Load_BoneWeights(std::vector<std::vector<float>> const& weights
 {
 	for (std::vector<float> const& weight : weights)
 	{
+		
 		unsigned weight_count = weight.size();
 		glm::vec4 wgts = glm::vec4(0);
 
@@ -156,14 +160,24 @@ void LoadedMesh::Load_BoneWeights(std::vector<std::vector<float>> const& weights
 		case 4:
 			wgts = glm::vec4(weight[0], weight[1], weight[2], weight[3]);
 			break;
+		default:
+			float sum = weight[0] + weight[1] + weight[2] + weight[3];
+			wgts = glm::vec4(weight[0] / sum, weight[1] / sum, weight[2] / sum, weight[3] / sum);
+			break;
 		};
 
 		this->boneWeights.push_back(wgts);
 		///this->boneWeights.push_back(glm::normalize(wgts));
+
+		/// if (weight_count > 0 && 
+		/// 	abs((wgts.x + wgts.y + wgts.z + wgts.w) - 1.0f) >= 0.00001f)
+		/// {
+		/// 	int a = 234;
+		/// }
 	}
 }
 
-/*
+
 void LoadedMesh::Load_Tangents_and_Bitangents(std::vector<glm::vec4> &tangents, 
 	std::vector<glm::vec4> &bitangents)
 {
@@ -172,8 +186,9 @@ void LoadedMesh::Load_Tangents_and_Bitangents(std::vector<glm::vec4> &tangents,
 		m_tangents.push_back(tangents[i]);
 		m_bitangents.push_back(bitangents[i]);
 	}
+
+	passTangentSpaceInfo = true;
 }
-//*/
 
 ////////////////////////////
 ////	OVERRIDES		////

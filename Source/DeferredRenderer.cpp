@@ -291,7 +291,6 @@ void DeferredRenderer::GeometryPass()
 			geometryPassShader->setMat4f("normalModel", graphicQueue[i].normalsModel);
 
 			geometryPassShader->setTexture("diffuseTexture", graphicQueue[i].diffuseTexture, 0);
-			
 			//Roughness and metallic
 			if (graphicQueue[i].metallic == -1.0f)
 			{
@@ -303,6 +302,8 @@ void DeferredRenderer::GeometryPass()
 			}			
 			geometryPassShader->setFloat("roughness", graphicQueue[i].roughness);
 			geometryPassShader->setFloat("metallic", graphicQueue[i].metallic);
+
+			geometryPassShader->setTexture("normalMap", graphicQueue[i].normalMap, 3);
 
 			geometryPassShader->setVec4f("specularColor", graphicQueue[i].specularColor.r,
 				graphicQueue[i].specularColor.g, graphicQueue[i].specularColor.b, graphicQueue[i].specularColor.a);

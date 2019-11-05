@@ -108,6 +108,7 @@ struct DrawData
 	GLuint diffuseTexture;
 	GLuint roughnessTexture;
 	GLuint metallicTexture;
+	GLuint normalMap;
 
 	//PBR PARAMS
 	float roughness;

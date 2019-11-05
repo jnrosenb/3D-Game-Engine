@@ -65,7 +65,7 @@ void Transform::Update(float dt)
 		invH[0][0] = 1.0f / H[0][0];
 		invH[1][1] = 1.0f / H[1][1];
 		invH[2][2] = 1.0f / H[2][2];
-		this->normalsModel = R * invH;// glm::transpose(R) * invH; // TODO - Which one to use??? 
+		this->normalsModel = R;// glm::transpose(R) * invH; // TODO - Which one to use??? 
 	}
 
 	needToRecalculateModel = 0;

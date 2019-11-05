@@ -13,7 +13,7 @@
         "vertex_id": 0,
         "load_model": true,
         "primitive": "quad",
-        "model_name": "stanford-bunny.fbx",
+        "model_name": "material_sphere.fbx",
         "diffuse_texture": "crate.png"
       }
     ]

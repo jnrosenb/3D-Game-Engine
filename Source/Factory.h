@@ -344,6 +344,17 @@ public:
 					render->metallic = -1.0f;
 				}
 
+				if (attribute.HasMember("normal_map"))
+				{
+					const Value& ac4 = attribute["normal_map"];
+					assert(ac4.IsString());
+					std::string normalMap = ac4.GetString();
+
+					SDL_Surface *surf = resMgr->loadSurface(normalMap);
+					renderer->generateTextureFromSurface(surf, normalMap, 5);
+					render->normalMap = normalMap;
+				}
+
 				if (attribute.HasMember("diffuse"))
 				{
 					assert(attribute.HasMember("diffuse"));

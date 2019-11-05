@@ -16,7 +16,8 @@ layout(location = 1) in vec4 normal;
 layout(location = 2) in vec2 uv;
 layout(location = 3) in ivec4 bonesInd;
 layout(location = 4) in vec4 boneWgts;
-// (5), (6) will be tgs and bitgs
+layout (location = 5) in vec4 tangents;
+layout (location = 6) in vec4 bitangents;
 
 
 layout(std140) uniform test_gUBlock
@@ -38,14 +39,14 @@ out VS_OUT
 {
 	vec4 worldPos;
 	vec4 normalIn;
-	vec4 view_dir;
 	vec2 texCoords;
+	mat3 TBN;
 };
 
 void main()
 {
 	vec4 localPos = vec4(0, 0, 0, 1);
-	vec4 localN = vec4(0, 0, 0, 1);
+	vec4 localN = vec4(0, 0, 0, 0);
 	if(bonesInd[0] == -1)
 	{
 		localPos = position;
@@ -71,13 +72,21 @@ void main()
 		localPos += boneWgts[3] * BoneTransf[bonesInd.w] * position;
 		localN += boneWgts[3] * BoneTransf[bonesInd.w] * normal;
 	}
-	//localPos.w = 1;
-	//localN.w = 1;
-
+	
 	worldPos = model * localPos;
 	gl_Position = ProjView * worldPos;
+	vec3 N = normalize(localN.xyz);
+	normalIn = normalModel * vec4(N, 0);
 	
-	normalIn = normalModel * localN;
+	//worldPos = model * position;
+	//gl_Position = ProjView * worldPos;
+	//normalIn = normalModel * normal;
+
 	texCoords = vec2(uv.x * xTiling, uv.y * yTiling);
-	view_dir = eye - worldPos;
+
+
+	//TBN matrix for normal mapping (Not handling animation yet)
+	TBN[0] = vec3(normalize(normalModel * tangents));
+	TBN[1] = vec3(normalize(normalModel * bitangents));
+	TBN[2] = vec3(normalize(normalModel * normal));
 };

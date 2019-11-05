@@ -15,10 +15,10 @@ enum vbo_index
 	VERTICES = 0,
 	NORMALS,
 	TEXCOORDS,
-	TANGENTS,
-	BITANGENTS,
 	BONE_INDICES,
 	BONE_WEIGHTS,
+	TANGENTS,
+	BITANGENTS,
 	NUM
 };
 
@@ -29,7 +29,7 @@ class Mesh
 
 //PUBLIC INTERFACE
 public:
-	Mesh() {}
+	Mesh() : passTangentSpaceInfo(false) {}
 	virtual ~Mesh() 
 	{
 		glDeleteVertexArrays(1, &vao);
@@ -95,6 +95,14 @@ protected:
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BONE_WEIGHTS]);
 		glBufferData(GL_ARRAY_BUFFER, GetVertexCount() * 4 * sizeof(GLfloat), &boneWeights[0][0], GL_STATIC_DRAW);
 
+		//NORMAL MAP EXPERIMENT
+		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[TANGENTS]);
+		glBufferData(GL_ARRAY_BUFFER, GetVertexCount() * 4 * sizeof(GLfloat), &m_tangents[0][0], GL_STATIC_DRAW);
+
+		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BITANGENTS]);
+		glBufferData(GL_ARRAY_BUFFER, GetVertexCount() * 4 * sizeof(GLfloat), &m_bitangents[0][0], GL_STATIC_DRAW);
+
+
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->ebo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->GetFaceCount() * sizeof(Mesh::Face), &faces[0][0], GL_STATIC_DRAW);
 
@@ -113,12 +121,22 @@ protected:
 
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BONE_WEIGHTS]);
 		glVertexAttribPointer(4, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
+
+		//NORMAL MAP EXPERIMENT
+		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[TANGENTS]);
+		glVertexAttribPointer(5, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
+
+		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BITANGENTS]);
+		glVertexAttribPointer(6, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
 		
+
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		glEnableVertexAttribArray(2);
 		glEnableVertexAttribArray(3);
 		glEnableVertexAttribArray(4);
+		glEnableVertexAttribArray(5);
+		glEnableVertexAttribArray(6);
 
 		//Unbind Everything
 		glBindVertexArray(0);
@@ -131,6 +149,11 @@ protected:
 	std::vector <glm::vec4> normals;
 	std::vector <glm::vec2> texCoords; //Alignment?
 	std::vector <Mesh::Face> faces;
+
+	//Tangents and bitgts since they are only for loaded mesh
+	std::vector <glm::vec4> m_tangents;
+	std::vector <glm::vec4> m_bitangents;
+	bool passTangentSpaceInfo;
 
 	//Skeletal info
 	std::vector <glm::ivec4> boneIndices;

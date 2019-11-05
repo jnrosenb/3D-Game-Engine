@@ -36,13 +36,14 @@ public:
 
 
 private:
+
+	//Load methods
 	void Load_Vertices(std::vector<glm::vec4> &vertices);
 	void Load_Normals(std::vector<glm::vec4> &normals);
 	void Load_TexCoords(std::vector<glm::vec2> &uvs);
 	void Load_Faces(std::vector<Mesh::Face> &faces);
-	///void Load_Tangents_and_Bitangents(std::vector<glm::vec4> &tangents, 
-	///	std::vector<glm::vec4> &bitangents);
-	//Bone information
+	void Load_Tangents_and_Bitangents(std::vector<glm::vec4> &tangents, 
+		std::vector<glm::vec4> &bitangents);
 	void Load_BoneIndices(std::vector<std::vector<int>> const& indices);
 	void Load_BoneWeights(std::vector<std::vector<float>> const& weights);
 };

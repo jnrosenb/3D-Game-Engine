@@ -70,18 +70,19 @@ void main(void)
 	float roughness = texture(GBufferSpecGloss, uv).w;
 	roughness = 1.0 / pow(roughness, 2.0);
 	float metallic = texture(GBufferDiffuse, uv).w;
+	
+	//Reflection vec
 	vec3 v = normalize((eye - worldPos).xyz);
-
+	vec3 r = 2 * m * pdot(v, m) - v;
 
 	//AMBIENT (Ambient color without IBL)-----------------------------
-	vec3 ambient = 0.05 * diffuse_color;
+	vec3 ambient = 0.25 * diffuse_color;
 
 	//DIFFUSE---------------------------------------------------------
-	vec3 diffuseIrr = ( (1.0 - metallic) * diffuse_color / (2 * PI) ) * GetIrradiance(m);
+	vec3 diffuseIrr = ( pow(1.0 - metallic, 2) * diffuse_color / (PI) ) * GetIrradiance(m);
 
 	//SPECULAR--------------------------------------------------------
 	//Precalculate the rotation matrix
-	vec3 r = 2 * m * pdot(v, m) - v;
 	vec3 up = normalize(r);									// Y axis in rot
 	vec3 forward = cross(up, vec3(0, 1, 0));		// Z axis in rot
 	vec3 right = cross(up, forward);				// X axis in rot
@@ -116,7 +117,13 @@ void main(void)
 
 		//Calculate the specular contribution for this Wk
 		vec3 additionTerm;
+		//float clampedDot = clamp(pdot(v, m), 0.5, 1.0);
+		//float denom = 4 * clampedDot;
 		float denom = 4 * pdot(v, m);
+		if (denom == 0.0)				// TODO- Find out why this happens
+		{								// TODO- Find out why this happens
+			denom = 4 * pdot(-v, m);	// TODO- Find out why this happens
+		}								// TODO- Find out why this happens
 		additionTerm = L_wk * ( Fresnel(wk, H, metallic) * Geometry(m, v, roughness) / denom ); // simplified - Fresnel can use m or H
 		montecarloSum += stepSize * additionTerm;
 	}

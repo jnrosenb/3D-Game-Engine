@@ -20,7 +20,8 @@
       "model_name": "Stable Sword Outward Slash.fbx",
       "diffuse_texture": "Metal03_col.jpg",
       "roughness_texture": "Metal03_rgh.jpg",
-      "metallic_texture": "Metal03_met.jpg"
+      "metallic_texture": "Metal03_met.jpg",
+      "normal_map": "Metal03_nrm.jpg"
     }
   ]
 }

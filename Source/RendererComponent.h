@@ -59,6 +59,7 @@ public:	//TODO - Change for a public interface
 	std::string diffuseTexture;
 	std::string roughnessTex;
 	std::string metallicTex;
+	std::string normalMap;
 
 	int xTiling, yTiling;
 

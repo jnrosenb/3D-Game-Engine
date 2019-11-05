@@ -25,6 +25,7 @@ layout(std140) uniform test_gUBlock
 uniform sampler2D diffuseTexture;
 uniform sampler2D metallicTexture;
 uniform sampler2D roughnessTexture;
+uniform sampler2D normalMap;
 
 uniform vec4 diffuseColor;
 uniform vec4 specularColor;
@@ -37,8 +38,8 @@ in VS_OUT
 {
 	vec4 worldPos;
 	vec4 normalIn;
-	vec4 view_dir;
 	vec2 texCoords;
+	mat3 TBN;
 };
 
 
@@ -46,15 +47,20 @@ in VS_OUT
 void main(void) 
 {		
 	vec3 diffuse_k = texture(diffuseTexture, texCoords).xyz;
-	diffuse_k += diffuseColor.rgb;
+	diffuse_k *= diffuseColor.rgb;
 
 	GBuffer_pos = worldPos;
-	GBuffer_normals = normalIn;
+
+	//Here, normal map experiment
+	vec4 normal_from_rgb = texture(normalMap, texCoords);
+	normal_from_rgb = 2.0 * normal_from_rgb - 1.0; 
+	normal_from_rgb = vec4(TBN * normal_from_rgb.rgb, 0);
+	GBuffer_normals = normal_from_rgb;//normalIn;
 	
 	float metal = max(metallic, texture(metallicTexture, texCoords).x);
 	float rough = max(roughness, texture(roughnessTexture, texCoords).x);
 
-	GBuffer_diffk = vec4(diffuse_k, metal);
+	GBuffer_diffk = vec4(diffuse_k, 1);
 	GBuffer_speck_gloss = vec4(specularColor.xyz, rough);
 }
 

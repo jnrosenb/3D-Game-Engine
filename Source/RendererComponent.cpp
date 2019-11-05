@@ -67,6 +67,7 @@ void Render::Update(float dt)
 	data.diffuseTexture = renderer->GetTexture(this->diffuseTexture);
 	data.roughnessTexture = renderer->GetTexture(this->roughnessTex);
 	data.metallicTexture = renderer->GetTexture(this->metallicTex);
+	data.normalMap = renderer->GetTexture(this->normalMap);
 	
 	data.roughness = this->roughness;
 	data.metallic = this->metallic;
