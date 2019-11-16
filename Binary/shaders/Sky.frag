@@ -22,8 +22,10 @@ out vec4 fragColor;
 
 void main()
 {
-	float exposure = 1;
+	float exposure = 3;
 	vec3 srgbColor = texture2D(skyMap, uv).xyz;
+	
+	//fragColor = vec4(srgbColor, 1);
 	fragColor = vec4(gammaCorrection(exposure, srgbColor), 1);
 }
 

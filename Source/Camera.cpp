@@ -205,23 +205,24 @@ void Camera::handleInput(float dt)
 {
 	float moveSpeed = 50.0f * dt;
 
-	glm::vec4 right = AuxMath::cross(m_look, rup);
-	if (inputMgr->getKeyPress(SDL_SCANCODE_RIGHT) || inputMgr->getKeyPress(SDL_SCANCODE_D))
+	glm::vec4 right = glm::normalize(AuxMath::cross(m_look, rup));
+	if (/*inputMgr->getKeyPress(SDL_SCANCODE_RIGHT) ||  */inputMgr->getKeyPress(SDL_SCANCODE_D))
 	{
 		this->m_eye += moveSpeed * right;
 	}
-	if (inputMgr->getKeyPress(SDL_SCANCODE_LEFT) || inputMgr->getKeyPress(SDL_SCANCODE_A))
+	if (/*inputMgr->getKeyPress(SDL_SCANCODE_LEFT) || */ inputMgr->getKeyPress(SDL_SCANCODE_A))
 	{
 		this->m_eye -= moveSpeed * right;
 	}
-	if (inputMgr->getKeyPress(SDL_SCANCODE_UP) || inputMgr->getKeyPress(SDL_SCANCODE_W))
+	if (/*inputMgr->getKeyPress(SDL_SCANCODE_UP) || */ inputMgr->getKeyPress(SDL_SCANCODE_W))
 	{
 		this->m_eye += moveSpeed * m_look;
 	}
-	if (inputMgr->getKeyPress(SDL_SCANCODE_DOWN) || inputMgr->getKeyPress(SDL_SCANCODE_S))
+	if (/*inputMgr->getKeyPress(SDL_SCANCODE_DOWN) || */ inputMgr->getKeyPress(SDL_SCANCODE_S))
 	{
 		this->m_eye -= moveSpeed * m_look;
 	}
+	/*
 	if (inputMgr->getKeyPress(SDL_SCANCODE_PAGEDOWN))
 	{
 		this->m_eye += moveSpeed * rup;
@@ -230,6 +231,7 @@ void Camera::handleInput(float dt)
 	{
 		this->m_eye -= moveSpeed * rup;
 	}
+	//*/
 
 	//TOGGLE PROJECTION MODE
 	if (inputMgr->getKeyTrigger(SDL_SCANCODE_P))
@@ -250,6 +252,11 @@ void Camera::handleInput(float dt)
 		if (renderer->anisoLevel < renderer->GetMaxAnisotropicLevel())
 			renderer->anisoLevel++;
 		std::cout << "ANISO LEVEL NOW" << renderer->anisoLevel << std::endl;
+	}
+
+	if (inputMgr->getKeyTrigger(SDL_SCANCODE_TAB))
+	{
+		renderer->DrawSkeleton = !renderer->DrawSkeleton;
 	}
 
 	//MSAA ON

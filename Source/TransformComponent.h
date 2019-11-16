@@ -36,6 +36,12 @@ public:
 	void scale(float x, float y, float z);
 	void scale(glm::vec3 const& scale);
 
+	//Global modifiers
+	void SetPosition(glm::vec3 const& newPos);
+	glm::vec4 const& GetPosition() const;
+	glm::vec4 GetForward() const;
+	glm::vec4 GetRight() const;
+
 	//Get the objects model
 	glm::mat4 const & GetModel();
 	glm::mat4 const & GetNormalModel();

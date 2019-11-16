@@ -17,6 +17,7 @@ public:
 	virtual ~GameObject();
 
 	virtual void Update(float dt);
+	virtual void LateUpdate(float dt);
 	//virtual void Draw();
 
 	template <typename T>

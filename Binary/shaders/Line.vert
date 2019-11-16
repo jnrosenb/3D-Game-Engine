@@ -20,5 +20,5 @@ uniform mat4 model;
 
 void main()
 {
-	gl_Position = ProjView * model * position;
+	gl_Position = ProjView * position;
 };

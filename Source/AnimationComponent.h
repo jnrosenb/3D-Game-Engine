@@ -51,6 +51,7 @@ public:
 	//Vector that, for now, will be used to pass info to shader as uniform
 	std::vector<glm::mat4> BoneTransformations;
 
+	float animSpeed;
 
 private:
 	//Animation parameters

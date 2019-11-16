@@ -18,7 +18,10 @@ struct Bone
 
 	glm::mat4 accumTransformation;
 	glm::mat4 vqs;
+
+	//Probably dont need both
 	bool updatedVQS;
+	bool IKUseVQS;
 
 	std::string parent;
 	std::vector<std::string> children;

@@ -14,8 +14,8 @@
         "vertex_id": 0,
         "load_model": true,
         "shader": "Solid",
-        "roughness": 1.0,
-        "metallic": 0.0,
+        "roughness": 0.0001,
+        "metallic": 0.1,
         "primitive": "quad",
         "model_name": "Grenade Throw.fbx",
         "diffuse_texture": "crate.png"

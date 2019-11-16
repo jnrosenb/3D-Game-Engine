@@ -76,14 +76,14 @@ void main(void)
 	vec3 r = 2 * m * pdot(v, m) - v;
 
 	//AMBIENT (Ambient color without IBL)-----------------------------
-	vec3 ambient = 0.25 * diffuse_color;
+	vec3 ambient = 0.3 * diffuse_color;
 
 	//DIFFUSE---------------------------------------------------------
 	vec3 diffuseIrr = ( pow(1.0 - metallic, 2) * diffuse_color / (PI) ) * GetIrradiance(m);
 
 	//SPECULAR--------------------------------------------------------
 	//Precalculate the rotation matrix
-	vec3 up = normalize(r);									// Y axis in rot
+	vec3 up = normalize(r);							// Y axis in rot
 	vec3 forward = cross(up, vec3(0, 1, 0));		// Z axis in rot
 	vec3 right = cross(up, forward);				// X axis in rot
 	mat3 rot;
@@ -174,6 +174,7 @@ vec3 GetIrradiance(vec3 N)
 {	
 	vec2 normalToUV =  vec2(0.5 - atan(N.z, N.x)/(2*PI), acos(N.y)/PI );
 	vec3 irr = texture(irradianceMap, normalToUV).xyz;
+	//return irr;
 	return gammaCorrection(1.0, irr);
 }
 
@@ -202,6 +203,8 @@ vec3 GetSpecular(vec3 Wk, vec3 N, vec3 H, float alpha)
 
 	vec2 WkToUV =  vec2(0.5 - (atan(Wk.z, Wk.x)/(2*PI)), acos(Wk.y)/PI);
 	vec3 specularL = textureLod(skyMap, WkToUV, lod).xyz;				//TODO - actually use lod
+	
+	//return specularL;
 	return gammaCorrection(1.0, specularL);
 }
 

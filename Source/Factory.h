@@ -22,6 +22,8 @@ using namespace rapidjson;
 #include "ResourceManager.h"
 #include "RendererComponent.h"
 #include "TransformComponent.h"
+#include "PathFollowComponent.h"
+#include "IKGoalComponent.h"
 extern GameobjectManager* goMgr;
 extern ResourceManager* resMgr;
 extern Renderer *renderer;
@@ -78,6 +80,11 @@ public:
 				goMgr->AddGameObjects(go);
 			}
 		}
+
+		//LOAD WHITE TEXTURE FOR WHEN NO TEXTURE IS USED
+		///SDL_Surface *surfaceWhite = resMgr->loadSurface("../White.jpg");
+		///renderer->generateTextureFromSurface(surfaceWhite, "../White.jpg", 5);
+		///renderer->WhiteTex = ;
 
 		//SKYBOX
 		if (d.HasMember("Skydome"))
@@ -387,9 +394,70 @@ public:
 
 				render->DeserializeInit();
 			}
+			else if (comp_name == "PathFollow")
+			{
+				PathFollowComponent *pathFollow = go->AddComponent<PathFollowComponent>();
+
+				//ControlPoints
+				if (attribute.HasMember("control_points"))
+				{
+					const Value& acc = attribute["control_points"];
+					assert(acc.IsArray());
+					int count = 0;
+					for (Value::ConstValueIterator itr = acc.Begin(); itr != acc.End(); ++itr)
+					{
+						const rapidjson::Value& attribute = *itr;
+						assert(attribute.IsArray());
+						glm::vec4 point = glm::vec4(attribute[0].GetFloat(), attribute[1].GetFloat(), attribute[2].GetFloat(), 1.0f);
+						pathFollow->m_points.push_back(point);
+					}
+				}
+				pathFollow->DeserializeInit();
+			}
+			else if (comp_name == "ik_goal") 
+			{
+				IKGoalComponent *goalComp = go->AddComponent<IKGoalComponent>();
+
+				//ControlPoints
+				if (attribute.HasMember("end_effectors"))
+				{
+					const Value& acc = attribute["end_effectors"];
+					assert(acc.IsArray());
+					int count = 0;
+					for (Value::ConstValueIterator itr = acc.Begin(); itr != acc.End(); ++itr)
+					{
+						const rapidjson::Value& attribute = *itr;
+						assert(attribute.IsString());
+						goalComp->endEffectorsKeys.push_back(attribute.GetString());
+					}
+				}
+
+				if (attribute.HasMember("start_end_effector"))
+				{
+					const Value& acc = attribute["start_end_effector"];
+					assert(acc.IsString());
+					goalComp->endEffector = acc.GetString();
+				}
+
+				if (attribute.HasMember("start_joint_depth"))
+				{
+					const Value& acc = attribute["start_joint_depth"];
+					assert(acc.IsInt());
+					goalComp->jointDepth = acc.GetInt();
+				}
+
+				if (attribute.HasMember("steps"))
+				{
+					const Value& acc = attribute["steps"];
+					assert(acc.IsInt());
+					goalComp->steps = acc.GetInt();
+				}
+
+				//Call this to end setup
+				goalComp->DeserializeInit();
+			}
 		}
 	}
-
 
 	std::string loadFile(const char *path)
 	{
@@ -435,6 +503,8 @@ public:
 		ComponentTypeMap[TRANSFORM] = new Transform(0);
 		ComponentTypeMap[RENDERER] = new Render(0);
 		ComponentTypeMap[ANIMATION] = new AnimationComponent(0);
+		ComponentTypeMap[PATH_FOLLOW] = new AnimationComponent(0);
+		ComponentTypeMap[IK_GOAL] = new IKGoalComponent(0);
 
 		std::cout << "Created component clone factory" << std::endl;
 	}

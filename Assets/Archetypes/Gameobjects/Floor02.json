@@ -13,14 +13,13 @@
         "specular": [ 1.0, 1.0, 1.0, 1.0 ],
         "vertex_id": 0,
         "load_model": true,
-        "roughness": 0.001,
-        "metallic": 0.5,
-        "primitive": "Quad",
-        "model_name": "Cube.fbx",
-
+        "roughness": 0.01,
+        "metallic": 1.0,
+        "primitive": "quad",
+        "model_name": "Sphere.fbx",
         "diffuse_texture": "Bricks_diff.jpg",
+        "roughness_texture": "Bricks_rgh.jpg",
         "normal_map": "Bricks_nml.jpg",
-
         "x_tiling": 70,
         "y_tiling": 50
       }

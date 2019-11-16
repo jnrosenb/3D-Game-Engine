@@ -29,6 +29,15 @@ void GameobjectManager::Update(float dt)
 	}
 }
 
+
+void GameobjectManager::LateUpdate(float dt)
+{
+	for (auto go : gameObjects)
+	{
+		go->LateUpdate(dt);
+	}
+}
+
 GameObject* GameobjectManager::AddGameObjects(GameObject *go)
 {
 	if (go) 

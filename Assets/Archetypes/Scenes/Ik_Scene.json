@@ -1,7 +1,7 @@
 {
   "Skydome": {
-    "Texture": "Factory_Catwalk_2k.hdr",
-    "Irradiance": "Factory_Catwalk_Env.hdr"
+    "Texture": "Tropical_Beach_3k.hdr",
+    "Irradiance": "Tropical_Beach_3k.irr.hdr"
   },
   "Lights": [
     {
@@ -22,25 +22,7 @@
       "name": "Floor01.json"
     },
     {
-      "name": "Obj03.json"
-    },
-    {
       "name": "Obj01.json"
-    },
-    {
-      "name": "Bunny02.json"
-    },
-    {
-      "name": "Bunny03.json"
-    },
-    {
-      "name": "Bunny04.json"
-    },
-    {
-      "name": "Bunny05.json"
-    },
-    {
-      "name": "Bunny06.json"
     }
   ]
 }

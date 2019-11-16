@@ -3,9 +3,22 @@
   "components": [
     {
       "id": "transform",
-      "position": [ -5, -2, 0 ],
+      "position": [ 0, -2, 0 ],
       "rotation": [ 0, 0, 0 ],
       "scale": [ 0.1, 0.1, 0.1 ]
+    },
+    {
+      "id": "ik_goal",
+      "end_effectors": [
+        "RightHand",
+        "LeftHand",
+        "LeftFoot",
+        "RightFoot",
+        "HeadTop_End"
+      ],
+      "start_end_effector": "LeftHand",
+      "start_joint_depth": 4,
+      "steps": 5000
     },
     {
       "id": "render",

@@ -9,6 +9,7 @@
 #include <gl/GL.h>
 #include "../External/Includes/glm/glm.hpp"
 #include <vector>
+#include <map>
 #include <unordered_map>
 #include "Renderer.h"
 
@@ -49,6 +50,9 @@ public:
 	void loadResources();
 	void CalculateLightProjView();
 
+	//Used to be able to get the camera (for now, until there is a camera manager)
+	Camera *GetCurrentCamera();
+
 	//Skydome creation
 	virtual void CreateSkydome(HDRImageDesc const& hdrTexDesc,
 		HDRImageDesc const& irradianceDesc) override;
@@ -61,6 +65,14 @@ public:
 
 	virtual void Update(float dt);
 	virtual void Draw();
+
+
+	//ONLY USED FOR THE PATH-FOLLOW HOMEWORK
+	void DrawControlPoints(std::vector<glm::vec4> const& points, 
+		glm::vec3 const& color = glm::vec3(0, 1, 0));
+	void DrawCurve(std::vector<glm::vec4> const& points, 
+		glm::vec3 const& color);
+
 
 	//PRIVATE METHODS
 private:

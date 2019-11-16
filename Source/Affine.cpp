@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cmath>
 #include "Affine.h"
+#include "Quaternion.h"
 
 namespace AuxMath
 {
@@ -27,6 +28,11 @@ namespace AuxMath
 							 0, 0, 1, 0, 
 							 v.x, v.y, v.z, 1 };
 		return result;
+	}
+
+	glm::mat4 rotate(float degree, glm::vec3 const& axis) 
+	{
+		return AuxMath::Quaternion::QuaternionFromAA(degree, axis).GetRotationMatrix();
 	}
 
 	glm::mat4 rotate(float t, const glm::vec4& v)

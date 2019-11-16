@@ -44,6 +44,8 @@ void AnimationComponent::DeserializeInit()
 
 	//SHITTY WAY------------------------------------
 	BoneTransformations = std::vector<glm::mat4>(100); //TODO CHANGE THIS URGENT
+
+	animSpeed = 1.0f;
 }
 
 
@@ -73,8 +75,17 @@ void AnimationComponent::Update(float dt)
 	std::unordered_map<std::string, Animation> const& animMap = renderComp->model->animMap;
 
 
-	AnimationTime = 0.0f; // += dt * currentTPS;
+	AnimationTime += dt * currentTPS * animSpeed;
 	Animation const& animation = animMap.find(currentAnimation)->second;
+
+	//TODO - SEE IF KEEP THIS
+	if (animSpeed == 0.0f) 
+	{
+		//After updating, we could make one go from root to childs, updating the matrices recursively
+		Bone& root = renderComp->model->boneMap["RootNode"];
+		renderComp->model->ProcessRecursiveTransformationFromRoot(root, glm::mat4(1), BoneTransformations);
+		return;
+	}
 
 	//Loop through the channels, find the interp, and do something with it
 	for (auto const& animChannel : animation.channels)
@@ -92,7 +103,9 @@ void AnimationComponent::Update(float dt)
 		//Pass the bone its VQS matrix
 		Bone& b = boneMap.find(bone)->second;
 		b.vqs = vqs;
+		b.nodeTransformation = vqs;
 		b.updatedVQS = true;
+		b.IKUseVQS = true;
 	}
 
 	//After updating, we could make one go from root to childs, updating the matrices recursively

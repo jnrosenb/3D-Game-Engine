@@ -46,9 +46,6 @@ in VS_OUT
 //MAIN
 void main(void) 
 {		
-	vec3 diffuse_k = texture(diffuseTexture, texCoords).xyz;
-	diffuse_k *= diffuseColor.rgb;
-
 	GBuffer_pos = worldPos;
 
 	//Here, normal map experiment
@@ -56,11 +53,22 @@ void main(void)
 	normal_from_rgb = 2.0 * normal_from_rgb - 1.0; 
 	normal_from_rgb = vec4(TBN * normal_from_rgb.rgb, 0);
 	GBuffer_normals = normal_from_rgb;//normalIn;
+	//GBuffer_normals = normalIn;
 	
-	float metal = max(metallic, texture(metallicTexture, texCoords).x);
-	float rough = max(roughness, texture(roughnessTexture, texCoords).x);
-
-	GBuffer_diffk = vec4(diffuse_k, 1);
+	//Roughness and metallic
+	float metal = metallic;
+	float rough = roughness;
+	if (metallic == -1)
+		metal = texture(metallicTexture, texCoords).x;
+	if (roughness == -1)
+		rough = texture(roughnessTexture, texCoords).x;
+	
+	//For now, metal stored in diffuseMap's alpha
+	vec3 diffuse_k = texture(diffuseTexture, texCoords).xyz;
+	diffuse_k *= diffuseColor.rgb;
+	GBuffer_diffk = vec4(diffuse_k, metal);
+	
+	//Specular plus roughness stored in specularMap
 	GBuffer_speck_gloss = vec4(specularColor.xyz, rough);
 }
 

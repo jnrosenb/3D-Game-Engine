@@ -37,7 +37,7 @@
 #include "TransformComponent.h"
 
 //Quaternion test
-#include "Quaternion.h"
+#include "PhysicsMath.h"
 
 //Temporary globals
 ComponentFactory factory;
@@ -113,8 +113,8 @@ int main(int argc, char **argv)
 	resMgr = new ResourceManager();
 
 	//Load the first scene
-	superFactory.LoadScene("TestScene01.json");
-	///superFactory.LoadScene("AnimationScene.json");
+	///superFactory.LoadScene("TestScene01.json");
+	superFactory.LoadScene("IK_Scene.json");
 	renderer->init();
 
 
@@ -150,7 +150,6 @@ int main(int argc, char **argv)
 	///r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
 	///r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
 	///r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
-
 	
 
     #if USING_IMGUI
@@ -230,16 +229,27 @@ int main(int argc, char **argv)
 
 		//frameRate controller
 		float dt = frc->getFrameTime() / 1000.0f;
+		//float dt = 0.016f;
 		//std::cout << static_cast<int>(1 / dt) << std::endl;
 
 		//Update stuff
 		inputMgr->update(dt);
+
+		//All components first update
 		goMgr->Update(dt);
+        
+		//EXPERIMENT (should not remain after draw, but for now its ok)
+		//put it here cause, in draw, we clear the color buffer, so everything 
+		//drawn then gets erased. Its for the debug draw of the path
+		goMgr->LateUpdate(dt);
+
+
+		//Graphic manager update 
 		renderer->Update(dt);
 
-		//RENDER
+		//RENDER draws
 		renderer->Draw();
-        
+
         #if USING_IMGUI
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         #endif

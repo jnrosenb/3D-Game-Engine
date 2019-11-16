@@ -64,6 +64,13 @@ namespace AuxMath
 
 		static Quaternion QuaternionFromAA(float degree, glm::vec3 const& axis) 
 		{
+			//Transform degrees, just in case this affects
+			/// if (degree > 360.0f || degree < -360.0f) 
+			/// {
+			/// 	int aux = static_cast<int>(degree/360.0f);
+			/// 	degree = degree - aux * 360.0f;
+			/// }
+
 			float radians = glm::radians(degree);
 			float temp = radians / 2;
 			glm::vec3 A = glm::normalize(axis);

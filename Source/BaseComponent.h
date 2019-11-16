@@ -14,6 +14,8 @@ enum COMPONENT_TYPES
 	TRANSFORM = 0,
 	RENDERER,
 	ANIMATION,
+	PATH_FOLLOW,	//UGH, ERASE
+	IK_GOAL,		//UGH, ERASE
 	COUNT
 };
 
@@ -38,6 +40,7 @@ public:
 
 	virtual BaseComponent* clone() = 0;
 	virtual void Update(float dt) = 0;
+	virtual void LateUpdate(float dt) {}
 	virtual void DeserializeInit() = 0;
 
 	COMPONENT_TYPES GetType() const { return type; }

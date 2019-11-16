@@ -15,6 +15,8 @@ namespace AuxMath
 
 	glm::mat4 rotate(float t, const glm::vec4& v);
 
+	glm::mat4 rotate(float degree, glm::vec3 const& axis);
+
 	glm::mat4 transpose3x3(const glm::mat4& A);
 
 	glm::vec4 cross(const glm::vec4 &u, const glm::vec4 &v);

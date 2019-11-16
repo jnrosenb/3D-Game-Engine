@@ -229,14 +229,14 @@ void DeferredRenderer::Draw()
 															   
 															   
 	//BONE DEBUG SHIT										   
-	#if DEBUGGING_PASS										   
+	//#if DEBUGGING_PASS										   
 	if (DrawSkeleton) 										   
 	{														   
 		for (int i = 0; i < graphicQueue.size(); ++i)		   
 			if (graphicQueue[i].boneCount > 0)				   
 				DebugDrawSkeleton(graphicQueue[i]);			   
 	}														   
-	#endif													   
+	//#endif													   
 															   
 	//---------------------------------------------------------
 
@@ -601,6 +601,7 @@ void DeferredRenderer::loadResources()
 	geometryPassShader->BindUniformBlock("test_gUBlock", 1);
 	
 	FSQShader = new Shader("FSQ.vert", "FSQ.frag");
+	FSQShader->BindUniformBlock("test_gUBlock", 1);
 
 	DeferredAmbientShader = new Shader("DeferredAmbient.vert", "DeferredAmbient.frag");
 
@@ -643,7 +644,7 @@ void DeferredRenderer::loadResources()
 			float light_separation = 5.0f;
 			Light_Positions[lightCount] = glm::vec4(light_separation * i, 0, light_separation * j, 1);
 			Light_Colors[lightCount] = glm::vec4(static_cast<float>(rand()) / RAND_MAX, static_cast<float>(rand()) / RAND_MAX, static_cast<float>(rand()) / RAND_MAX, 1);
-			Light_Radius[lightCount++] = 5.0f +(rand() % 10);
+			Light_Radius[lightCount++] = 2.0f +(rand() % 10);
 		}
 	}
 }
@@ -721,6 +722,12 @@ GLuint DeferredRenderer::generateTextureFromSurface(SDL_Surface *surface, std::s
 	}
 
 	return mTexture;
+}
+
+
+Camera *DeferredRenderer::GetCurrentCamera()
+{
+	return this->currentCamera;
 }
 
 
@@ -835,6 +842,15 @@ void DeferredRenderer::DebugDrawSkeleton(DrawData const& data)
 void DeferredRenderer::DrawBoneToChildren(std::unordered_map<std::string, Bone> const& map, 
 	Bone const& node, glm::vec3& origin, DrawData const& data)
 {
+	//Try drawing the joint as spheres
+	std::vector<glm::vec4> points;
+	points.push_back(glm::vec4(origin.x, origin.y, origin.z, 1));
+	if (node.name == "RootNode")
+		this->DrawControlPoints(points, glm::vec3(1, 0, 0));
+	else
+		this->DrawControlPoints(points);
+
+
 	//For every child, calculate the final pos, draw line, and call recursively
 	for (std::string const& childName : node.children)
 	{
@@ -862,6 +878,8 @@ void DeferredRenderer::DrawLineSegment(glm::vec3 const& orig,
 		orig.x, orig.y, orig.z, 1.0f,
 		orig.x + d.x, orig.y + d.y, orig.z + d.z, 1.0f
 	};
+
+	glDisable(GL_DEPTH_TEST);
 
 	GLuint lineVAO, LineVBO = static_cast<unsigned>(-1);
 	glGenVertexArrays(1, &lineVAO);
@@ -912,3 +930,77 @@ void DeferredRenderer::CreateSkydome(HDRImageDesc const& hdrTexDesc,
 	this->initCamera();
 	this->currentCamera->SetSkydome(sky);
 }
+
+
+
+////////////////////////////////////////////////
+////    FOR PATH-FOLLOWING HOMEWORK         ////
+////////////////////////////////////////////////
+void DeferredRenderer::DrawControlPoints(std::vector<glm::vec4> const& points, 
+	glm::vec3 const& color)
+{
+	for (glm::vec4 const& point : points)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+
+		//CULLING AND DEPTH
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+
+		//USE SHADER AND BIND VAO
+		FSQShader->UseShader();
+		PointLightSphere->BindForDraw();
+
+		//Model for the controlpoint
+		float radius = 0.5f;
+		glm::mat4 pointLightModel = glm::mat4(1);		
+		pointLightModel[3] = point;
+		pointLightModel[0][0] = radius;
+		pointLightModel[1][1] = radius;
+		pointLightModel[2][2] = radius;
+
+		//UNIFORM BINDING
+		FSQShader->setVec3f("color", color.r, color.g, color.b);
+		FSQShader->setMat4f("model", pointLightModel);
+
+		//DRAW
+		int faceCount = PointLightSphere->GetFaceCount();
+		glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+
+		//TODO - UNBIND SHADER AND MESH
+		PointLightSphere->UnbindForDraw();
+		FSQShader->UnbindShader();
+	}
+}
+
+void DeferredRenderer::DrawCurve(std::vector<glm::vec4> const& points, 
+	glm::vec3 const& color)
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+
+	GLuint lineVAO, LineVBO = static_cast<unsigned>(-1);
+	glGenVertexArrays(1, &lineVAO);
+	glGenBuffers(1, &LineVBO);
+	LineShader->UseShader();
+
+	LineShader->setVec3f("color", color.x, color.y, color.z);
+
+	glBindVertexArray(lineVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, LineVBO);
+	glBufferData(GL_ARRAY_BUFFER, points.size() * 4 * sizeof(float), &points[0], GL_STATIC_DRAW);
+	
+	glVertexAttribPointer(0, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	//Draw
+	glDrawArrays(GL_LINE_STRIP, 0, points.size());
+
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	LineShader->UnbindShader();
+	glDeleteVertexArrays(1, &lineVAO);
+	glDeleteBuffers(1, &LineVBO);
+}
+//-------------------------------------------------------------------------

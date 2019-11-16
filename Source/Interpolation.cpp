@@ -9,6 +9,39 @@
 namespace AuxMath
 {
 
+	//OPERATOR OVERLOADING
+	glm::vec4 operator*(glm::vec4 const& rhs, float f)
+	{
+		glm::vec4 copy = rhs;
+		copy.x *= f;
+		copy.y *= f;
+		copy.z *= f;
+		copy.w *= f;
+		return copy;
+	}
+
+	glm::vec4 operator*(float f, glm::vec4 const& rhs)
+	{
+		glm::vec4 copy = rhs;
+		copy.x *= f;
+		copy.y *= f;
+		copy.z *= f;
+		copy.w *= f;
+		return copy;
+	}
+
+	glm::vec4 operator/(glm::vec4 const& rhs, float f)
+	{
+		glm::vec4 copy = rhs;
+		copy.x /= f;
+		copy.y /= f;
+		copy.z /= f;
+		copy.w /= f;
+		return copy;
+	}
+
+
+	//METHODS
 	glm::vec3 Lerp(glm::vec3 const& origin, glm::vec3 const& destination, float alpha) 
 	{
 		glm::vec3 interp;
@@ -68,5 +101,59 @@ namespace AuxMath
 		V[3][2] = v.z;
 
 		return V*Q*S;
+	}
+
+
+	//THIS WORKS ONLY FOR C2 SPLINE CURVE
+	void GenerateCurve(int subdivission, float T, std::vector<glm::vec4>& controlPoints, 
+		std::map<float, glm::vec4>& curve, std::vector<glm::vec4>& curve_vector)
+	{
+		//Number of segments
+		int numSegments = controlPoints.size() - 3;
+		float TperSegment = T / numSegments;
+
+		//t starts at zero, and each iter augments in dt
+		float t = 0.0f;
+		float dt = T / subdivission;
+
+		for (int i = 0; i <= subdivission; ++i) 
+		{
+			//Find out in which segment we are
+			int segmentBaseIndex = static_cast<int>(t/TperSegment);
+
+			//Get the local t
+			float localt = (t - segmentBaseIndex * TperSegment) / TperSegment;
+
+			if (segmentBaseIndex + 3 >= controlPoints.size()) 
+				return;
+
+			//Get the 4 points that affect this t
+			glm::vec4 P0 = controlPoints[segmentBaseIndex];
+			glm::vec4 P1 = controlPoints[segmentBaseIndex + 1];
+			glm::vec4 P2 = controlPoints[segmentBaseIndex + 2];
+			glm::vec4 P3 = controlPoints[segmentBaseIndex + 3];
+
+			//Weird vector to use for thing (B-SPLINE)
+			glm::vec4 P_0 = (-P0 + 3*P1 -3*P2 + P3) / 6.0f;
+			glm::vec4 P_1 = (3*P0 -6*P1 + 3*P2) / 6.0f;
+			glm::vec4 P_2 = (-3*P0 + 3*P2) / 6.0f;
+			glm::vec4 P_3 = (P0 + 4*P1 + P2) / 6.0f;
+
+			//Weird vector to use for thing (CATMULL-ROM)
+			///glm::vec4 P_0 = (-P0 + 3*P1 - 3*P2 + P3) / 2.0f;
+			///glm::vec4 P_1 = (2*P0 - 5*P1 + 4*P2 - P3) / 2.0f;
+			///glm::vec4 P_2 = (-P0 + P2) / 2.0f;
+			///glm::vec4 P_3 = (2*P1) / 2.0f;
+
+			//Calculate the curve value for this t
+			glm::vec4 Pfinal = P_0*powf(localt, 3) + P_1*powf(localt, 2) + P_2* localt + P_3;
+
+			//Store new point in final list
+			curve.emplace(std::make_pair(t, Pfinal));
+			curve_vector.push_back(Pfinal);
+
+			//Increment t by step
+			t += dt;
+		}
 	}
 }

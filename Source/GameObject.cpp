@@ -42,6 +42,15 @@ void GameObject::Update(float dt)
 	}
 }
 
+
+void GameObject::LateUpdate(float dt)
+{
+	for (auto comp : components)
+	{
+		comp->LateUpdate(dt);
+	}
+}
+
 //void GameObject::Draw()
 //{
 //	//TODO
