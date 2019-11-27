@@ -1,0 +1,21 @@
+{
+    "tag": "Crate01",
+  "components": [
+    {
+      "id": "transform",
+      "position": [ 0, 0, 0 ],
+      "rotation": [ 90, 0, 0 ],
+      "scale": [ 5, 5, 1 ]
+    },
+    {
+      "id": "cloth",
+      "rows": 32,
+      "cols": 32,
+      "mass": 1.0,
+      "spring_coeff": 0.05,
+      "wind_coeff": 0.5,
+      "stretch_percentage": 0.05,
+      "rest_length": 0.125
+    }
+  ]
+}

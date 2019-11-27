@@ -24,6 +24,8 @@ using namespace rapidjson;
 #include "TransformComponent.h"
 #include "PathFollowComponent.h"
 #include "IKGoalComponent.h"
+#include "AnimationComponent.h"
+#include "ClothComponent.h"
 extern GameobjectManager* goMgr;
 extern ResourceManager* resMgr;
 extern Renderer *renderer;
@@ -267,22 +269,39 @@ public:
 			else if (comp_name == "render")
 			{
 				Render *render = go->AddComponent<Render>();
+				
+				if (attribute.HasMember("load_model")) 
+				{
+					const Value& ac2 = attribute["load_model"];
+					assert(ac2.IsBool());
+					bool use_model = ac2.GetBool();
+					render->use_loaded_mesh = use_model;
 
-				assert(attribute.HasMember("model_name"));
-				const Value& acc = attribute["model_name"];
-				assert(acc.IsString());
-				std::string modelPath = acc.GetString();
-
-				assert(attribute.HasMember("load_model"));
-				const Value& ac2 = attribute["load_model"];
-				assert(ac2.IsBool());
-				bool use_model = ac2.GetBool();
-
-				assert(attribute.HasMember("primitive"));
-				const Value& ac3 = attribute["primitive"];
-				assert(ac3.IsString());
-				std::string primitive = ac3.GetString();
-
+					if (use_model)
+					{
+						assert(attribute.HasMember("model_name"));
+						const Value& acc = attribute["model_name"];
+						assert(acc.IsString());
+						std::string modelPath = acc.GetString();
+						render->modelPath = modelPath;
+					}
+					else
+					{
+						assert(attribute.HasMember("primitive"));
+						const Value& ac3 = attribute["primitive"];
+						assert(ac3.IsString());
+						std::string primitive = ac3.GetString();
+						render->primitive = primitive;
+					}
+				}
+				else
+				{
+					assert(attribute.HasMember("primitive"));
+					const Value& ac3 = attribute["primitive"];
+					assert(ac3.IsString());
+					std::string primitive = ac3.GetString();
+					render->primitive = primitive;
+				}
 
 				if (attribute.HasMember("x_tiling"))
 				{
@@ -321,6 +340,7 @@ public:
 					SDL_Surface *surf = resMgr->loadSurface(diffuseTexture);
 					renderer->generateTextureFromSurface(surf, diffuseTexture, 5);
 					render->diffuseTexture = diffuseTexture;
+					render->useDiffuseTexture = true;
 				}
 
 				if (attribute.HasMember("roughness_texture"))
@@ -360,6 +380,7 @@ public:
 					SDL_Surface *surf = resMgr->loadSurface(normalMap);
 					renderer->generateTextureFromSurface(surf, normalMap, 5);
 					render->normalMap = normalMap;
+					render->useNormalMap = true;
 				}
 
 				if (attribute.HasMember("diffuse"))
@@ -377,12 +398,6 @@ public:
 					assert(ac4.IsArray());
 					render->specularColor = glm::vec4(ac4[0].GetFloat(), ac4[1].GetFloat(), ac4[2].GetFloat(), 1.0f);
 				}
-
-				render->use_loaded_mesh = use_model;
-				if (use_model) 
-					render->modelPath = modelPath;
-				else
-					render->primitive = primitive;
 
 				if (attribute.HasMember("shader")) 
 				{
@@ -456,6 +471,55 @@ public:
 				//Call this to end setup
 				goalComp->DeserializeInit();
 			}
+			else if (comp_name == "cloth") 
+			{
+				ClothComponent *clothComp = go->AddComponent<ClothComponent>();
+
+				if (attribute.HasMember("cols"))
+				{
+					const Value& acc = attribute["cols"];
+					assert(acc.IsInt());
+					clothComp->cols = acc.GetInt();
+				}
+				if (attribute.HasMember("rows"))
+				{
+					const Value& acc = attribute["rows"];
+					assert(acc.IsInt());
+					clothComp->rows = acc.GetInt();
+				}
+				if (attribute.HasMember("mass"))
+				{
+					const Value& acc = attribute["mass"];
+					assert(acc.IsFloat());
+					clothComp->mass = acc.GetFloat();
+				}
+				if (attribute.HasMember("spring_coeff"))
+				{
+					const Value& acc = attribute["spring_coeff"];
+					assert(acc.IsFloat());
+					clothComp->ks = acc.GetFloat();
+				}
+				if (attribute.HasMember("wind_coeff"))
+				{
+					const Value& acc = attribute["wind_coeff"];
+					assert(acc.IsFloat());
+					clothComp->kw = acc.GetFloat();
+				}
+				if (attribute.HasMember("rest_length"))
+				{
+					const Value& acc = attribute["rest_length"];
+					assert(acc.IsFloat());
+					clothComp->d = acc.GetFloat();
+				}
+				if (attribute.HasMember("stretch_percentage"))
+				{
+					const Value& acc = attribute["stretch_percentage"];
+					assert(acc.IsFloat());
+					clothComp->stretch = acc.GetFloat();
+				}
+
+				clothComp->DeserializeInit();
+			}
 		}
 	}
 
@@ -486,9 +550,6 @@ public:
 ////////////////////////////
 ////	COMPONENTS		////
 ////////////////////////////
-#include "TransformComponent.h"
-#include "RendererComponent.h"
-#include "AnimationComponent.h"
 class ComponentFactory 
 {
 
@@ -505,6 +566,7 @@ public:
 		ComponentTypeMap[ANIMATION] = new AnimationComponent(0);
 		ComponentTypeMap[PATH_FOLLOW] = new AnimationComponent(0);
 		ComponentTypeMap[IK_GOAL] = new IKGoalComponent(0);
+		//ComponentTypeMap[CLOTH] = new ClothComponent(0);
 
 		std::cout << "Created component clone factory" << std::endl;
 	}

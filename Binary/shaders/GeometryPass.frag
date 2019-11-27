@@ -19,6 +19,8 @@ layout(std140) uniform test_gUBlock
 	mat4 ProjView;							// 0   - 64
 	mat4 LightProjView;						// 64   -128
 	vec4 eye;								// 128  -144
+	int ScreenWidth;
+	int ScreenHeight;
 };
 
 
@@ -31,6 +33,8 @@ uniform vec4 diffuseColor;
 uniform vec4 specularColor;
 uniform float roughness;
 uniform float metallic;
+uniform int useDiffuseTexture;
+uniform int useNormalMap;
 
 
 //INPUT BLOCK
@@ -46,16 +50,25 @@ in VS_OUT
 //MAIN
 void main(void) 
 {		
+	//WORLD POSITION
+	//if (gl_FragCoord.w == 0.0)
+	//	discard;
 	GBuffer_pos = worldPos;
 
-	//Here, normal map experiment
-	vec4 normal_from_rgb = texture(normalMap, texCoords);
-	normal_from_rgb = 2.0 * normal_from_rgb - 1.0; 
-	normal_from_rgb = vec4(TBN * normal_from_rgb.rgb, 0);
-	GBuffer_normals = normal_from_rgb;//normalIn;
-	//GBuffer_normals = normalIn;
-	
-	//Roughness and metallic
+	//NORMALS
+	if (useNormalMap == 1)
+	{
+		vec4 normal_from_rgb = texture(normalMap, texCoords);
+		normal_from_rgb = 2.0 * normal_from_rgb - 1.0; 
+		normal_from_rgb = vec4(TBN * normal_from_rgb.rgb, 0);
+		GBuffer_normals = normal_from_rgb;//normalIn;
+	}
+	else
+	{
+		GBuffer_normals = normalIn;
+	}
+
+	//ROUGHNESS - METALLIC
 	float metal = metallic;
 	float rough = roughness;
 	if (metallic == -1)
@@ -63,12 +76,19 @@ void main(void)
 	if (roughness == -1)
 		rough = texture(roughnessTexture, texCoords).x;
 	
-	//For now, metal stored in diffuseMap's alpha
-	vec3 diffuse_k = texture(diffuseTexture, texCoords).xyz;
-	diffuse_k *= diffuseColor.rgb;
-	GBuffer_diffk = vec4(diffuse_k, metal);
-	
-	//Specular plus roughness stored in specularMap
+	//DIFFUSE AND METALLIC
+	if (useDiffuseTexture == 1)
+	{
+		vec3 diffuse_k = texture(diffuseTexture, texCoords).xyz;
+		diffuse_k *= diffuseColor.rgb;
+		GBuffer_diffk = vec4(diffuse_k, metal);
+	}
+	else
+	{
+		GBuffer_diffk = vec4(diffuseColor.rgb, metal);
+	}
+
+	//SPECULAR AND ROUGHNESS
 	GBuffer_speck_gloss = vec4(specularColor.xyz, rough);
 }
 

@@ -17,6 +17,7 @@
 
 #define DEBUGGING_PASS				0
 #define KERNEL_FILTER_COUNT			100
+#define AO_KERNEL_COUNT				50
 #define MAX_SPECULAR_IBL_SAMPLES	64			//Arbitrary number
 #define SPECULAR_SAMPLES			20
 
@@ -37,6 +38,7 @@ DeferredRenderer::~DeferredRenderer()
 	//TODO delete stuff
 	delete GeometryBuffer;
 	delete ShadowBuffer;
+	delete AOBuffer;
 
 	//Delete all the textures allocated by opengl
 	glDeleteTextures(numberOfTexturesLoaded, textures);
@@ -60,10 +62,13 @@ DeferredRenderer::~DeferredRenderer()
 	delete DirectionalLightShader;
 	delete LineShader;
 	delete IBLShader;
+	delete AOShader;
 
 	//Delete compute shader
 	delete blurShaderHoriz;
 	delete blurShaderVert;
+	delete blurAOHoriz;
+	delete blurAOVert;
 
 	//Delete blocm with low discrepancy random points
 	delete specularBlock;
@@ -105,14 +110,16 @@ void DeferredRenderer::initUniformBufferObjects()
 	// FIRST UNIFORM BUFFER OBJECT (layout)-----------------------
 	int index = 1;
 	// mat4						    // 0   - 64
-	// mat4						    // 64   -128
-	// vec4 eye						// 128  -144
+	// mat4						    // 64  - 128
+	// vec4 eye						// 128 - 144
+	//int width						// 144 - 148
+	//int height					// 148 - 152
 
 	// 1- Generate buffer and bind
 	glGenBuffers(1, &this->ubo_test);
 	glBindBuffer(GL_UNIFORM_BUFFER, this->ubo_test);
 	//Allocate gpu space
-	glBufferData(GL_UNIFORM_BUFFER, 144, NULL, GL_STATIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, 152, NULL, GL_STATIC_DRAW);
 	//Map to an index
 	glBindBufferBase(GL_UNIFORM_BUFFER, index, this->ubo_test);
 	//Unbind
@@ -178,36 +185,29 @@ void DeferredRenderer::Draw()
 {
 	//CALCULATE THE DIRECTIONAL LIGHT MATRICES
 	CalculateLightProjView();
+	int width = VIEWPORT_WIDTH;
+	int height = VIEWPORT_HEIGHT;
 	//TODO - Better way to pass. Uniform block should know its own indices or calculate them
 	glm::mat4 projView = currentCamera->getProj() * currentCamera->getView();
 	UniformBlockBind(this->ubo_test);
 	UniformBlockPassData(this->ubo_test, 0, projView);
 	UniformBlockPassData(this->ubo_test, 64, lightProjView);
 	UniformBlockPassData(this->ubo_test, 128, currentCamera->getEye());
+	UniformBlockPassData(this->ubo_test, 144, &width);
+	UniformBlockPassData(this->ubo_test, 148, &height);
 	//Passing the IBL specular low discrepancy pairs
 	UniformBlockBind(this->ubo_IBLSpecular);
 	UniformBlockPassData(this->ubo_IBLSpecular, 0, &(specularBlock->N));
 	UniformBlockPassData(this->ubo_IBLSpecular, 16, specularBlock->N, &(specularBlock->pairs[0]));
 	UniformBlockUnbind();
 
-	//----------------------------------------
-	/// glm::vec3 r = glm::vec3(0.5f, 1.0f, -0.4f);
-	/// glm::vec3 up = glm::normalize(r);											// Y axis in rot
-	/// glm::vec3 forward = glm::normalize(glm::cross(up, glm::vec3(0, 1, 0)));		// Z axis in rot
-	/// glm::vec3 right = glm::normalize(glm::cross(up, forward));					// X axis in rot
-	/// glm::mat3 rot;
-	/// rot[0] = right;
-	/// rot[1] = up;
-	/// rot[2] = forward;
-	/// glm::vec3 test01 = glm::vec3(0, 0.5f, 0);
-	/// glm::vec3 res = rot * test01;
-	/// res = glm::normalize(res);
-	/// int a = 243;
-	//----------------------------------------
-
 
 	//*GEOMETRY PASS
 	GeometryPass();
+
+
+	//Ambient Occlusion pass
+	AmbientOcclusionPass();
 
 
 	//AMBIENT LIGHT PASS (Back to default framebuffer)
@@ -218,8 +218,7 @@ void DeferredRenderer::Draw()
 	//Draw skydome
 	SkydomePass();
 
-	//---------------------------------------------------------
-															   
+
 	//SHADOW MAP PASS										   
 	FilteredShadowPass();									   
 															   
@@ -229,18 +228,16 @@ void DeferredRenderer::Draw()
 															   
 															   
 	//BONE DEBUG SHIT										   
-	//#if DEBUGGING_PASS										   
+	#if DEBUGGING_PASS										   
 	if (DrawSkeleton) 										   
 	{														   
 		for (int i = 0; i < graphicQueue.size(); ++i)		   
 			if (graphicQueue[i].boneCount > 0)				   
 				DebugDrawSkeleton(graphicQueue[i]);			   
 	}														   
-	//#endif													   
-															   
-	//---------------------------------------------------------
+	#endif													
 
-
+	
 	//Empty both graphics queues
 	graphicQueue.clear();
 	graphicQueueAlpha.clear();
@@ -273,6 +270,32 @@ void DeferredRenderer::GeometryPass()
 		//Get the current drawNode
 		DrawData &data = graphicQueue[i];
 
+
+		//CLOTH---------------DELETE LATER------------------------------------------------////
+		if (data.isCloth) 																  ////
+		{																				  ////
+			//BINDING																	  ////
+			glBindVertexArray(data.vao);												  ////
+			//SAMPLER UNIFORMS---------------------------------							  ////
+			geometryPassShader->setTexture("diffuseTexture", data.diffuseTexture, 0);	  ////
+			//UNIFORM BINDING------------------------------------						  ////
+			geometryPassShader->setMat4f("model", data.model);							  ////
+			geometryPassShader->setMat4f("normalModel", data.normalsModel);				  ////
+			geometryPassShader->setInt("useDiffuseTexture", data.useDiffuseTexture);	  ////
+			geometryPassShader->setVec4f("specularColor", data.specularColor.r,			  ////
+				data.specularColor.g, data.specularColor.b, data.specularColor.a);		  ////
+			geometryPassShader->setVec4f("diffuseColor", data.diffuseColor.r,			  ////
+				data.diffuseColor.g, data.diffuseColor.b, data.diffuseColor.a);			  ////
+			geometryPassShader->setInt("xTiling", data.xTiling);						  ////
+			geometryPassShader->setInt("yTiling", data.yTiling);						  ////
+			int faceCount = data.faceSize;												  ////
+			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);			  ////
+			glBindVertexArray(0);														  ////
+			continue;																	  ////
+		}																				  ////
+		//CLOTH---------------DELETE LATER------------------------------------------------////
+
+
 		//Since a node has a model (and all the meshes of a model for now share bones), we pass the uniform array
 		if (graphicQueue[i].BoneTransformations)
 		{
@@ -286,31 +309,34 @@ void DeferredRenderer::GeometryPass()
 			//BINDING
 			(*data.meshes)[j]->BindForDraw();
 
-			//UNIFORM BINDING
-			geometryPassShader->setMat4f("model", graphicQueue[i].model);
-			geometryPassShader->setMat4f("normalModel", graphicQueue[i].normalsModel);
-
-			geometryPassShader->setTexture("diffuseTexture", graphicQueue[i].diffuseTexture, 0);
+			//SAMPLER UNIFORMS---------------------------------
+			//Diffuse texture, should be optional 
+			geometryPassShader->setTexture("diffuseTexture", data.diffuseTexture, 0);
 			//Roughness and metallic
-			if (graphicQueue[i].metallic == -1.0f)
+			if (data.metallic == -1.0f)
 			{
-				geometryPassShader->setTexture("metallicTexture", graphicQueue[i].metallicTexture, 1);
+				geometryPassShader->setTexture("metallicTexture", data.metallicTexture, 1);
 			}
-			if (graphicQueue[i].roughness == -1.0f)
+			if (data.roughness == -1.0f)
 			{
-				geometryPassShader->setTexture("roughnessTexture", graphicQueue[i].roughnessTexture, 2);
-			}			
-			geometryPassShader->setFloat("roughness", graphicQueue[i].roughness);
-			geometryPassShader->setFloat("metallic", graphicQueue[i].metallic);
+				geometryPassShader->setTexture("roughnessTexture", data.roughnessTexture, 2);
+			}
+			//Normal map, should be optional
+			geometryPassShader->setTexture("normalMap", data.normalMap, 3);
 
-			geometryPassShader->setTexture("normalMap", graphicQueue[i].normalMap, 3);
-
-			geometryPassShader->setVec4f("specularColor", graphicQueue[i].specularColor.r,
-				graphicQueue[i].specularColor.g, graphicQueue[i].specularColor.b, graphicQueue[i].specularColor.a);
-			geometryPassShader->setVec4f("diffuseColor", graphicQueue[i].diffuseColor.r, 
-				graphicQueue[i].diffuseColor.g, graphicQueue[i].diffuseColor.b, graphicQueue[i].diffuseColor.a);
-			geometryPassShader->setInt("xTiling", graphicQueue[i].xTiling);
-			geometryPassShader->setInt("yTiling", graphicQueue[i].yTiling);
+			//UNIFORM BINDING------------------------------------
+			geometryPassShader->setMat4f("model", data.model);
+			geometryPassShader->setMat4f("normalModel", data.normalsModel);
+			geometryPassShader->setInt("useNormalMap", data.useNormalMap);
+			geometryPassShader->setInt("useDiffuseTexture", data.useDiffuseTexture);
+			geometryPassShader->setFloat("roughness", data.roughness);
+			geometryPassShader->setFloat("metallic", data.metallic);
+			geometryPassShader->setVec4f("specularColor", data.specularColor.r,
+				data.specularColor.g, data.specularColor.b, data.specularColor.a);
+			geometryPassShader->setVec4f("diffuseColor", data.diffuseColor.r,
+				data.diffuseColor.g, data.diffuseColor.b, data.diffuseColor.a);
+			geometryPassShader->setInt("xTiling", data.xTiling);
+			geometryPassShader->setInt("yTiling", data.yTiling);
 
 			//DRAW
 			int faceCount = (*data.meshes)[j]->GetFaceCount();
@@ -321,6 +347,66 @@ void DeferredRenderer::GeometryPass()
 		}
 	}
 	geometryPassShader->UnbindShader();
+}
+
+
+void DeferredRenderer::AmbientOcclusionPass()
+{
+	//Why calculate if we wont use it
+	if (useAO == false)
+		return;
+
+	//1ST PASS - WRITE INTO AO-BUFFER------------
+	AOBuffer->Bind();
+	glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Not really necessary
+
+	AOShader->UseShader();
+	FSQ->BindForDraw();
+
+	//UNIFORM BINDING
+	AOShader->setTexture("GBufferPos", GeometryBuffer->texturesHandles[0], 0);
+	AOShader->setTexture("GBufferNormals", GeometryBuffer->texturesHandles[1], 1);
+	AOShader->setMat4f("view", this->currentCamera->getView());
+
+	//DRAW
+	int faceCount = FSQ->GetFaceCount();
+	glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
+
+	//TODO - UNBIND SHADER AND MESH
+	FSQ->UnbindForDraw();
+	AOShader->UnbindShader();
+
+
+	//COMPUTE SHADER PASS------------------------
+	int width = AOBuffer->getWidth();
+	int height = AOBuffer->getHeight();
+
+	//Use compute shader
+	this->blurAOHoriz->UseShader();
+	this->blurAOHoriz->setImage("src", AOBuffer->texturesHandles[0], 0, GL_READ_ONLY, GL_R16F);
+	this->blurAOHoriz->setImage("dst", AOBuffer->texturesHandles[1], 1, GL_WRITE_ONLY, GL_R16F);
+	this->blurAOHoriz->setImage("GBufferPos", GeometryBuffer->texturesHandles[0], 2, GL_READ_ONLY, GL_RGBA32F);
+	this->blurAOHoriz->setImage("GBufferNormals", GeometryBuffer->texturesHandles[1], 3, GL_READ_ONLY, GL_RGBA32F);
+	this->blurAOHoriz->setMat4f("view", this->currentCamera->getView());
+	this->blurAOHoriz->setFloatArray("weights", AOKernelCount, &AOweights[0]);
+	this->blurAOHoriz->setInt("actualWeightCount", AOKernelCount);
+	glDispatchCompute(width / 128, height, 1);
+	
+	//Use compute shader
+	this->blurAOVert->UseShader();
+	this->blurAOVert->setImage("src", AOBuffer->texturesHandles[1], 1, GL_READ_ONLY, GL_R16F);
+	this->blurAOVert->setImage("dst", AOBuffer->texturesHandles[0], 0, GL_WRITE_ONLY, GL_R16F);
+	this->blurAOVert->setImage("GBufferPos", GeometryBuffer->texturesHandles[0], 2, GL_READ_ONLY, GL_RGBA32F);
+	this->blurAOVert->setImage("GBufferNormals", GeometryBuffer->texturesHandles[1], 3, GL_READ_ONLY, GL_RGBA32F);
+	this->blurAOVert->setMat4f("view", this->currentCamera->getView());
+	this->blurAOVert->setFloatArray("weights", AOKernelCount, &AOweights[0]);
+	this->blurAOVert->setInt("actualWeightCount", AOKernelCount);
+	glDispatchCompute(width, (height / 128) + 1, 1);
+	
+	//Unbind compute shader
+	this->blurAOVert->UnbindShader();
 }
 
 
@@ -344,6 +430,10 @@ void DeferredRenderer::AmbientLightPass()
 	//UNIFORM BINDING
 	DeferredAmbientShader->setTexture("GBufferDiffuse", GeometryBuffer->texturesHandles[2], 2);
 	DeferredAmbientShader->setTexture("geoDepthBuffer", GeometryBuffer->depthTexture, 3);
+
+	//AO Uniforms
+	DeferredAmbientShader->setTexture("AOTexture", AOBuffer->texturesHandles[0], 4);
+	DeferredAmbientShader->setInt("useAO", static_cast<int>(useAO));
 
 	//DRAW
 	int faceCount = FSQ->GetFaceCount();
@@ -378,12 +468,15 @@ void DeferredRenderer::AmbientIBLPass()
 	IBLShader->setTexture("GBufferNormals", GeometryBuffer->texturesHandles[1], 1);
 	IBLShader->setTexture("GBufferDiffuse", GeometryBuffer->texturesHandles[2], 2);
 	IBLShader->setTexture("GBufferSpecGloss", GeometryBuffer->texturesHandles[3], 3);
+	IBLShader->setTexture("AOTexture", AOBuffer->texturesHandles[0], 4);
 	//SKYDOME BINDINGS
-	IBLShader->setTexture("skyMap", currentCamera->GetSkydome()->texture, 4);
-	IBLShader->setTexture("irradianceMap", currentCamera->GetSkydome()->irradiance, 5);
-	IBLShader->setTexture("geoDepthBuffer", GeometryBuffer->depthTexture, 6);
+	IBLShader->setTexture("skyMap", currentCamera->GetSkydome()->texture, 5);
+	IBLShader->setTexture("irradianceMap", currentCamera->GetSkydome()->irradiance, 6);
+	IBLShader->setTexture("geoDepthBuffer", GeometryBuffer->depthTexture, 7);
+
 	//Other uniforms
 	IBLShader->setInt("maxMipmapLevel", currentCamera->GetSkydome()->specularMipmap);
+	IBLShader->setInt("useAO", static_cast<int>(useAO));
 
 	//DRAW
 	int faceCount = FSQ->GetFaceCount();
@@ -405,7 +498,6 @@ void DeferredRenderer::SkydomePass()
 }
 
 
-
 void DeferredRenderer::FilteredShadowPass()
 {
 	//GENERATE THE SHADOW MAP--------------------------------------------
@@ -422,12 +514,19 @@ void DeferredRenderer::FilteredShadowPass()
 	{
 		//BINDING
 		shadowShader->UseShader();
+		DrawData &data = graphicQueue[i];
+
+
+		//CLOTH---------------DELETE LATER------------------------------------------------////
+		if (data.isCloth) 																  ////
+			continue;																	  ////
+		//CLOTH---------------DELETE LATER------------------------------------------------////
+
 
 		//Since a node has a model (and all the meshes of a model for now share bones), we pass the uniform array
-		if (graphicQueue[i].BoneTransformations)
-			shadowShader->setMat4fArray("BoneTransf", 100, (*(graphicQueue[i].BoneTransformations))[0]);
+		if (data.BoneTransformations)
+			shadowShader->setMat4fArray("BoneTransf", 100, (*(data.BoneTransformations))[0]);
 
-		DrawData &data = graphicQueue[i];
 		for (int j = 0; j < data.meshes->size(); ++j)
 		{
 			//BINDING
@@ -435,7 +534,7 @@ void DeferredRenderer::FilteredShadowPass()
 
 			//UNIFORM BINDING
 			shadowShader->setMat4f("projView", lightProjView);
-			shadowShader->setMat4f("model", graphicQueue[i].model);
+			shadowShader->setMat4f("model", data.model);
 			
 			//DRAW
 			int faceCount = (*data.meshes)[j]->GetFaceCount();
@@ -503,7 +602,6 @@ void DeferredRenderer::FilteredShadowPass()
 	FSQ->UnbindForDraw();
 	DirectionalLightShader->UnbindShader();
 }
-
 
 
 void DeferredRenderer::MultiplePointLightPass(glm::mat4& projView) //Later pass this on uniform buffer
@@ -587,6 +685,18 @@ void DeferredRenderer::initFrameBuffers()
 	desc2.imageInternalFormat = GL_RGBA32F;	// GL_RGBA
 	desc2.imageFormat = GL_RGBA;			// GL_RGBA
 	ShadowBuffer->initFromDescriptor(desc2);
+
+	//Render target for Ambient Occlusion
+	AOBuffer = new RenderTarget();
+	RenderTargetDescriptor desc3;
+	desc3.colorAttachmentCount = 2;
+	desc3.width = VIEWPORT_WIDTH;
+	desc3.height = VIEWPORT_HEIGHT;
+	desc3.useStencil = false;
+	desc3.componentType = GL_FLOAT;			// GL_UNSIGNED_BYTE
+	desc3.imageInternalFormat = GL_R16F;	    // 1 float
+	desc3.imageFormat = GL_RED;			    // GL_RGBA
+	AOBuffer->initFromDescriptor(desc3);
 }
 
 
@@ -611,6 +721,9 @@ void DeferredRenderer::loadResources()
 	DeferredPointLightShader = new Shader("PointLightFSQ.vert", "PointLightFSQ.frag");
 	DeferredPointLightShader->BindUniformBlock("test_gUBlock", 1);
 
+	AOShader = new Shader("AmbientOcclusion.vert", "AmbientOcclusion.frag");
+	AOShader->BindUniformBlock("test_gUBlock", 1);
+
 	LineShader = new Shader("Line.vert", "Line.frag");
 	LineShader->BindUniformBlock("test_gUBlock", 1);
 
@@ -621,9 +734,16 @@ void DeferredRenderer::loadResources()
 	//Compute shader creation
 	blurShaderHoriz = new Shader("BlurHoriz.comp");
 	blurShaderVert = new Shader("BlurVert.comp");
+	blurAOHoriz = new Shader("BlurAOHoriz.comp");
+	blurAOVert = new Shader("BlurAOVert.comp");
 
-	//Set weights
-	SetKernelCount(5);
+	//Set weights for moments shadow mapping
+	kernelCount = 5;
+	SetKernelCount(kernelCount, weights);
+
+	//Set weights for Ambient Occlusion
+	AOKernelCount = 10;
+	SetKernelCount(AOKernelCount, AOweights);
 
 	//Hammersley low discrepancy rands
 	this->specularBlock = new AuxMath::HammersleyBlock();
@@ -764,7 +884,30 @@ GLuint DeferredRenderer::genHDRTexHandle(HDRImageDesc const& desc, int mipmapLev
 }
 
 
+//Skydome creation
+void DeferredRenderer::CreateSkydome(HDRImageDesc const& hdrTexDesc,
+	HDRImageDesc const& irradianceDesc)
+{
+	//Create openGlTexture
+	int mipmaps = 5;
+	GLuint tex = genHDRTexHandle(hdrTexDesc, mipmaps);
+	GLuint irr = genHDRTexHandle(irradianceDesc);
 
+	//Set initial stuff for skydome
+	SkyDome *sky = new SkyDome(mipmaps);
+	sky->geometry = new PolarPlane(32);
+	sky->shader = new Shader("Sky.vert", "Sky.frag");
+	sky->shader->BindUniformBlock("test_gUBlock", 1);
+
+	//sky->irradiance = tex;
+	//sky->texture = irr;
+	sky->irradiance = irr;
+	sky->texture = tex;
+
+	//Pass to the camera
+	this->initCamera();
+	this->currentCamera->SetSkydome(sky);
+}
 
 
 ////////////////////////////////////////
@@ -903,39 +1046,12 @@ void DeferredRenderer::DrawLineSegment(glm::vec3 const& orig,
 	glDeleteVertexArrays(1, &lineVAO);
 	glDeleteBuffers(1, &LineVBO);
 }
-//------------------------------------------------------------------
+//----------------------------------------------------------------------------
 
 
-//Skydome creation
-void DeferredRenderer::CreateSkydome(HDRImageDesc const& hdrTexDesc,
-	HDRImageDesc const& irradianceDesc)
-{
-	//Create openGlTexture
-	int mipmaps = 5;
-	GLuint tex = genHDRTexHandle(hdrTexDesc, mipmaps);
-	GLuint irr = genHDRTexHandle(irradianceDesc);
-
-	//Set initial stuff for skydome
-	SkyDome *sky = new SkyDome(mipmaps);
-	sky->geometry = new PolarPlane(32);
-	sky->shader = new Shader("Sky.vert", "Sky.frag");
-	sky->shader->BindUniformBlock("test_gUBlock", 1);
-	
-	//sky->irradiance = tex;
-	//sky->texture = irr;
-	sky->irradiance = irr;
-	sky->texture = tex;
-	
-	//Pass to the camera
-	this->initCamera();
-	this->currentCamera->SetSkydome(sky);
-}
-
-
-
-////////////////////////////////////////////////
-////    FOR PATH-FOLLOWING HOMEWORK         ////
-////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+////    FOR PATH-FOLLOWING HOMEWORK                                       ////
+//////////////////////////////////////////////////////////////////////////////
 void DeferredRenderer::DrawControlPoints(std::vector<glm::vec4> const& points, 
 	glm::vec3 const& color)
 {
@@ -1003,4 +1119,4 @@ void DeferredRenderer::DrawCurve(std::vector<glm::vec4> const& points,
 	glDeleteVertexArrays(1, &lineVAO);
 	glDeleteBuffers(1, &LineVBO);
 }
-//-------------------------------------------------------------------------
+//----------------------------------------------------------------------------

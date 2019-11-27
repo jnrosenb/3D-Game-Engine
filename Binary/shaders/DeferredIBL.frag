@@ -27,6 +27,8 @@ layout(std140) uniform test_gUBlock
 	mat4 ProjView;							// 0   - 64
 	mat4 LightProjView;						// 64   -128
 	vec4 eye;								// 128  -144
+	int ScreenWidth;
+	int ScreenHeight;
 };
 
 layout(std140) uniform SpecularSamples
@@ -42,6 +44,11 @@ uniform sampler2D GBufferSpecGloss;
 uniform sampler2D skyMap;
 uniform sampler2D irradianceMap;
 uniform sampler2D geoDepthBuffer;
+
+
+//Ambient occlusion terms
+uniform sampler2D AOTexture;
+uniform int useAO;
 
 uniform int maxMipmapLevel;
 
@@ -77,6 +84,11 @@ void main(void)
 
 	//AMBIENT (Ambient color without IBL)-----------------------------
 	vec3 ambient = 0.3 * diffuse_color;
+	if (useAO == 1)
+	{
+		float S = texture2D(AOTexture, uv).r;
+		ambient *= S;
+	}
 
 	//DIFFUSE---------------------------------------------------------
 	vec3 diffuseIrr = ( pow(1.0 - metallic, 2) * diffuse_color / (PI) ) * GetIrradiance(m);

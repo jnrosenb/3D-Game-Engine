@@ -110,6 +110,10 @@ struct DrawData
 	GLuint metallicTexture;
 	GLuint normalMap;
 
+	//Future flag (for now, bools)
+	int useDiffuseTexture;
+	int useNormalMap;
+
 	//PBR PARAMS
 	float roughness;
 	float metallic;
@@ -120,6 +124,12 @@ struct DrawData
 
 	unsigned boneCount;
 	std::unordered_map<std::string, Bone> *BoneMap; //Only for debug drawing, temporary
+
+	//DEPRECATED - Only used for cloth drawing-////
+	bool isCloth;							   ////
+	size_t faceSize;						   ////
+	GLuint vao;								   ////
+	//-----------------------------------------////
 
 	//Bones experiment
 	std::vector<glm::mat4> *BoneTransformations;
@@ -201,30 +211,35 @@ public:
 	bool DrawSkeleton;
 
 	//Compute shader for blurring
-	void SetKernelCount(int newVal) 
+	void SetKernelCount(int newVal, std::vector<float>& w)
 	{
-		kernelCount = newVal;
-		OnChangingKernelCount();
-	}
-	int GetKernelCount() const
-	{
-		return kernelCount;
+		OnChangingKernelCount(w, newVal);
 	}
 
 //VARIABLES
 protected:
 
 	//Compute shader for blurring
-	void OnChangingKernelCount() 
+	void OnChangingKernelCount(std::vector<float>& w, int &count)
 	{
-		this->weights.clear();
-		int kernel_radius = (kernelCount - 1) * 0.5f;
-		AuxMath::genGaussianWeights(kernel_radius, this->weights);
+		w.clear();
+		int kernel_radius = (count - 1) * 0.5f;
+		AuxMath::genGaussianWeights(kernel_radius, w);
 	}
+	
+	//Compute shaders
 	Shader *blurShaderHoriz;
 	Shader *blurShaderVert;
+	Shader *blurAOHoriz;
+	Shader *blurAOVert;
+
+	//Weights for moments shadow mapping
 	std::vector<float> weights;
 	int kernelCount;
+
+	//Weights for AO
+	std::vector<float> AOweights;
+	int AOKernelCount;
 
 	//LIGHTS
 	glm::vec4 Light_Colors[MAX_LIGHT_COUNT];

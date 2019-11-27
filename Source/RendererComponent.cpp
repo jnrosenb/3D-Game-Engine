@@ -7,6 +7,7 @@
 #include "Sphere.h"
 #include "Quad.h"
 #include "Polar.h"
+#include "Plane.h"
 #include "Shader.h"
 #include "TransformComponent.h"
 #include "AnimationComponent.h"
@@ -23,7 +24,7 @@ extern ResourceManager *resMgr;
 Render::Render(GameObject *owner) :
 	BaseComponent(owner, COMPONENT_TYPES::RENDERER)
 {
-	//In case it is not overrided
+	//In case it is not overrided (NOT USED IN DEFERRED)
 	this->ShaderName = "Solid";
 
 	//For some vars which may or may not be defined in json
@@ -33,6 +34,8 @@ Render::Render(GameObject *owner) :
 	this->diffuseColor = glm::vec4(1);
 	xTiling = 1;
 	yTiling = 1;
+	useDiffuseTexture = false;
+	useNormalMap = false;
 }
 
 Render::~Render()
@@ -58,7 +61,7 @@ void Render::Update(float dt)
 	AnimationComponent *Anim = this->m_owner->GetComponent<AnimationComponent>();
 
 	// Pack it maybe on a struct
-	DrawData data;
+	DrawData data = {};
 	data.meshes = &this->model->meshes;
 	data.shader = shader;
 	data.model = T->GetModel();
@@ -69,6 +72,9 @@ void Render::Update(float dt)
 	data.metallicTexture = renderer->GetTexture(this->metallicTex);
 	data.normalMap = renderer->GetTexture(this->normalMap);
 	
+	data.useDiffuseTexture = static_cast<int>(useDiffuseTexture);
+	data.useNormalMap = static_cast<int>(useNormalMap);
+
 	data.roughness = this->roughness;
 	data.metallic = this->metallic;
 
@@ -133,6 +139,8 @@ void Render::initModel()
 			this->model->meshes.push_back(new Sphere(32));
 		else if (this->primitive == "polar")
 			this->model->meshes.push_back(new PolarPlane(64));
+		else if (this->primitive == "plane")
+			this->model->meshes.push_back(new Plane(64));
 	}
 }
 

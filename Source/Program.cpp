@@ -114,7 +114,8 @@ int main(int argc, char **argv)
 
 	//Load the first scene
 	///superFactory.LoadScene("TestScene01.json");
-	superFactory.LoadScene("IK_Scene.json");
+	///superFactory.LoadScene("IK_Scene.json");
+	superFactory.LoadScene("clothScene.json");
 	renderer->init();
 
 

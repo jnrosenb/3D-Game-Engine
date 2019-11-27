@@ -3,7 +3,7 @@
   "components": [
     {
       "id": "transform",
-      "position": [ 0, -2, 0 ],
+      "position": [ -5, -2, -5 ],
       "rotation": [ 0, 0, 0 ],
       "scale": [ 0.1, 0.1, 0.1 ]
     },
@@ -17,7 +17,7 @@
         "HeadTop_End"
       ],
       "start_end_effector": "LeftHand",
-      "start_joint_depth": 4,
+      "start_joint_depth": 3,
       "steps": 5000
     },
     {

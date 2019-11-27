@@ -66,4 +66,8 @@ public:	//TODO - Change for a public interface
 	//PBR-IBL params
 	float roughness;
 	float metallic;
+
+	//bools (replace with feature mask on future)
+	bool useDiffuseTexture;
+	bool useNormalMap;
 };

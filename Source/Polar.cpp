@@ -51,7 +51,7 @@ PolarPlane::PolarPlane(int mesh_size) :
 	for (int i = 0; i < GetVertexCount(); ++i)
 	{
 		//glm::vec4 uv = Std2Unit * vertices[i];
-		glm::vec4 uv = 0.5f * (vertices[i] + 1.0f);
+		glm::vec4 uv = 0.5f * (vertices[i] + glm::vec4(1.0f));
 		texCoords[i].x = uv[0];
 		texCoords[i].y = uv[1];
 	}

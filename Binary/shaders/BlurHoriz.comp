@@ -7,7 +7,6 @@
 //Defines the groups sizes
 layout (local_size_x = GROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 
-uniform int kernelCount;
 layout (rgba32f) uniform readonly image2D src;
 layout (rgba32f) uniform writeonly image2D dst;
 uniform float weights[MAX_WEIGHTS];
@@ -24,8 +23,6 @@ shared vec4 v[GROUP_SIZE + MAX_WEIGHTS - 1];
 //////////////////
 void main() 
 {
-    // ...
-    
 	// Position of the group in the whole image
     ivec2 global_pos = ivec2(gl_GlobalInvocationID.xy);
     uint i = gl_LocalInvocationID.x;

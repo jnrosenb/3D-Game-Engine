@@ -1,0 +1,17 @@
+{
+    "tag": "SponzaPalace",
+    "components": [
+      {
+        "id": "transform",
+        "position": [ 0, -2, 0 ],
+        "rotation": [ 0, 0, 0 ],
+        "scale": [ 0.3, 0.3, 0.3 ]
+      },
+      {
+        "id": "render",
+        "diffuse": [ 1.0, 1.0, 1.0, 1.0 ],
+        "load_model": true,
+        "model_name": "sponza.obj"
+      }
+    ]
+}

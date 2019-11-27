@@ -73,6 +73,12 @@ public:
 	void DrawCurve(std::vector<glm::vec4> const& points, 
 		glm::vec3 const& color);
 
+	//AO-Controller
+	void toggleAO() 
+	{
+		useAO = !useAO;
+	}
+
 
 	//PRIVATE METHODS
 private:
@@ -87,11 +93,13 @@ private:
 
 	//PASSES
 	void GeometryPass();
-	void AmbientLightPass();
+	void AmbientOcclusionPass();
 	void AmbientIBLPass();
 	void SkydomePass();
 	void FilteredShadowPass();
 	void MultiplePointLightPass(glm::mat4& projView);
+	//Replaced by IBL pass
+	void AmbientLightPass();
 
 	//Uniform buffer object (LATER TAKE OUT OF HERE)
 	void initUniformBufferObjects();
@@ -139,6 +147,11 @@ private:
 	Shader *DirectionalLightShader;
 	Shader *LineShader;
 	Shader *IBLShader;
+	Shader *AOShader;
+
+
+	//AO
+	bool useAO;
 
 	//SHADOW MAP STUFF
 	glm::mat4 lightProjView;
@@ -159,4 +172,5 @@ private:
 	//Framebuffer
 	RenderTarget *GeometryBuffer;
 	RenderTarget *ShadowBuffer;
+	RenderTarget *AOBuffer;
 };

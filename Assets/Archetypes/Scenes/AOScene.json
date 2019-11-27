@@ -1,0 +1,55 @@
+{
+  "Skydome": {
+    "Texture": "Factory_Catwalk_2k.hdr",
+    "Irradiance": "Factory_Catwalk_Env.hdr"
+  },
+  "Lights": [
+    {
+      "Type": "Directional",
+      "Position": [ 0, 105, -100 ],
+      "Color": [ 0.15, 0.15, 0.15 ],
+      "Look": [ 0, -1, 1 ],
+      "Near": 0.1,
+      "far": 1000.0,
+      "Width": 40,
+      "Height": 30,
+      "Intensity": 1.0,
+      "ShadowIntensity": 1.0
+    }
+  ],
+  "Objects": [
+    {
+      "name": "Floor01.json"
+    },
+    {
+      "name": "Crate01.json"
+    },
+    {
+      "name": "Crate02.json"
+    },
+    {
+      "name": "Crate03.json"
+    },
+    {
+      "name": "Crate04.json"
+    },
+    {
+      "name": "Crate05.json"
+    },
+    {
+      "name": "Crate06.json"
+    },
+    {
+      "name": "Crate07.json"
+    },
+    {
+      "name": "Crate08.json"
+    },
+    {
+      "name": "Crate09.json"
+    },
+    {
+      "name": "Crate00.json"
+    }
+  ]
+}

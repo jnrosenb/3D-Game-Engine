@@ -1,0 +1,76 @@
+#version 430 // Version of OpenGL with COMPUTE shader support
+
+//MACROS
+#define GROUP_SIZE		128
+#define MAX_WEIGHTS		100
+#define PI				3.14159265
+
+//Defines the groups sizes
+layout (local_size_x = 1, local_size_y = GROUP_SIZE, local_size_z = 1) in;
+
+
+layout (r16f) uniform readonly image2D src;		        // READ ONLY  - Input image  - rgba32f img
+layout (r16f) uniform writeonly image2D dst;			// WRITE ONLY - Output image - rgba32f img
+uniform float weights[MAX_WEIGHTS];
+uniform int actualWeightCount;
+
+//Uniform samplers for AO calculation
+layout (rgba32f) uniform readonly image2D GBufferPos;
+layout (rgba32f) uniform readonly image2D GBufferNormals;
+uniform mat4 view;
+
+// Variable shared by threads of this group.
+// We write to this variable, and at the end, use this variable to fill dest
+shared float v[GROUP_SIZE + MAX_WEIGHTS - 1];
+
+
+//////////////////
+////   MAIN   ////
+//////////////////
+void main() 
+{
+	//Position of this pixel in whole image
+    ivec2 global_pos = ivec2(gl_GlobalInvocationID.xy);
+
+	//displacement of pixel in group - [0, GROUP_SIZE - 1]
+    uint i = gl_LocalInvocationID.y;
+	
+	//Calculate the group's radius (not counting center value)
+	int w = (actualWeightCount - 1) / 2;
+
+	// Read a specific location from the image into v
+	v[i] = imageLoad(src, global_pos + ivec2(0, -w)).r;
+	if (i < 2 * w)
+        v[i + GROUP_SIZE] = imageLoad(src, global_pos + ivec2(0, GROUP_SIZE - w)).r;
+
+
+	// Wait for all threads to catchup before reading v[]
+    barrier();
+
+
+    // Get data using v
+	float data = 0.0f;
+	int realWeightCount =  2 * w + 1;
+	float weightSum = 0.0;
+	for(int j = 0; j < realWeightCount; ++j)
+	{
+		//Get world data for center pixel
+		vec4 P = imageLoad(GBufferPos, global_pos);
+		vec4 N = imageLoad(GBufferNormals, global_pos);
+		
+		vec4 Pi = imageLoad(GBufferPos, global_pos + ivec2(0, -w + j) );
+		vec4 Ni = imageLoad(GBufferNormals, global_pos + ivec2(0, -w + j) );
+		float d =  (P).z;
+		float di = (Pi).z;
+		float s = 0.001;
+		float RangeKernel = max(dot(Ni, N), 0.0) * (1/(2*PI*s)) * (exp(-pow(di-d,2)/(2*s)));
+		
+		float W = RangeKernel * weights[j];
+		weightSum += W;
+		data += (W * v[i + j]);
+	}
+	data /= weightSum;
+
+	//Finally, fill dst with data from v (I think)
+    imageStore(dst, global_pos, vec4(data, 0, 0, 1)); // Write to destination image
+}

@@ -256,7 +256,9 @@ void Camera::handleInput(float dt)
 
 	if (inputMgr->getKeyTrigger(SDL_SCANCODE_TAB))
 	{
-		renderer->DrawSkeleton = !renderer->DrawSkeleton;
+		DeferredRenderer *rend = static_cast<DeferredRenderer*>(renderer);
+		rend->toggleAO();
+		std::cout << "AO TOGGLED!" << std::endl;
 	}
 
 	//MSAA ON
@@ -271,15 +273,11 @@ void Camera::handleInput(float dt)
 	//Increase, decrease deferredRenderer kernel size
 	if (inputMgr->getKeyTrigger(SDL_SCANCODE_I))
 	{
-		int k = renderer->GetKernelCount();
-		renderer->SetKernelCount(k - 1);
-		std::cout << "KERNEL COUNT NOW" << renderer->GetKernelCount() << std::endl;
+		///std::cout << "KERNEL COUNT NOW" << renderer->GetKernelCount() << std::endl;
 	}
 	if (inputMgr->getKeyTrigger(SDL_SCANCODE_O))
 	{
-		int k = renderer->GetKernelCount();
-		renderer->SetKernelCount(k + 1);
-		std::cout << "KERNEL COUNT NOW : " << renderer->GetKernelCount() << std::endl;
+		///std::cout << "KERNEL COUNT NOW : " << renderer->GetKernelCount() << std::endl;
 	}
 
 	//MOUSE DRAG STUFF

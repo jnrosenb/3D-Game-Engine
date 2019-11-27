@@ -300,7 +300,7 @@ void IKGoalComponent::handleInput(float dt)
 		AnimationComponent *AnimComp = m_owner->GetComponent<AnimationComponent>();
 		if (AnimComp == nullptr) return;
 		
-		if (AnimComp->animSpeed == 0.0f) 
+		if (AnimComp->animSpeed == 0.0f)
 			AnimComp->animSpeed = 1.0f;
 		else if (AnimComp->animSpeed > 0.0f) 
 			AnimComp->animSpeed = 0.0f;

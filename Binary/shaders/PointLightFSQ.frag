@@ -12,6 +12,8 @@ layout(std140) uniform test_gUBlock
 	mat4 ProjView;							// 0   - 64
 	mat4 LightProjView;						// 64   -128
 	vec4 eye;								// 128  -144
+	int ScreenWidth;
+	int ScreenHeight;
 };
 
 uniform sampler2D GBufferPos;
@@ -41,7 +43,7 @@ void main(void)
 	float intensity = 1.0;
 
 	//GET UV COORDS
-	vec2 Uvs = vec2(gl_FragCoord.x / 1280, gl_FragCoord.y / 720);
+	vec2 Uvs = vec2(gl_FragCoord.x / ScreenWidth, gl_FragCoord.y / ScreenHeight);
 
 	//FETCH STUFF FROM MAPS
 	vec4 worldPos = texture(GBufferPos, Uvs);

@@ -15,6 +15,8 @@ layout(std140) uniform test_gUBlock
 	mat4 ProjView;							// 0   - 64
 	mat4 LightProjView;						// 64   -128
 	vec4 eye;								// 128  -144
+	int ScreenWidth;
+	int ScreenHeight;
 };
 
 out vec2 uvs;

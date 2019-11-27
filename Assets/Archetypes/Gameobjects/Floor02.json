@@ -3,7 +3,7 @@
     "components": [
       {
           "id": "transform",
-          "position": [0, -3, 0],
+          "position": [0, -10, 0],
           "rotation": [-90, 0, 0],
           "scale": [ 300, 300, 1.0 ]
       },
@@ -12,14 +12,9 @@
         "diffuse": [ 1.0, 1.0, 1.0, 1.0 ],
         "specular": [ 1.0, 1.0, 1.0, 1.0 ],
         "vertex_id": 0,
-        "load_model": true,
-        "roughness": 0.01,
-        "metallic": 1.0,
+        "roughness": 1.0,
+        "metallic": 0.0,
         "primitive": "quad",
-        "model_name": "Sphere.fbx",
-        "diffuse_texture": "Bricks_diff.jpg",
-        "roughness_texture": "Bricks_rgh.jpg",
-        "normal_map": "Bricks_nml.jpg",
         "x_tiling": 70,
         "y_tiling": 50
       }
