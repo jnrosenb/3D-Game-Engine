@@ -82,4 +82,5 @@ private:
 	//For rigidbody
 	std::vector <glm::vec4> oldPos;
 	std::vector <glm::vec3> forces;
+	std::vector<size_t> inactiveVertices;
 };

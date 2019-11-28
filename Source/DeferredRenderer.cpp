@@ -272,27 +272,36 @@ void DeferredRenderer::GeometryPass()
 
 
 		//CLOTH---------------DELETE LATER------------------------------------------------////
-		if (data.isCloth) 																  ////
-		{																				  ////
-			//BINDING																	  ////
-			glBindVertexArray(data.vao);												  ////
-			//SAMPLER UNIFORMS---------------------------------							  ////
-			geometryPassShader->setTexture("diffuseTexture", data.diffuseTexture, 0);	  ////
-			//UNIFORM BINDING------------------------------------						  ////
-			geometryPassShader->setMat4f("model", data.model);							  ////
-			geometryPassShader->setMat4f("normalModel", data.normalsModel);				  ////
-			geometryPassShader->setInt("useDiffuseTexture", data.useDiffuseTexture);	  ////
-			geometryPassShader->setVec4f("specularColor", data.specularColor.r,			  ////
-				data.specularColor.g, data.specularColor.b, data.specularColor.a);		  ////
-			geometryPassShader->setVec4f("diffuseColor", data.diffuseColor.r,			  ////
-				data.diffuseColor.g, data.diffuseColor.b, data.diffuseColor.a);			  ////
-			geometryPassShader->setInt("xTiling", data.xTiling);						  ////
-			geometryPassShader->setInt("yTiling", data.yTiling);						  ////
-			int faceCount = data.faceSize;												  ////
-			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);			  ////
-			glBindVertexArray(0);														  ////
-			continue;																	  ////
-		}																				  ////
+		if (data.isCloth)
+		{
+			//BINDING																	  
+			glBindVertexArray(data.vao);
+			//SAMPLER UNIFORMS---------------------------------							  
+			geometryPassShader->setTexture("diffuseTexture", data.diffuseTexture, 0);
+			//UNIFORM BINDING------------------------------------						  
+			geometryPassShader->setMat4f("model", data.model);
+			geometryPassShader->setMat4f("normalModel", data.normalsModel);
+			geometryPassShader->setInt("useDiffuseTexture", data.useDiffuseTexture);
+			geometryPassShader->setVec4f("specularColor", data.specularColor.r,
+				data.specularColor.g, data.specularColor.b, data.specularColor.a);
+			geometryPassShader->setVec4f("diffuseColor", data.diffuseColor.r,
+				data.diffuseColor.g, data.diffuseColor.b, data.diffuseColor.a);
+			geometryPassShader->setInt("xTiling", data.xTiling);
+			geometryPassShader->setInt("yTiling", data.yTiling);
+			int faceCount = data.faceSize;
+			//Setting stuff----------------------------
+			glDisable(GL_CULL_FACE);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			//Setting stuff----------------------------
+			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0); 
+			//Setting stuff back-----------------------
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			glEnable(GL_CULL_FACE);                                                       
+			glCullFace(GL_BACK);
+			//setting stuff back)----------------------
+			glBindVertexArray(0);														  
+			continue;																	  
+		}																				  
 		//CLOTH---------------DELETE LATER------------------------------------------------////
 
 

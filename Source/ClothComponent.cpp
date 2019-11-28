@@ -18,7 +18,7 @@ extern Renderer *renderer;
 extern InputManager *inputMgr;
 
 
-#define EPSILON_IK		0.0000001f
+#define EPSILON			0.0000001f
 #define PI				3.14159f
 #define G				9.8f
 
@@ -51,7 +51,6 @@ void ClothComponent::DeserializeInit()
 
 	//Set the right size for the different arrays
 	forces.resize(vertices.size(), glm::vec3(0.0f));
-	oldPos.resize(vertices.size(), glm::vec4(0.0f));
 }
 
 
@@ -94,14 +93,12 @@ void ClothComponent::IntegrateForces(float dt)
 			glm::vec3& f = forces[y*cols + x];
 			glm::vec3 a = f / mass;
 
-			//Integrate using one of the methods
-			///glm::vec3 v = dt * a;
-			//Rewrite the vertex position
-			///vertices[y*cols + x] = vertices[y*cols + x] + dt * glm::vec4(v, 0);
+			//Using a fixed timestep
+			float DT = 0.192f;
 
 			//New integration
 			glm::vec4 temp = vertices[y*cols + x];
-			vertices[y*cols + x] = vertices[y*cols + x] + (vertices[y*cols + x] - oldPos[y*cols + x]) + glm::vec4(a, 0.0f) * powf(dt, 2);
+			vertices[y*cols + x] = vertices[y*cols + x] + (vertices[y*cols + x] - oldPos[y*cols + x])*0.25f + glm::vec4(a, 0.0f) * powf(DT, 2);
 			oldPos[y*cols + x] = temp;
 
 			//Reset the force on this particle
@@ -139,7 +136,7 @@ void ClothComponent::CalculateForces()
 		for (int x = 0; x < cols; ++x)
 		{
 			// TODO - remove this! - For sake of experiment, skip four borders
-			if (x == 0 || y == 0 || x == cols - 1 || y == rows - 1)
+			if (x == 0)// && y == 0 || x == cols-1 && y == 0)
 				continue;
 
 			//Get force vector's reference
@@ -147,8 +144,8 @@ void ClothComponent::CalculateForces()
 
 			//Gravity forces
 			Transform *T = m_owner->GetComponent<Transform>();
-			glm::vec4 objSpaceG = glm::inverse(T->GetModel()) * glm::vec4(0.0f, -G, 0.0f, 0.0f);
-			f += mass * glm::vec3(objSpaceG);
+			glm::vec4 objSpaceMG = glm::inverse(T->GetModel()) * glm::vec4(0.0f, -(mass*G), 0.0f, 0.0f);
+			f += glm::vec3(objSpaceMG);
 
 			//Spring forces
 			CalculateSpringForces(x, y, f);
@@ -163,8 +160,7 @@ void ClothComponent::CalculateForces()
 
 void ClothComponent::CalculateSpringForces(int x, int y, glm::vec3& force)
 {
-	// In this case, we can check every spring force
-	// For now we will do this case
+	// In this case, we can check every vertex around the current one
 	if (x > 0 && y > 0 && x < cols-1 && y < rows-1)
 	{
 		//Straigh lines
@@ -188,6 +184,129 @@ void ClothComponent::CalculateSpringForces(int x, int y, glm::vec3& force)
 			force += SpringForce(y, x, y, x + 2);
 		}
 	}
+	//Upper-Right corner
+	else if (x == cols-1 && y == rows-1)
+	{
+		//Straigh lines
+		force += SpringForce(y, x, y - 1, x);
+		force += SpringForce(y, x, y, x - 1);
+		//Diagonals
+		force += SpringForce(y, x, y - 1, x - 1);
+		//Two away
+		force += SpringForce(y, x, y - 2, x);
+		force += SpringForce(y, x, y, x - 2);
+	}
+	//Upper-Left corner
+	else if (x == 0 && y == rows-1)
+	{
+		//Straigh lines
+		force += SpringForce(y, x, y - 1, x);
+		force += SpringForce(y, x, y, x + 1);
+		//Diagonals
+		force += SpringForce(y, x, y - 1, x + 1);
+		//Two away
+		force += SpringForce(y, x, y - 2, x);
+		force += SpringForce(y, x, y, x + 2);
+	}
+	//Bottom-Right corner
+	else if (x == cols-1 && y == 0)
+	{
+		//Straigh lines
+		force += SpringForce(y, x, y + 1, x);
+		force += SpringForce(y, x, y, x - 1);
+		//Diagonals
+		force += SpringForce(y, x, y + 1, x - 1);
+		//Two away
+		force += SpringForce(y, x, y + 2, x);
+		force += SpringForce(y, x, y, x - 2);
+	}
+	//Bottom-Left corner
+	else if (x == 0 && y == 0)
+	{
+		//Straigh lines
+		force += SpringForce(y, x, y + 1, x);
+		force += SpringForce(y, x, y, x + 1);
+		//Diagonals
+		force += SpringForce(y, x, y + 1, x + 1);
+		//Two away
+		force += SpringForce(y, x, y + 2, x);
+		force += SpringForce(y, x, y, x + 2);
+	}
+	//Left border
+	else if (x == 0)
+	{
+		//Straigh lines
+		force += SpringForce(y, x, y - 1, x);
+		force += SpringForce(y, x, y + 1, x);
+		force += SpringForce(y, x, y, x + 1);
+		//Diagonals
+		force += SpringForce(y, x, y + 1, x + 1);
+		force += SpringForce(y, x, y - 1, x + 1);
+		//Two away
+		force += SpringForce(y, x, y, x + 2);
+		if (y > 1 && y < rows - 2)
+		{
+			force += SpringForce(y, x, y - 2, x);
+			force += SpringForce(y, x, y + 2, x);
+		}
+	}
+	//Right border
+	else if (x == cols-1)
+	{
+		//Straigh lines
+		force += SpringForce(y, x, y - 1, x);
+		force += SpringForce(y, x, y + 1, x);
+		force += SpringForce(y, x, y, x - 1);
+
+		//Diagonals
+		force += SpringForce(y, x, y + 1, x - 1);
+		force += SpringForce(y, x, y - 1, x - 1);
+		//Two away
+		force += SpringForce(y, x, y, x - 2);
+		if (y > 1 && y < rows - 2)
+		{
+			force += SpringForce(y, x, y - 2, x);
+			force += SpringForce(y, x, y + 2, x);
+		}
+	}
+	//Bottom border
+	else if (y == 0) 
+	{
+		//Straigh lines
+		force += SpringForce(y, x, y + 1, x);
+		force += SpringForce(y, x, y, x - 1);
+		force += SpringForce(y, x, y, x + 1);
+
+		//Diagonals
+		force += SpringForce(y, x, y + 1, x + 1);
+		force += SpringForce(y, x, y + 1, x - 1);
+		//Two away
+		force += SpringForce(y, x, y + 2, x);
+		if (x > 1 && x < cols - 2)
+		{
+			force += SpringForce(y, x, y, x - 2);
+			force += SpringForce(y, x, y, x + 2);
+		}
+	}
+	//Top border
+	else if (y == rows-1) 
+	{
+		//Straigh lines
+		force += SpringForce(y, x, y - 1, x);
+		force += SpringForce(y, x, y, x - 1);
+		force += SpringForce(y, x, y, x + 1);
+
+		//Diagonals
+		force += SpringForce(y, x, y - 1, x + 1);
+		force += SpringForce(y, x, y - 1, x - 1);
+		//Two away
+		force += SpringForce(y, x, y - 2, x);
+		if (x > 1 && x < cols - 2)
+		{
+			force += SpringForce(y, x, y, x - 2);
+			force += SpringForce(y, x, y, x + 2);
+		}
+	}
 }
 
 
@@ -207,6 +326,7 @@ void ClothComponent::BuildClothMesh()
 			float x = j * d - mesh_halfWidth;
 			int index = (cols)*i + j;
 			vertices.push_back(glm::vec4(x, y, 0.0f, 1.0f));
+			oldPos.push_back(glm::vec4(x, y, 0.0f, 1.0f));
 		}
 	}
 
@@ -382,13 +502,20 @@ glm::vec3 ClothComponent::SpringForce(int i, int j, int i2, int j2)
 	glm::vec3 A = vertices[(i)*cols + j];
 	glm::vec3 B = vertices[(i2)*cols + j2];
 	
-	glm::vec3 dif = (A - B);
+	glm::vec3 dif = (B - A);
 	float len = glm::length(dif);
-	
 	float restLen = sqrtf(powf(i2-i, 2) + powf(j2-j, 2)) * d;
-	float coeff = -ks * (len - restLen);
-	glm::vec3 scaledNorm = coeff * glm::normalize(dif);
-	return scaledNorm;
+
+	if (abs(len - restLen) <= EPSILON) 
+	{
+		return glm::vec3(0.0f);
+	}
+	else 
+	{
+		float coeff = ks * (len - restLen) * 0.5f;
+		glm::vec3 scaledNorm = coeff * glm::normalize(dif);
+		return scaledNorm;
+	}
 }
 
 
@@ -397,4 +524,30 @@ glm::vec3 ClothComponent::SpringForce(int i, int j, int i2, int j2)
 ////////////////////////////////
 void ClothComponent::handleInput(float dt)
 {
+	float moveSpeed = 100.0f * dt;
+
+	Transform *T = m_owner->GetComponent<Transform>();
+	glm::vec4 objSpaceRIGHT = glm::inverse(T->GetModel()) * glm::vec4(moveSpeed, 0.0f, 0.0f, 0.0f);
+	glm::vec4 objSpaceUP = glm::inverse(T->GetModel()) * glm::vec4(0.0f, moveSpeed, 0.0f, 0.0f);
+
+	if (inputMgr->getKeyPress(SDL_SCANCODE_RIGHT))
+	{
+		for (int y = 0; y < rows; ++y)
+			this->vertices[y*cols] = this->vertices[y*cols] + objSpaceRIGHT;
+	}
+	if (inputMgr->getKeyPress(SDL_SCANCODE_LEFT))
+	{
+		for (int y = 0; y < rows; ++y)
+			this->vertices[y*cols] = this->vertices[y*cols] - objSpaceRIGHT;
+	}
+	if (inputMgr->getKeyPress(SDL_SCANCODE_UP))
+	{
+		for (int y = 0; y < rows; ++y)
+			this->vertices[y*cols] = this->vertices[y*cols] + objSpaceUP;
+	}
+	if (inputMgr->getKeyPress(SDL_SCANCODE_DOWN))
+	{
+		for (int y = 0; y < rows; ++y)
+			this->vertices[y*cols] = this->vertices[y*cols] - objSpaceUP;
+	}
 }

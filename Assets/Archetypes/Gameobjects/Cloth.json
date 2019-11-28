@@ -3,7 +3,7 @@
   "components": [
     {
       "id": "transform",
-      "position": [ 0, 0, 0 ],
+      "position": [ 0, 5, 0 ],
       "rotation": [ 90, 0, 0 ],
       "scale": [ 5, 5, 1 ]
     },
@@ -11,11 +11,11 @@
       "id": "cloth",
       "rows": 32,
       "cols": 32,
-      "mass": 1.0,
-      "spring_coeff": 0.05,
-      "wind_coeff": 0.5,
-      "stretch_percentage": 0.05,
-      "rest_length": 0.125
+      "mass": 0.1,
+      "spring_coeff": 0.75,
+      "wind_coeff": 5.0,
+      "stretch_percentage": 1.0,
+      "rest_length": 1.0
     }
   ]
 }

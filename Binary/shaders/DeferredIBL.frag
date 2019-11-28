@@ -141,7 +141,7 @@ void main(void)
 	}
 
 	//Final color---------------------------------------------------------------
-	vec3 finalClr = ambient + montecarloSum + diffuseIrr;
+	vec3 finalClr = ambient + 0*montecarloSum + diffuseIrr;
 	frag_color = vec4(finalClr.xyz, 1);
 }
 
