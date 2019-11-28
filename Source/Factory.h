@@ -517,6 +517,25 @@ public:
 					assert(acc.IsFloat());
 					clothComp->stretch = acc.GetFloat();
 				}
+				if (attribute.HasMember("damping"))
+				{
+					const Value& acc = attribute["damping"];
+					assert(acc.IsFloat());
+					clothComp->damping = acc.GetFloat();
+				}
+				if (attribute.HasMember("wind_direction"))
+				{
+					const Value& acc = attribute["wind_direction"];
+					assert(acc.IsArray());
+					glm::vec3 i = glm::normalize(glm::vec3(acc[0].GetFloat(), acc[1].GetFloat(), acc[2].GetFloat()));
+					clothComp->windDirection = glm::vec4(i, 0.0f);
+				}
+				if (attribute.HasMember("wind_intensity"))
+				{
+					const Value& acc = attribute["wind_intensity"];
+					assert(acc.IsFloat());
+					clothComp->windIntensity = acc.GetFloat();
+				}
 
 				clothComp->DeserializeInit();
 			}

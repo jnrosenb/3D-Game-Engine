@@ -37,6 +37,8 @@ private:
 	void IntegrateForces(float dt);
 	void CalculateSpringForces(int x, int y, 
 		glm::vec3& force);
+	void CalculateWindForce(int x, int y,
+		glm::vec3& force);
 	void BuildClothMesh(); 
 	void RecalculateNormals();
 	glm::vec3 SpringForce(int i, int j, 
@@ -52,13 +54,12 @@ public:
 
 private:
 	//Physical data. this all should be serialized soon
-	float mass;
-	float d;
-	float stretch;
-	float ks;
-	float kw;
-	int cols;
-	int rows; 
+	float mass, d, stretch;
+	float ks, kw, damping;
+	int cols, rows; 
+	bool enableWind;
+	float windIntensity;
+	glm::vec4 windDirection;
 
 	//TODO - serialize
 	glm::vec3 diffuseColor;

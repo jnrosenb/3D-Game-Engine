@@ -45,6 +45,7 @@ void ClothComponent::DeserializeInit()
 	specularColor = glm::vec3(1, 1, 1);
 	xTiling = 1.0;
 	yTiling = 1.0;
+	enableWind = false;
 
 	//Using cols, rows and d, build the plane object
 	BuildClothMesh();
@@ -98,7 +99,7 @@ void ClothComponent::IntegrateForces(float dt)
 
 			//New integration
 			glm::vec4 temp = vertices[y*cols + x];
-			vertices[y*cols + x] = vertices[y*cols + x] + (vertices[y*cols + x] - oldPos[y*cols + x])*0.25f + glm::vec4(a, 0.0f) * powf(DT, 2);
+			vertices[y*cols + x] = vertices[y*cols + x] + (vertices[y*cols + x] - oldPos[y*cols + x])*(1.0f - damping) + glm::vec4(a, 0.0f) * powf(DT, 2);
 			oldPos[y*cols + x] = temp;
 
 			//Reset the force on this particle
@@ -150,11 +151,24 @@ void ClothComponent::CalculateForces()
 			//Spring forces
 			CalculateSpringForces(x, y, f);
 
-			//Damping force
-
 			//Wind force
+			if (enableWind)
+				CalculateWindForce(x, y, f);
 		}
 	}
+}
+
+
+void ClothComponent::CalculateWindForce(int x, int y,
+	glm::vec3& force) 
+{
+	//Get vertex and add wind effect
+	glm::vec4& vertex = vertices[y*cols + x];
+	glm::vec4& normal = normals[y*cols + x];
+
+	//Get dot between normal and winddir
+	float intensity = glm::dot(windDirection * windIntensity, normal);
+	force += glm::vec3(normal) * intensity;
 }
 
 
@@ -564,22 +578,26 @@ void ClothComponent::handleInput(float dt)
 
 	if (inputMgr->getKeyPress(SDL_SCANCODE_RIGHT))
 	{
-		for (int y = 0; y < rows; ++y)
-			this->vertices[y*cols] = this->vertices[y*cols] + objSpaceRIGHT;
+		for (int x = 0; x < cols; ++x)
+			this->vertices[x*rows] = this->vertices[x*rows] + objSpaceRIGHT;
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_LEFT))
 	{
-		for (int y = 0; y < rows; ++y)
-			this->vertices[y*cols] = this->vertices[y*cols] - objSpaceRIGHT;
+		for (int x = 0; x < cols; ++x)
+			this->vertices[x*rows] = this->vertices[x*rows] - objSpaceRIGHT;
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_UP))
 	{
-		for (int y = 0; y < rows; ++y)
-			this->vertices[y*cols] = this->vertices[y*cols] + objSpaceUP;
+		for (int x = 0; x < cols; ++x)
+			this->vertices[x*rows] = this->vertices[x*rows] + objSpaceUP;
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_DOWN))
 	{
-		for (int y = 0; y < rows; ++y)
-			this->vertices[y*cols] = this->vertices[y*cols] - objSpaceUP;
+		for (int x = 0; x < cols; ++x)
+			this->vertices[x*rows] = this->vertices[x*rows] - objSpaceUP;
+	}
+	if (inputMgr->getKeyTrigger(SDL_SCANCODE_RETURN))
+	{
+		enableWind = !enableWind;
 	}
 }
