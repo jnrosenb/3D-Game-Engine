@@ -136,7 +136,7 @@ void ClothComponent::CalculateForces()
 		for (int x = 0; x < cols; ++x)
 		{
 			// TODO - remove this! - For sake of experiment, skip four borders
-			if (x == 0)// && y == 0 || x == cols-1 && y == 0)
+			if (x == 0)
 				continue;
 
 			//Get force vector's reference
@@ -249,6 +249,14 @@ void ClothComponent::CalculateSpringForces(int x, int y, glm::vec3& force)
 			force += SpringForce(y, x, y - 2, x);
 			force += SpringForce(y, x, y + 2, x);
 		}
+		else if (y == 1)
+		{
+			force += SpringForce(y, x, y + 2, x);
+		}
+		else if (y == rows - 2)
+		{
+			force += SpringForce(y, x, y - 2, x);
+		}
 	}
 	//Right border
 	else if (x == cols-1)
@@ -267,6 +275,14 @@ void ClothComponent::CalculateSpringForces(int x, int y, glm::vec3& force)
 		{
 			force += SpringForce(y, x, y - 2, x);
 			force += SpringForce(y, x, y + 2, x);
+		}
+		else if (y == 1)
+		{
+			force += SpringForce(y, x, y + 2, x);
+		}
+		else if (y == rows - 2)
+		{
+			force += SpringForce(y, x, y - 2, x);
 		}
 	}
 	//Bottom border
@@ -287,6 +303,14 @@ void ClothComponent::CalculateSpringForces(int x, int y, glm::vec3& force)
 			force += SpringForce(y, x, y, x - 2);
 			force += SpringForce(y, x, y, x + 2);
 		}
+		else if (x == 1)
+		{
+			force += SpringForce(y, x, y, x + 2);
+		}
+		else if (x == cols - 2)
+		{
+			force += SpringForce(y, x, y, x - 2);
+		}
 	}
 	//Top border
 	else if (y == rows-1) 
@@ -305,6 +329,14 @@ void ClothComponent::CalculateSpringForces(int x, int y, glm::vec3& force)
 		{
 			force += SpringForce(y, x, y, x - 2);
 			force += SpringForce(y, x, y, x + 2);
+		}
+		else if (x == 1)
+		{
+			force += SpringForce(y, x, y, x + 2);
+		}
+		else if (x == cols - 2) 
+		{
+			force += SpringForce(y, x, y, x - 2);
 		}
 	}
 }
