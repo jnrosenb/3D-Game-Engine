@@ -34,7 +34,8 @@ struct DirectionalLight
 	glm::vec4 eye;
 	glm::vec4 color;
 	glm::vec4 look;
-	float near, far;
+	float m_near;
+	float m_far;
 	int width, height;
 	float shadowIntensity;
 
@@ -42,13 +43,13 @@ struct DirectionalLight
 
 	DirectionalLight() : eye(glm::vec4(0.0f, 10.0f, -10.0f, 1)), 
 		color(glm::vec4(1.f, 1.f, 1.f, 1.f)), look(glm::vec4(0.0f, -1.0f, -1.0f, 0)), 
-		near(0.1f), far(1000.0f), width(40), height(30), shadowIntensity(1.f)
+		m_near(0.1f), m_far(1000.0f), width(40), height(30), shadowIntensity(1.f)
 	{}
 
 	DirectionalLight(float x, float y, float z, float r, float g, float b,
 		float dx, float dy, float dz, float n, float f) : 
 		eye(glm::vec4(x, y, z, 1)), color(glm::vec4(r, g, b, 1.f)),
-		look(glm::vec4(dx, dy, dz, 0)), near(n), far(f)
+		look(glm::vec4(dx, dy, dz, 0)), m_near(n), m_far(f)
 	{}
 };
 

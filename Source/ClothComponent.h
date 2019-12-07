@@ -54,8 +54,8 @@ public:
 
 private:
 	//Physical data. this all should be serialized soon
-	float mass, d, stretch;
-	float ks, kw, damping;
+	float mass, d;/// , stretch;
+	float kCoeff1, kCoeff2, kCoeff3, damping;
 	int cols, rows; 
 	bool enableWind;
 	float windIntensity;
@@ -66,6 +66,7 @@ private:
 	glm::vec3 specularColor; 
 	int xTiling;
 	int yTiling;
+	bool useGravity;
 
 	//Arrays of stored data
 	std::vector <glm::vec4> vertices;

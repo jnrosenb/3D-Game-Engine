@@ -1,15 +1,15 @@
 ///HEADER STUFF
 
-#include "AnimationComponent.h"
-#include "RendererComponent.h"
-
-#include "GameObject.h"
-#include "Model.h"
-#include "Interpolation.h"
-
 // TODO Temporary (while no world exists)
 #include "ResourceManager.h"
 extern ResourceManager *resMgr;
+
+#include "GameObject.h"
+#include "AnimationComponent.h"
+#include "RendererComponent.h"
+#include "Model.h"
+#include "Interpolation.h"
+
 
 // TODO For now, camera will handle all input
 #include "InputManager.h"

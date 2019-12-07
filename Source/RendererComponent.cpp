@@ -1,5 +1,9 @@
 ///HEADER STUFF
 
+#include "ResourceManager.h"
+extern ResourceManager *resMgr;
+
+#include "Renderer.h"
 #include "RendererComponent.h"
 
 //TODO - For now
@@ -15,10 +19,7 @@
 
 
 //Temporary (while no world exists)
-#include "Renderer.h"
-#include "ResourceManager.h"
 extern Renderer *renderer;
-extern ResourceManager *resMgr;
 
 
 Render::Render(GameObject *owner) :

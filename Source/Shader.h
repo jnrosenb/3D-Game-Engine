@@ -10,8 +10,6 @@
 #include <unordered_map>
 #include <string>
 
-static std::string const ShaderDir = "C:\\Users\\Jose\\Desktop\\OpenGl_Framework\\Binary\\shaders\\";
-
 
 class Shader 
 {

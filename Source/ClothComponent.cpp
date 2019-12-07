@@ -9,6 +9,11 @@
 #include "Plane.h"
 #include "TransformComponent.h"
 
+//TODO - Temporarily, while no world
+#include "ImGuiManager.h"
+extern ImGuiManager *imguiMgr;
+
+
 // TODO Temporary (while no world exists)
 #include "Renderer.h"
 extern Renderer *renderer;
@@ -20,12 +25,13 @@ extern InputManager *inputMgr;
 
 #define EPSILON			0.0000001f
 #define PI				3.14159f
-#define G				9.8f
+#define G				0.98f
 
 
 ClothComponent::ClothComponent(GameObject *owner) :
 	BaseComponent(owner, COMPONENT_TYPES::CLOTH)
 {
+	useGravity = false;
 }
 
 ClothComponent::~ClothComponent()
@@ -81,6 +87,10 @@ void ClothComponent::LateUpdate(float dt)
 {
 	//Send data to be drawn
 	SendDataToRenderer();
+
+	//Imgui stuff
+	imguiMgr->ClothUpdate(&mass, &damping, &useGravity, &enableWind, 
+		&windIntensity, &d, &kCoeff1, &kCoeff2, &kCoeff3, windDirection);
 }
 
 
@@ -137,17 +147,18 @@ void ClothComponent::CalculateForces()
 		for (int x = 0; x < cols; ++x)
 		{
 			// TODO - remove this! - For sake of experiment, skip four borders
-			if (x == 0)
+			if (y == 0)
 				continue;
 
 			//Get force vector's reference
 			glm::vec3& f = forces[y*cols + x];
 
 			//Gravity forces
-			Transform *T = m_owner->GetComponent<Transform>();
-			glm::vec4 objSpaceMG = glm::inverse(T->GetModel()) * glm::vec4(0.0f, -(mass*G), 0.0f, 0.0f);
-			f += glm::vec3(objSpaceMG);
-
+			if (useGravity) {
+				Transform *T = m_owner->GetComponent<Transform>();
+				glm::vec4 objSpaceMG = glm::inverse(T->GetModel()) * glm::vec4(0.0f, -(mass*G), 0.0f, 0.0f);
+				f += glm::vec3(objSpaceMG);
+			}
 			//Spring forces
 			CalculateSpringForces(x, y, f);
 
@@ -196,6 +207,12 @@ void ClothComponent::CalculateSpringForces(int x, int y, glm::vec3& force)
 			force += SpringForce(y, x, y + 2, x);
 			force += SpringForce(y, x, y, x - 2);
 			force += SpringForce(y, x, y, x + 2);
+
+			//Experiment
+			///force += SpringForce(y, x, y - 2, x - 2);
+			///force += SpringForce(y, x, y + 2, x - 2);
+			///force += SpringForce(y, x, y - 2, x + 2);
+			///force += SpringForce(y, x, y + 2, x + 2);
 		}
 	}
 	//Upper-Right corner
@@ -362,8 +379,8 @@ void ClothComponent::BuildClothMesh()
 
 	//Vertices initial setting. There should be cols rigidbodies 
 	//time rows bodies, each separated by rest distance d
-	float mesh_halfWidth = stretch * 0.5f * (cols - 1) * d;
-	float mesh_halfHeight = stretch * 0.5 * (rows - 1) * d;
+	float mesh_halfWidth =  0.5f * (cols - 1) * d;
+	float mesh_halfHeight = 0.5f * (rows - 1) * d;
 	for (int i = 0; i < rows; ++i)
 	{
 		float y = mesh_halfHeight - i * d;
@@ -550,7 +567,16 @@ glm::vec3 ClothComponent::SpringForce(int i, int j, int i2, int j2)
 	
 	glm::vec3 dif = (B - A);
 	float len = glm::length(dif);
-	float restLen = sqrtf(powf(i2-i, 2) + powf(j2-j, 2)) * d;
+	float cellDistance = sqrtf(powf(i2 - i, 2) + powf(j2 - j, 2));
+	float restLen = cellDistance * d;
+
+	float ks = 0.0f;
+	if (fabs(cellDistance - 1.0f) <= EPSILON)
+		ks = kCoeff1;
+	else if (fabs(cellDistance - 2.0f) <= EPSILON)
+		ks = kCoeff3;
+	else
+		ks = kCoeff2;
 
 	if (abs(len - restLen) <= EPSILON) 
 	{
@@ -579,25 +605,29 @@ void ClothComponent::handleInput(float dt)
 	if (inputMgr->getKeyPress(SDL_SCANCODE_RIGHT))
 	{
 		for (int x = 0; x < cols; ++x)
-			this->vertices[x*rows] = this->vertices[x*rows] + objSpaceRIGHT;
+			this->vertices[x] = this->vertices[x] + objSpaceRIGHT;
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_LEFT))
 	{
 		for (int x = 0; x < cols; ++x)
-			this->vertices[x*rows] = this->vertices[x*rows] - objSpaceRIGHT;
+			this->vertices[x] = this->vertices[x] - objSpaceRIGHT;
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_UP))
 	{
 		for (int x = 0; x < cols; ++x)
-			this->vertices[x*rows] = this->vertices[x*rows] + objSpaceUP;
+			this->vertices[x] = this->vertices[x] + objSpaceUP;
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_DOWN))
 	{
 		for (int x = 0; x < cols; ++x)
-			this->vertices[x*rows] = this->vertices[x*rows] - objSpaceUP;
+			this->vertices[x] = this->vertices[x] - objSpaceUP;
 	}
-	if (inputMgr->getKeyTrigger(SDL_SCANCODE_RETURN))
-	{
-		enableWind = !enableWind;
-	}
+	///if (inputMgr->getKeyTrigger(SDL_SCANCODE_RETURN))
+	///{
+	///	enableWind = !enableWind;
+	///}
+	///if (inputMgr->getKeyTrigger(SDL_SCANCODE_G))
+	///{
+	///	useGravity = !useGravity;
+	///}
 }

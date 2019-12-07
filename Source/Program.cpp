@@ -1,7 +1,7 @@
 //ENTRY POINT
 
 //TODO - MOVE THESE INTO MACRO INCLUDE
-#define USING_IMGUI			0
+#define USING_IMGUI			1
 #define USING_GLEW			0
 #define USING_GLAD			1
 
@@ -16,25 +16,26 @@
     #include "../External/Includes/ImGui/imgui_impl_opengl3.h"
 #endif
 
-///#include "../External/Includes/GL/glew.h"
+
+#include "Paths.h"
 #include "../External/Includes/SDL2/SDL.h"
 #include "../External/Includes/Glad_/Glad/glad.h"
 #include <gl/GL.h>
 #include "../External/Includes/glm/glm.hpp"
 #include <iostream>
 
-
 //Temp includes
 #include "ForwardRenderer.h"
 #include "DeferredRenderer.h"
 #include "InputManager.h"
+#include "ImGuiManager.h"
+#include "ResourceManager.h"
 #include "GameObjectManager.h"
 #include "FrameRateController.h"
-#include  "ResourceManager.h"
 #include "GameObject.h"
-#include "Factory.h"
 #include "RendererComponent.h"
 #include "TransformComponent.h"
+#include "Factory.h"
 
 //Quaternion test
 #include "PhysicsMath.h"
@@ -47,16 +48,19 @@ InputManager *inputMgr = NULL;
 ResourceManager *resMgr = NULL;
 GameobjectManager *goMgr = NULL;
 FrameRateController *frc = NULL;
+ImGuiManager *imguiMgr = NULL;
+EnginePaths *globalPaths = NULL;
 
 
 int main(int argc, char **argv)
 {
+
     // SDL init and create a window---------------------------------------------------
     if( SDL_Init(SDL_INIT_VIDEO) != 0 )
     {
         return -1;
     }
-
+	
     //We are in windows platform
 	//TODO - handle opengl different versions
     char const *glsl_version = "#version 330 core";
@@ -86,20 +90,15 @@ int main(int argc, char **argv)
 	//Check later
     ///SDL_GL_SetSwapInterval(1); //VSync stuff
 
-    ///GLEW stuff--------------------------------------------------------------------
-    ///if (glewInit() != GLEW_OK)
-    ///{
-    ///    return 1;
-    ///}
-	///std::cout << glFramebufferTexture << std::endl;
-	///std::cout << glFramebufferTexture2D << std::endl; 
-	///std::cout << glBindFramebuffer << std::endl;
 	//GLAD stuff
 	if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
 	{
 		std::cout << "Failed to initialize GLAD" << std::endl;
 		return -1;
 	}
+
+	//Path setting
+	globalPaths = new EnginePaths();
 
 	//Create the temp stuff
 	#if DEFERRED
@@ -111,6 +110,7 @@ int main(int argc, char **argv)
 	inputMgr = new InputManager();
 	goMgr = new GameobjectManager();
 	resMgr = new ResourceManager();
+	imguiMgr = new ImGuiManager();
 
 	//Load the first scene
 	///superFactory.LoadScene("TestScene01.json");
@@ -154,20 +154,7 @@ int main(int argc, char **argv)
 	
 
     #if USING_IMGUI
-        //SETUP IMGUI CONTEXT----------------------------------------------------------
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO(); (void)io;
-        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-        //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-        
-        // Setup Dear ImGui style
-        ImGui::StyleColorsDark();
-        //ImGui::StyleColorsClassic();
-
-        // Setup Platform/Renderer bindings
-        ImGui_ImplSDL2_InitForOpenGL(window, context);
-        ImGui_ImplOpenGL3_Init(glsl_version);
+	imguiMgr->Init(window, &context, glsl_version);
     #endif
 
     //Boolean for exiting main loop
@@ -208,24 +195,9 @@ int main(int argc, char **argv)
 			};
 		}
 
-		//UPDATE------------------------------
+		//IMGUI UPDATE
 		#if USING_IMGUI
-		// Start the Dear ImGui frame //What is ImGui frame?
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplSDL2_NewFrame(window);
-		ImGui::NewFrame();
-
-		// 1. Show big demo window. Sample code in ImGui::ShowDemoWindow()
-		/*if (showDemoWin)
-			ImGui::ShowDemoWindow(&showDemoWin);*/
-
-		ImGui::Begin("Controller");
-
-
-		ImGui::End();
-
-		//RENDER - BLIT BITMAP------------------
-		ImGui::Render();
+		imguiMgr->Update();
 		#endif
 
 		//frameRate controller
@@ -238,12 +210,7 @@ int main(int argc, char **argv)
 
 		//All components first update
 		goMgr->Update(dt);
-        
-		//EXPERIMENT (should not remain after draw, but for now its ok)
-		//put it here cause, in draw, we clear the color buffer, so everything 
-		//drawn then gets erased. Its for the debug draw of the path
 		goMgr->LateUpdate(dt);
-
 
 		//Graphic manager update 
 		renderer->Update(dt);
@@ -251,9 +218,10 @@ int main(int argc, char **argv)
 		//RENDER draws
 		renderer->Draw();
 
-        #if USING_IMGUI
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        #endif
+		//Imgui draw
+		#if USING_IMGUI
+		imguiMgr->Draw();
+		#endif
 
 		//TODO - find out more about this
         SDL_GL_SwapWindow(window);
@@ -263,21 +231,16 @@ int main(int argc, char **argv)
 	//Custom stuff cleanup
 	delete renderer;
 	delete inputMgr;
+	delete imguiMgr;
 	delete resMgr;
 	delete frc;
 	delete goMgr;
+	delete globalPaths;
 
     // clean up
     SDL_GL_DeleteContext(context);
     SDL_DestroyWindow(window);
     SDL_Quit();
-
-	//Imgui cleanup
-	#if USING_IMGUI
-	ImGui_ImplOpenGL3_Shutdown();
-	ImGui_ImplSDL2_Shutdown();
-	ImGui::DestroyContext();
-	#endif
 
     return 0;
 }

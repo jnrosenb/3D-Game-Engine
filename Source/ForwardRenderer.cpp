@@ -275,7 +275,7 @@ void ForwardRenderer::CalculateLightProjView()
 	float ar = width / height;
 	glm::mat4 lightView = AuxMath::view(sun.eye/*currentCamera->getEye()*/, sun.look/*currentCamera->getLook()*/, glm::vec4(0, 1, 0, 0));
 	//glm::mat4 lightProj = AuxMath::orthographic(width, height, ar, sun.near, sun.far);
-	glm::mat4 lightProj = glm::ortho(-15.0f, 15.0f, -15.0f, 15.0f, sun.near, sun.far);
+	glm::mat4 lightProj = glm::ortho(-15.0f, 15.0f, -15.0f, 15.0f, sun.m_near, sun.m_far);
 
 	//Set the directional light vp matrix
 	lightProjView = lightProj * lightView;

@@ -1,8 +1,8 @@
 /// HEADER STUFF
 
-#include <iostream>
-#include "DeferredRenderer.h"
 #include "ResourceManager.h"
+#include "DeferredRenderer.h"
+#include <iostream>
 
 #include "RenderTarget.h"
 #include "Camera.h"
@@ -787,7 +787,7 @@ void DeferredRenderer::CalculateLightProjView()
 	float halfHeight = sun.height/2.f;
 	glm::mat4 lightView = AuxMath::view(sun.eye/*currentCamera->getEye()*/, sun.look/*currentCamera->getLook()*/, glm::vec4(0, 1, 0, 0));
 	//glm::mat4 lightProj = AuxMath::orthographic(width, height, ar, sun.near, sun.far);
-	glm::mat4 lightProj = glm::ortho(-halfWidth, halfWidth, -halfHeight, halfHeight, sun.near, sun.far);
+	glm::mat4 lightProj = glm::ortho(-halfWidth, halfWidth, -halfHeight, halfHeight, sun.m_near, sun.m_far);
 
 	//Set the directional light vp matrix
 	lightProjView = lightProj * lightView;

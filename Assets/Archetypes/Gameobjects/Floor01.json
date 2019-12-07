@@ -13,7 +13,7 @@
         "specular": [ 1.0, 1.0, 1.0, 1.0 ],
         "vertex_id": 0,
         "load_model": true,
-        "roughness": 0.001,
+        "roughness": 0.0001,
         "metallic": 0.5,
         "primitive": "Quad",
         "model_name": "Cube.fbx",

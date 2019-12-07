@@ -1,6 +1,7 @@
 ///HEADER
 
-#include "ResourceManager.h"
+#include "ResourceManager.h" 
+#include "Shader.h"
 #include <iostream>
 #include <assert.h>
 
@@ -8,11 +9,26 @@
 #include "../External/Includes/SDL2/SDL_image.h"
 #include "../External/Includes/stbImage/stb_image.h"
 
+#include "Paths.h"
+extern EnginePaths *globalPaths;
 
 
 ResourceManager::ResourceManager() 
 {
 	std::cout << "Resource manager constructor." << std::endl;
+	
+	//TEXTURE DIR
+	TextureDir = globalPaths->AssetsDir + "Textures\\";
+	TextureBasicDir = TextureDir + "Basic\\";
+	TextureBackgroundDir = TextureDir + "Background\\";
+	TextureNormalMapDir = TextureDir + "Normal_Maps\\";
+	TextureParticleDir = TextureDir + "Particles\\";
+	TextureUIDir = TextureDir + "UI\\";
+	HDRDir = TextureDir + "HDR\\";
+
+	//MODEL DIR
+	ModelDir = globalPaths->AssetsDir + "Models\\";
+
 }
 
 ResourceManager::~ResourceManager() 

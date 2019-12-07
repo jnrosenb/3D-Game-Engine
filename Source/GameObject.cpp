@@ -1,11 +1,11 @@
 ///HEADER STUFF
 
+#include "Factory.h"
 #include "GameObject.h"
 #include "BaseComponent.h"
 
 
 //TODO Later move this
-#include "Factory.h"
 extern ComponentFactory factory;
 
 

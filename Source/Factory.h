@@ -16,10 +16,10 @@
 class GameObject; 
 using namespace rapidjson;
 
+#include "ResourceManager.h"
 #include "GameObject.h"
 #include "GameObjectManager.h"
 #include "Renderer.h"
-#include "ResourceManager.h"
 #include "RendererComponent.h"
 #include "TransformComponent.h"
 #include "PathFollowComponent.h"
@@ -174,14 +174,14 @@ public:
 					{
 						const Value& ac3 = attribute["Near"];
 						assert(ac3.IsFloat());
-						renderer->sun.near = ac3.GetFloat();
+						renderer->sun.m_near = ac3.GetFloat();
 					}
 
 					if (attribute.HasMember("Far")) 
 					{
 						const Value& ac3 = attribute["Far"];
 						assert(ac3.IsFloat());
-						renderer->sun.far = ac3.GetFloat();
+						renderer->sun.m_far = ac3.GetFloat();
 					}
 
 					if (attribute.HasMember("Width"))
@@ -497,26 +497,28 @@ public:
 				{
 					const Value& acc = attribute["spring_coeff"];
 					assert(acc.IsFloat());
-					clothComp->ks = acc.GetFloat();
+					clothComp->kCoeff1 = acc.GetFloat();
+					clothComp->kCoeff2 = acc.GetFloat();
+					clothComp->kCoeff3 = acc.GetFloat();
 				}
-				if (attribute.HasMember("wind_coeff"))
-				{
-					const Value& acc = attribute["wind_coeff"];
-					assert(acc.IsFloat());
-					clothComp->kw = acc.GetFloat();
-				}
+				/// if (attribute.HasMember("wind_coeff"))
+				/// {
+				/// 	const Value& acc = attribute["wind_coeff"];
+				/// 	assert(acc.IsFloat());
+				/// 	clothComp->kw = acc.GetFloat();
+				/// }
 				if (attribute.HasMember("rest_length"))
 				{
 					const Value& acc = attribute["rest_length"];
 					assert(acc.IsFloat());
 					clothComp->d = acc.GetFloat();
 				}
-				if (attribute.HasMember("stretch_percentage"))
-				{
-					const Value& acc = attribute["stretch_percentage"];
-					assert(acc.IsFloat());
-					clothComp->stretch = acc.GetFloat();
-				}
+				/// if (attribute.HasMember("stretch_percentage"))
+				/// {
+				/// 	const Value& acc = attribute["stretch_percentage"];
+				/// 	assert(acc.IsFloat());
+				/// 	clothComp->stretch = acc.GetFloat();
+				/// }
 				if (attribute.HasMember("damping"))
 				{
 					const Value& acc = attribute["damping"];

@@ -3,18 +3,14 @@
 #pragma once
 
 ///Includes
+#include "Paths.h"
+extern EnginePaths *globalPaths;
+
+#include "Shader.h"
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <cstdlib>
-#include "Shader.h"
-
-///#include <windows.h>
-///std::string getexepath()
-///{
-///	char result[MAX_PATH];
-///	return std::string(result, GetModuleFileName(NULL, result, MAX_PATH));
-///}
 
 ///Signatures
 std::string loadFile(const char *path);
@@ -246,7 +242,7 @@ void Shader::BindUniformBlock(std::string const& name, int bind_index)
 //Global function for loading a text file. Returns it in a string
 std::string loadFile(const char *path)
 {
-	std::string full_path = ShaderDir + path;
+	std::string full_path = globalPaths->ShaderDir + path;
 	std::string out, line;
 
 	std::ifstream in(full_path);
