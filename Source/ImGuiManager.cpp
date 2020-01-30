@@ -40,46 +40,23 @@ void ImGuiManager::Init(SDL_Window *win, SDL_GLContext *context, char const *gls
 	ImGui_ImplOpenGL3_Init(glsl_version);
 }
 
-void ImGuiManager::Update()
+void ImGuiManager::Update(float dt, int fps)
 {
-	/*
 	//Start the Dear ImGui frame - What is ImGui frame?
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplSDL2_NewFrame(window);
 	ImGui::NewFrame();
-
-	//Sample code in ImGui::ShowDemoWindow()
-	//if (showDemoWin)
-	//	ImGui::ShowDemoWindow(&showDemoWin);
-
 	
 	ImGui::Begin("Controller");
 
-	ImGuiIO& io = ImGui::GetIO(); (void)io;
-	
-	ImGui::CheckboxFlags("io.ConfigFlags: NoMouseCursorChange", (unsigned int *)&io.ConfigFlags, ImGuiConfigFlags_NoMouseCursorChange);
-	//ImGui::SameLine();
-	ImGui::Checkbox("io.ConfigInputTextCursorBlink", &io.ConfigInputTextCursorBlink);
-	ImGui::Checkbox("io.ConfigWindowsResizeFromEdges", &io.ConfigWindowsResizeFromEdges);
-	ImGui::Checkbox("io.ConfigWindowsMoveFromTitleBarOnly", &io.ConfigWindowsMoveFromTitleBarOnly);
-	ImGui::Checkbox("io.MouseDrawCursor", &io.MouseDrawCursor);
-
+	ImGui::Text("FPS: %d", fps);
 
 	static char str0[128] = "Hello, world!";
 	ImGui::InputText("input text", str0, IM_ARRAYSIZE(str0));
-	//ImGui::SameLine();
-
-	///static char str1[128] = "";
-	///ImGui::InputTextWithHint("input text (w/ hint)", "enter text here", str1, IM_ARRAYSIZE(str1));
-
-	///static int i0 = 123;
-	///ImGui::InputInt("input int", &i0);
-	//ImGui::SameLine(); 
 
 	static int i1 = 0;
 	ImGui::SliderInt("slider int", &i1, -1, 3);
-	ImGui::SameLine();
-
+	
 	static float f1 = 0.123f, f2 = 0.0f;
 	ImGui::SliderFloat("slider float", &f1, 0.0f, 1.0f, "ratio = %.3f");
 	ImGui::SliderFloat("slider float (curve)", &f2, -10.0f, 10.0f, "%.4f", 2.0f);
@@ -95,13 +72,9 @@ void ImGuiManager::Update()
 
 	static float f10 = 1.e10f;
 	ImGui::InputFloat("input scientific", &f10, 0.0f, 0.0f, "%e");
-	//ImGui::SameLine();
-
-	static float vec4a[4] = { 0.10f, 0.20f, 0.30f, 0.44f };
-	ImGui::InputFloat3("input float3", vec4a);
 
 	ImGui::End();
-	//*/
+	ImGui::Render();
 }
 
 
@@ -137,13 +110,12 @@ void ImGuiManager::ClothUpdate(float *mass, float *damping, bool *useG, bool *us
 	ImGui::SliderFloat("kCoeff_Bending", coeff3, 0.0f, 5.0f, "%.4f");
 
 	ImGui::End();
-
+	ImGui::Render();
 }
 
 
 void ImGuiManager::Draw()
 {
 	//RENDER - BLIT BITMAP
-	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

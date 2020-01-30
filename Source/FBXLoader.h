@@ -23,8 +23,6 @@ class Mesh;
 
 
 //GLOBALS AND MACROS
-std::string const Animation_Global_Path = "C:\\Users\\Jose\\Desktop\\OpenGl_Framework\\Assets\\Models\\";
-///std::string const Animation_Global_Path = "C:\\Users\\Jose\\Desktop\\OpenGl_Framework\\Assets\\Animations\\";
 #define MAX				3
 #define MAX_BONES		200
 

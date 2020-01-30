@@ -41,6 +41,14 @@ namespace AuxMath
 			x(rhs.x), y(rhs.y), z(rhs.z)
 		{}
 
+		Quaternion(glm::mat4 const& rhs)
+		{
+			this->s = 0.5f * std::sqrtf(rhs[0][0] + rhs[1][1] + rhs[2][2] + 1);
+			this->x = (rhs[2][1] - rhs[1][2]) / 4*s;
+			this->y = (rhs[0][2] - rhs[2][0]) / 4*s;
+			this->z = (rhs[1][0] - rhs[0][1]) / 4*s;
+		}
+
 		Quaternion& operator=(Quaternion const& rhs)
 		{
 			if (this != &rhs) 
@@ -182,7 +190,7 @@ namespace AuxMath
 			return copy;
 		}
 	
-		void print(std::string name)
+		void print(std::string name) const
 		{
 			std::cout << name << ": [" << this->s << ", " << this->x << ", " << this->y << ", " << this->z << "]" << std::endl;
 		}
@@ -266,7 +274,8 @@ namespace AuxMath
 
 			return matrix;
 		}
-		
+
+
 		//Rotation
 		static Quaternion Unit()
 		{

@@ -4,6 +4,7 @@
 
 ///INCLUDES
 #include "BaseComponent.h"
+#include "Quaternion.h"
 #include "../External/Includes/glm/glm.hpp"
 
 
@@ -42,9 +43,14 @@ public:
 	glm::vec4 GetForward() const;
 	glm::vec4 GetRight() const;
 
+	//GETTERS
+	glm::vec4 const& GetScale() const;
+
 	//Get the objects model
-	glm::mat4 const & GetModel();
-	glm::mat4 const & GetNormalModel();
+	glm::mat4 const& GetModel() const;
+	glm::mat4 const& GetNormalModel() const;
+	glm::mat4 const& GetRotationMatrix() const;
+	AuxMath::Quaternion const& GetRotationQuaternion() const;
 
 private:
 	//Flag for knowing if the object moved
@@ -56,6 +62,7 @@ private:
 	glm::vec4 m_scale;
 
 	glm::mat4 T, R, H;
+	AuxMath::Quaternion q;
 	glm::mat4 model;
 	glm::mat4 normalsModel;
 };

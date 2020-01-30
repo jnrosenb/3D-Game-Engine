@@ -1,0 +1,42 @@
+{
+    "tag": "Crate01",
+  "components": [
+    {
+      "id": "transform",
+      "position": [ -15, -2, 5 ],
+      "rotation": [ 0, 0, 0 ],
+      "scale": [ 5, 5, 5 ]
+    },
+    {
+      "id": "particleSystem",
+      "particleCount": 5000,
+      "load_model": true,
+      "model_name": "Sphere.fbx",
+      "diffuse_texture": "crate.png",
+      "x_tiling": 4,
+      "y_tiling": 4,
+      "advectors": [
+        {
+          "type": "gravitational_pull",
+          "mass": 5.0
+        }
+      ],
+      "operators": [
+      ]
+    },
+    {
+      "id": "rigidbody",
+      "mass": 1.0
+    },
+    {
+      "id": "render",
+      "diffuse": [ 1.0, 0.7, 0.4, 1.0 ],
+      "load_model": false,
+      "diffuse_texture": "crate.png",
+      "model_name": "Cube.fbx",
+      "primitive": "cube",
+      "x_tiling": 4,
+      "y_tiling": 4
+    }
+  ]
+}

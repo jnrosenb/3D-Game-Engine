@@ -6,7 +6,6 @@
 //////////////////////////////////////////
 
 #version 330 core
-
 #define MAX_BONES			100
      
 layout(location = 0) in vec4 position;
@@ -15,12 +14,9 @@ layout(location = 4) in vec4 boneWgts;
 
 
 uniform mat4 BoneTransf[MAX_BONES]; //MAX_BONES 100
-
-uniform mat4 projView;
+uniform mat4 LightProjView;
 uniform mat4 model;
 
-
-out float NDC_depth;
 
 void main()
 {
@@ -36,7 +32,5 @@ void main()
 	if(bonesInd[3] != -1)
 		localPos += boneWgts[3] * BoneTransf[bonesInd.w] * position;
 		
-	gl_Position = projView * model * localPos;
-
-	NDC_depth = gl_Position.z / gl_Position.w;
+	gl_Position = LightProjView * model * localPos;
 };

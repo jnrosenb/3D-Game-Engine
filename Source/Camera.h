@@ -19,8 +19,16 @@ public:
 	virtual void Update(float dt);
 	virtual glm::vec4& getLook();
 	virtual glm::mat4& getView();
+	virtual glm::mat4& getViewInv();
 	virtual glm::mat4& getProj();
 	virtual glm::vec4& getEye();
+	virtual float getNear();
+	virtual float getFar();
+	virtual float getFOV();
+	virtual float getAspectRatio();
+
+	virtual void setEye(glm::vec3 const& eye);
+	virtual void setLook(glm::vec3 const& look);
 
 	virtual SkyDome *GetSkydome();
 	virtual void SetSkydome(SkyDome *sky);
@@ -28,9 +36,9 @@ public:
 private:
 	virtual void handleInput(float dt);
 	virtual void initCamera();
-	virtual void UpdateView(const glm::vec4 &rup);
-	virtual void UpdatePerspective();
-	virtual void UpdateOrthographic();
+	virtual void UpdateView(const glm::vec3& rup);
+	virtual void UpdatePerspective(float dt);
+	virtual void UpdateOrthographic(float dt);
 
 //VARIABLES
 private:
@@ -39,6 +47,7 @@ private:
 
 	glm::mat4 m_proj;
 	glm::mat4 m_view;
+	glm::mat4 m_viewInv;
 
 	glm::vec4 m_eye;
 	glm::vec4 m_look;
@@ -53,4 +62,7 @@ private:
 
 	//Camera holds a skydome
 	SkyDome *sky;
+
+	//Perspective test
+	float perspectiveAccumulator;
 };

@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include "Mesh.h"
 
 #include <../External/Includes/Assimp/Importer.hpp>
 #include <../External/Includes/Assimp/scene.h>
@@ -15,8 +14,10 @@
 
 #include "Bone.h"
 #include "Animation.h"
+#include "Shapes.h"
 
 class LoadedMesh;
+class Mesh;
 
 
 class Model 
@@ -24,11 +25,17 @@ class Model
 public:
 	Model();
 	Model(std::string path);
+	Model(bool primitive, std::string path);
 	~Model();
+
+	AABB GetAABB() const;
 
 	//TEMP
 	void ProcessRecursiveTransformationFromRoot(Bone& node, 
 		glm::mat4 const& parentTransf, std::vector<glm::mat4>& BoneTransformations);
+
+private:
+	void CalculateAABB();
 
 //TODO - switch to private
 public:
@@ -36,6 +43,6 @@ public:
 	std::unordered_map<std::string, Bone> boneMap;
 	std::unordered_map<std::string, Animation> animMap;
 
-	//DEBUG DRAW OF BONES
-	///std::vector<glm::vec4> bonesDrawPositions;
+private:
+	AABB boundingBox;
 };

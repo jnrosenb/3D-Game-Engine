@@ -1,0 +1,25 @@
+{
+    "tag": "object01",
+  "components": [
+    {
+      "id": "transform",
+      "position": [ 0, 0, 0 ],
+      "rotation": [ 0, 0, 0 ],
+      "scale": [ 1.0, 1.0, 1.01 ]
+    },
+
+    {
+      "id": "rigidbody",
+      "mass": 1.0,
+      "player": true
+    },
+    {
+      "id": "render",
+      "diffuse": [ 1.0, 1.0, 0.0, 1.0 ],
+      "vertex_id": 0,
+      "load_model": false,
+      "model_name": "Cube.fbx",
+      "primitive": "cube"
+    }
+  ]
+}

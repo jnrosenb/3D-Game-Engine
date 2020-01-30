@@ -28,6 +28,7 @@
 #include "ForwardRenderer.h"
 #include "DeferredRenderer.h"
 #include "InputManager.h"
+#include "PhysicsManager.h"
 #include "ImGuiManager.h"
 #include "ResourceManager.h"
 #include "GameObjectManager.h"
@@ -41,13 +42,14 @@
 #include "PhysicsMath.h"
 
 //Temporary globals
-ComponentFactory factory;
+///ComponentFactory factory;
 Factory superFactory;
 Renderer *renderer = NULL;
 InputManager *inputMgr = NULL;
 ResourceManager *resMgr = NULL;
 GameobjectManager *goMgr = NULL;
 FrameRateController *frc = NULL;
+PhysicsManager *physicsMgr = NULL;
 ImGuiManager *imguiMgr = NULL;
 EnginePaths *globalPaths = NULL;
 
@@ -107,51 +109,17 @@ int main(int argc, char **argv)
 	renderer = new ForwardRenderer();
 	#endif
 	frc = new FrameRateController(60);
+	physicsMgr = new PhysicsManager();
 	inputMgr = new InputManager();
 	goMgr = new GameobjectManager();
 	resMgr = new ResourceManager();
 	imguiMgr = new ImGuiManager();
 
 	//Load the first scene
-	///superFactory.LoadScene("TestScene01.json");
-	///superFactory.LoadScene("IK_Scene.json");
-	superFactory.LoadScene("clothScene.json");
+	///superFactory.LoadScene("WorkingScene.json");
+	superFactory.LoadScene("TestScene01.json");
+	///superFactory.LoadScene("PhysicScene01.json");
 	renderer->init();
-
-
-	//TEMP QUATERNION TEST
-	///AuxMath::Quaternion q1 = AuxMath::Quaternion::QuaternionFromAA(90, glm::vec3(1, 0, 0));
-	///AuxMath::Quaternion q1_Inverse   = q1.Inverse();
-	///AuxMath::Quaternion q1_conjugate = q1.Conjugate();
-	///AuxMath::Quaternion q2 = q1 * q1_Inverse;
-	///AuxMath::Quaternion q3 = q1 * q1_conjugate;
-	///q1.print("q1");
-	///q1_Inverse.print("Inverse");
-	///q1_conjugate.print("Conjugate");
-	///q2.print("times conjugate");
-	///q3.print("times inverse  ");
-	///
-	///glm::vec3 r;
-	///r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(1, 0, 0));
-	///r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(0, 1, 0));
-	///r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(0, 0, 1));
-	///
-	///r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
-	///r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
-	///r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
-	///
-	/////Same with matrix
-	///glm::mat4 R = AuxMath::Quaternion::QuaternionFromAA(120, glm::vec3(1, 1, 1)).GetRotationMatrix();
-	///glm::vec4 r2 = R * glm::vec4(0, 0, 1, 1);
-	///
-	///r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
-	///r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
-	///r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
-	///
-	///r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
-	///r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
-	///r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
-	
 
     #if USING_IMGUI
 	imguiMgr->Init(window, &context, glsl_version);
@@ -166,7 +134,13 @@ int main(int argc, char **argv)
     //MAIN LOOP
 	while (!done)
 	{
+		//Get frame time
 		frc->FrameStart();
+		float dt = frc->getFrameTime() / 1000.0f;
+		
+		
+		//std::cout << "Normal dt: " << dt << std::endl;
+
 
 		//EVENT LOOP
 		SDL_Event event;
@@ -197,25 +171,22 @@ int main(int argc, char **argv)
 
 		//IMGUI UPDATE
 		#if USING_IMGUI
-		imguiMgr->Update();
+		imguiMgr->Update(dt, static_cast<int>(1 / dt));
 		#endif
 
-		//frameRate controller
-		float dt = frc->getFrameTime() / 1000.0f;
-		//float dt = 0.016f;
-		//std::cout << static_cast<int>(1 / dt) << std::endl;
-
-		//Update stuff
+		//Update input
 		inputMgr->update(dt);
 
-		//All components first update
+		//COMPONENTS UPDATE AND DRAW
 		goMgr->Update(dt);
 		goMgr->LateUpdate(dt);
+		goMgr->Draw();
 
-		//Graphic manager update 
+		//PHYSICS UPDATE - FOR NOW HERE
+		physicsMgr->PhysicsUpdate(dt);
+
+		//Graphic manager update and draw 
 		renderer->Update(dt);
-
-		//RENDER draws
 		renderer->Draw();
 
 		//Imgui draw
@@ -223,7 +194,7 @@ int main(int argc, char **argv)
 		imguiMgr->Draw();
 		#endif
 
-		//TODO - find out more about this
+		//Swapchain and frame-end
         SDL_GL_SwapWindow(window);
 		frc->FrameEnd();
     }
@@ -233,6 +204,7 @@ int main(int argc, char **argv)
 	delete inputMgr;
 	delete imguiMgr;
 	delete resMgr;
+	delete physicsMgr;
 	delete frc;
 	delete goMgr;
 	delete globalPaths;
@@ -242,5 +214,44 @@ int main(int argc, char **argv)
     SDL_DestroyWindow(window);
     SDL_Quit();
 
+	//system("pause");
     return 0;
 }
+
+
+
+
+
+
+//TEMP QUATERNION TEST
+///AuxMath::Quaternion q1 = AuxMath::Quaternion::QuaternionFromAA(90, glm::vec3(1, 0, 0));
+///AuxMath::Quaternion q1_Inverse   = q1.Inverse();
+///AuxMath::Quaternion q1_conjugate = q1.Conjugate();
+///AuxMath::Quaternion q2 = q1 * q1_Inverse;
+///AuxMath::Quaternion q3 = q1 * q1_conjugate;
+///q1.print("q1");
+///q1_Inverse.print("Inverse");
+///q1_conjugate.print("Conjugate");
+///q2.print("times conjugate");
+///q3.print("times inverse  ");
+///
+///glm::vec3 r;
+///r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(1, 0, 0));
+///r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(0, 1, 0));
+///r = AuxMath::Quaternion::Rotate1(90, glm::vec3(1, 0, 0), glm::vec3(0, 0, 1));
+///
+///r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
+///r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
+///r = AuxMath::Quaternion::Rotate1(120, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
+///
+/////Same with matrix
+///glm::mat4 R = AuxMath::Quaternion::QuaternionFromAA(120, glm::vec3(1, 1, 1)).GetRotationMatrix();
+///glm::vec4 r2 = R * glm::vec4(0, 0, 1, 1);
+///
+///r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
+///r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
+///r = AuxMath::Quaternion::Rotate1(240, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));
+///
+///r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(1, 0, 0));
+///r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(0, 1, 0));
+///r = AuxMath::Quaternion::Rotate1(360, glm::vec3(1, 1, 1), glm::vec3(0, 0, 1));

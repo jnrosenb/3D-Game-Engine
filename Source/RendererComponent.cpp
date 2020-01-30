@@ -3,15 +3,10 @@
 #include "ResourceManager.h"
 extern ResourceManager *resMgr;
 
-#include "Renderer.h"
 #include "RendererComponent.h"
 
 //TODO - For now
 #include "Model.h"
-#include "Sphere.h"
-#include "Quad.h"
-#include "Polar.h"
-#include "Plane.h"
 #include "Shader.h"
 #include "TransformComponent.h"
 #include "AnimationComponent.h"
@@ -19,6 +14,7 @@ extern ResourceManager *resMgr;
 
 
 //Temporary (while no world exists)
+#include "Renderer.h"
 extern Renderer *renderer;
 
 
@@ -57,6 +53,11 @@ void Render::DeserializeInit()
 
 void Render::Update(float dt)
 {
+}
+
+
+void Render::Draw()
+{
 	// Pass shader (material) and mesh (model) info to GraphicsManager
 	Transform *T = this->m_owner->GetComponent<Transform>();
 	AnimationComponent *Anim = this->m_owner->GetComponent<AnimationComponent>();
@@ -90,7 +91,6 @@ void Render::Update(float dt)
 	{
 		data.BoneTransformations = &(Anim->BoneTransformations);
 		data.boneCount = this->model->boneMap.size();
-
 		data.BoneMap = &(this->model->boneMap);
 	}
 	else
@@ -105,6 +105,7 @@ void Render::Update(float dt)
 	// TODO - there should be a check for transparency flag
 	//        on material, to see to which queue to send
 }
+
 
 void Render::initShader()
 {
@@ -123,8 +124,7 @@ void Render::initModel()
 {
 	if (use_loaded_mesh) 
 	{
-		std::string const abs_path_prefix = "C:\\Users\\Jose\\Desktop\\OpenGl_Framework\\Assets\\Models\\";
-		this->model = new Model(abs_path_prefix + modelPath);
+		this->model = new Model(modelPath);
 
 		// Dirty way for now. If the loaded stuff 
 		// has animation info, we can create a animationComp
@@ -133,18 +133,15 @@ void Render::initModel()
 	}
 	else 
 	{
-		this->model = new Model();
-		if (this->primitive == "quad")
-			this->model->meshes.push_back(new Quad());
-		else if (this->primitive == "sphere")
-			this->model->meshes.push_back(new Sphere(32));
-		else if (this->primitive == "polar")
-			this->model->meshes.push_back(new PolarPlane(64));
-		else if (this->primitive == "plane")
-			this->model->meshes.push_back(new Plane(64));
+		this->model = new Model(true, this->primitive);
 	}
 }
 
+
+Model *Render::GetModel() const 
+{
+	return this->model;
+}
 
 
 void Render::SetClampedRoughness(float r)

@@ -1,0 +1,329 @@
+{
+  "Skydome": {
+    "Texture": "Factory_Catwalk_2k.hdr",
+    "Irradiance": "Factory_Catwalk_Env.hdr"
+  },
+  "Lights": [
+    {
+      "Type": "Directional",
+      "Position": [ 0, 105, -100 ],
+      "Color": [ 0.15, 0.15, 0.15 ],
+      "Look": [ 1, -1, 1 ],
+      "Near": 0.1,
+      "far": 100.0,
+      "Width": 10,
+      "Height": 10,
+      "Intensity": 1.0,
+      "ShadowIntensity": 1.0
+    }
+  ],
+  "Objects": [
+    {
+      "name": "Floor01.json",
+      "transform": {
+        "position": [ 0, -3.5, 0 ],
+        "rotation": [ -90.0, 0, 0 ],
+        "scale": [ 1200, 1200.0, 1.0 ]
+      }
+    },
+    {
+      "name": "Obj03.json",
+      "transform": {
+        "position": [ 0, -3, -2 ],
+        "rotation": [ 0, 0, 0 ],
+        "scale": [ 0.075, 0.075, 0.075 ]
+      }
+    },
+    {
+      "name": "Obj03.json",
+      "transform": {
+        "position": [ 0, -3, -80 ],
+        "rotation": [ 0, 0, 0 ],
+        "scale": [ 0.075, 0.075, 0.075 ]
+      }
+    },
+    {
+      "name": "Obj03.json",
+      "transform": {
+        "position": [ 0, -3, -200 ],
+        "rotation": [ 0, 0, 0 ],
+        "scale": [ 0.075, 0.075, 0.075 ]
+      }
+    },
+    {
+      "name": "Bunny02.json"
+    },
+    {
+      "name": "Bunny03.json"
+    },
+    {
+      "name": "Bunny04.json"
+    },
+    {
+      "name": "Bunny05.json"
+    },
+    {
+      "name": "Bunny06.json"
+    },
+    {
+      "name": "Crate01.json",
+      "transform": {
+        "position": [ 20, -3, -5 ],
+        "rotation": [ 0, 45, 0 ],
+        "scale": [ 5, 5, 5 ]
+      }
+    },
+    {
+      "name": "Crate01.json",
+      "transform": {
+        "position": [ 10, -3, -15 ],
+        "rotation": [ 0, 45, 0 ],
+        "scale": [ 5, 5, 5 ]
+      }
+    },
+    {
+      "name": "Crate01.json",
+      "transform": {
+        "position": [ 10, -3, -15 ],
+        "rotation": [ 0, 45, 0 ],
+        "scale": [ 5, 5, 5 ]
+      }
+    },
+    {
+      "name": "Crate01.json",
+      "transform": {
+        "position": [ 30, -3, -45 ],
+        "rotation": [ 0, 45, 0 ],
+        "scale": [ 5, 5, 5 ]
+      }
+    },
+    {
+      "name": "Crate01.json",
+      "transform": {
+        "position": [ 20, -3, -15 ],
+        "rotation": [ 0, 45, 0 ],
+        "scale": [ 5, 5, 5 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 12
+      }
+    },
+    {
+      "name": "Crate01.json",
+      "transform": {
+        "position": [ -20, -4, -5 ],
+        "rotation": [ 0, 15, 0 ],
+        "scale": [ 15, 15, 15 ]
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ -20, -2, -34 ],
+        "rotation": [ 0, 45, 0 ],
+        "scale": [ 15, 25, 15 ]
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ -40, -2, -54 ],
+        "rotation": [ 0, 45, 0 ],
+        "scale": [ 10, 15, 16 ]
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ 30, -2, 14 ],
+        "rotation": [ 0, 45, 0 ],
+        "scale": [ 20, 25, 15 ]
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ 20, -2, -44 ],
+        "rotation": [ 0, 45, 0 ],
+        "scale": [ 20, 50, 10 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 30
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ 60, -2, -34 ],
+        "rotation": [ 0, 45, 0 ],
+        "scale": [ 22, 100, 32 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 60
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ 60, -2, 64 ],
+        "rotation": [ 0, 45, 0 ],
+        "scale": [ 25, 20, 25 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 10
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ 100, -2, -164 ],
+        "rotation": [ 0, 145, 0 ],
+        "scale": [ 25, 20, 25 ]
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ 200, 280, -264 ],
+        "rotation": [ 0, 95, 0 ],
+        "scale": [ 55, 600, 55 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 250
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ 140, 80, -364 ],
+        "rotation": [ 0, 245, 0 ],
+        "scale": [ 45, 209, 15 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 120
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ 400, 100, -464 ],
+        "rotation": [ 0, -45, 0 ],
+        "scale": [ 25, 300, 25 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 160
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ 500, 180, -564 ],
+        "rotation": [ 0, -245, 0 ],
+        "scale": [ 25, 400, 35 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 160
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ 100, 140, -164 ],
+        "rotation": [ 0, -245, 0 ],
+        "scale": [ 25, 300, 35 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 130
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ 80, 180, -94 ],
+        "rotation": [ 1, -245, 0 ],
+        "scale": [ 25, 400, 35 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 130
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ 20, 160, -104 ],
+        "rotation": [ 0, -245, 0 ],
+        "scale": [ 25, 400, 35 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 190
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ -100, 120, -164 ],
+        "rotation": [ 0, -245, 0 ],
+        "scale": [ 25, 400, 35 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 130
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ -100, 40, -164 ],
+        "rotation": [ 0, 5, 0 ],
+        "scale": [ 25, 100, 25 ]
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ -200, 80, -364 ],
+        "rotation": [ -30, 45, -20 ],
+        "scale": [ 25, 200, 25 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 70
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ -300, 80, -464 ],
+        "rotation": [ 0, 45, 0 ],
+        "scale": [ 45, 200, 55 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 70
+      }
+    },
+    {
+      "name": "Crate00.json",
+      "transform": {
+        "position": [ -100, 80, -564 ],
+        "rotation": [ 0, 45, 0 ],
+        "scale": [ 65, 200, 65 ]
+      },
+      "renderer": {
+        "x_tiling": 12,
+        "y_tiling": 70
+      }
+    }
+  ]
+}

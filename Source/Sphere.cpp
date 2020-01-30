@@ -20,29 +20,30 @@ Sphere::Sphere(int size)
 	vertices.reserve(M * (N - 1) + 2);
 	normals.reserve(M * (N - 1) + 2);
 
+	//NORMALS
 	for (int i = 1; i < N; ++i) 
 	{
 		float theta = PI * i / N;
 		for (int j = 0; j < M; ++j) 
 		{
 			int index = M * (i - 1) + j;
-			float phi = 2 * PI*j / M;
-			normals.push_back( glm::vec4(
-				sin(theta)*cos(phi), 
-				sin(theta)*sin(phi), 
-				cos(theta), 
-				0));
+			float phi = 2 * PI * j / M;
+			glm::vec3 n = glm::vec3( sin(theta)*cos(phi), cos(theta), sin(theta)*sin(phi) );
+			n = glm::normalize(n);
+			normals.push_back( glm::vec4(n.x, n.y, n.z, 0.0f) );
 		}
 	}
-	normals[NORTH] = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
-	normals[SOUTH] = glm::vec4(0.0f, 0.0f, -1.0f, 0.0f);
+	normals.push_back(glm::vec4(0.0f, 1.0f, 0.0f, 0.0f));
+	normals.push_back(glm::vec4(0.0f, -1.0f, 0.0f, 0.0f));
 
+	//VERTICES
 	for (unsigned n = 0; n < normals.size(); ++n) 
 	{
 		vertices.push_back( normals[n] );
 		vertices[n].w = 1;
 	}
 
+	//FACES
 	for (int i = 2; i < N; ++i) 
 	{
 		for (int j = 0; j < M; ++j) 
@@ -58,13 +59,12 @@ Sphere::Sphere(int size)
 			faces.push_back(face);
 		}
 	}
-
 	for (int j = 0; j < M; ++j) 
 	{
 		Face face;
 		int jp1 = (j + 1) % M;
-		face[0] = j;
-		face[1] = jp1;
+		face[0] = jp1;
+		face[1] = j;
 		face[2] = NORTH;
 		faces.push_back(face);
 		face[0] = M * (N - 2) + j;
@@ -73,19 +73,20 @@ Sphere::Sphere(int size)
 		faces.push_back(face);
 	}
 
+	//Texcoords
+	int vertexNum = vertices.size();
+	for (int i = 0; i < GetVertexCount(); ++i)
+	{
+		glm::vec4 uv = 0.5f * (vertices[i] + glm::vec4(1.0f));
+		texCoords.push_back(glm::vec2(uv));
+	}
+
 	//Bones indices
-	this->boneIndices.push_back(glm::ivec4(-1));
-	this->boneIndices.push_back(glm::ivec4(-1));
-	this->boneIndices.push_back(glm::ivec4(-1));
-	this->boneIndices.push_back(glm::ivec4(-1));
+	for (int i = 0; i < GetVertexCount(); ++i)
+		this->boneIndices.push_back(glm::ivec4(-1));
 
 	this->init();
 }
-
-#undef SOUTH
-#undef NORTH
-#undef N
-#undef M
 
 Sphere::~Sphere()
 {
@@ -108,7 +109,6 @@ std::vector<glm::vec4>& Sphere::GetNormals()
 {
 	return normals;
 }
-
 
 
 std::vector <glm::vec2>& Sphere::GetTexCoords() //Alignment?

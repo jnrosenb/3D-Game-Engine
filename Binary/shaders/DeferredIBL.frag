@@ -83,7 +83,7 @@ void main(void)
 	vec3 r = 2 * m * pdot(v, m) - v;
 
 	//AMBIENT (Ambient color without IBL)-----------------------------
-	vec3 ambient = 0.3 * diffuse_color;
+	vec3 ambient = 0.5 * diffuse_color;
 	if (useAO == 1)
 	{
 		float S = texture2D(AOTexture, uv).r;
@@ -141,7 +141,7 @@ void main(void)
 	}
 
 	//Final color---------------------------------------------------------------
-	vec3 finalClr = ambient + montecarloSum + diffuseIrr;
+	vec3 finalClr = ambient + 0*montecarloSum + diffuseIrr;
 	frag_color = vec4(finalClr.xyz, 1);
 }
 

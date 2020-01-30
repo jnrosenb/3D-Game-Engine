@@ -19,7 +19,7 @@ public:
 	virtual ~ImGuiManager();
 
 	void Init(SDL_Window *win, SDL_GLContext *context, char const *glsl_version);
-	void Update();
+	void Update(float dt, int fps);
 	void Draw();
 
 	//Temporary

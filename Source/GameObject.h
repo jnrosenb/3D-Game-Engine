@@ -9,6 +9,9 @@ class BaseComponent;
 
 class GameObject
 {
+public:
+	friend class Factory;
+	friend class GameobjectManager;
 
 //PUBLIC INTERFACE
 public:
@@ -18,7 +21,7 @@ public:
 
 	virtual void Update(float dt);
 	virtual void LateUpdate(float dt);
-	//virtual void Draw();
+	virtual void Draw();
 
 	template <typename T>
 	T* GetComponent() 
@@ -52,7 +55,10 @@ public:
 	
 	int GetId() const;
 
-//VARIABLEs
+private:
+	void Begin();
+
+//VARIABLES
 private:
 	std::vector<BaseComponent*> components;
 

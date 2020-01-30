@@ -19,6 +19,7 @@
 #define VIEWPORT_HEIGHT						720
 #define MAX_LIGHT_COUNT						2000	//Arbitrary value
 #define MAX_NUMBER_TEXTURES					512		//Arbitrary value
+#define MAX_PARTICLES						100000	//Arbitrary value
 
 
 //Forward decl
@@ -54,6 +55,7 @@ struct DirectionalLight
 };
 
 
+//Struct that represents a skydome
 struct SkyDome 
 {
 	Mesh *geometry;
@@ -78,7 +80,7 @@ struct SkyDome
 	{
 		//BINDING
 		shader->UseShader();
-		geometry->BindForDraw();
+		geometry->BindVAO();
 
 		//UNIFORM BINDING
 		shader->setMat4f("model", model);
@@ -89,7 +91,7 @@ struct SkyDome
 		glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
 
 		//TODO - UNBIND SHADER AND MESH
-		geometry->UnbindForDraw();
+		geometry->UnbindVAO();
 		shader->UnbindShader();
 	}
 };
@@ -126,18 +128,58 @@ struct DrawData
 	unsigned boneCount;
 	std::unordered_map<std::string, Bone> *BoneMap; //Only for debug drawing, temporary
 
-	//DEPRECATED - Only used for cloth drawing-////
-	bool isCloth;							   ////
-	size_t faceSize;						   ////
-	GLuint vao;								   ////
-	//-----------------------------------------////
-
 	//Bones experiment
 	std::vector<glm::mat4> *BoneTransformations;
 };
 
 
-//RENDERER CLASS
+//For debug drawing or similar
+struct DrawDebugData
+{
+	glm::mat4 model;
+	glm::vec4 diffuseColor;
+	Mesh *mesh;
+	//std::vector<Mesh*> *meshes;
+	Shader *shader;
+
+	/// unsigned boneCount;
+	/// std::unordered_map<std::string, Bone> *BoneMap; //Only for debug drawing, temporary
+	//Bones experiment
+	std::vector<glm::mat4> *BoneTransformations;
+};
+
+
+//Struct with the data needed by renderer to draw instanced objects
+struct DrawInstanceData
+{
+	std::vector<glm::mat4> *modelMatrices;
+
+	glm::vec4 diffuseColor;
+	glm::vec4 specularColor;
+	std::vector<Mesh*> *meshes;
+
+	//Maps
+	GLuint diffuseTexture;
+
+	//TEMPORARY MEASURE
+	GLuint TempVBO;
+
+	//Future flag (for now, bools)
+	int useDiffuseTexture;
+
+	//tiling
+	int xTiling;
+	int yTiling;
+
+	//Only used for instancing
+	int instanceCount;
+};
+
+
+
+/////////////////////////////////////////////
+////        RENDERER CLASS               ////
+/////////////////////////////////////////////
 class Renderer 
 {
 public:
@@ -165,6 +207,8 @@ public:
 	//Data that will be drawn into the scene
 	virtual void QueueForDraw(DrawData& data) = 0;
 	virtual void QueueForDrawAlpha(DrawData& data) = 0;
+	virtual void QueueForDrawInstanced(DrawInstanceData& data) = 0;
+	virtual void QueueForDebugDraw(DrawDebugData& data) {}
 
 	//Skydome creation
 	virtual void CreateSkydome(HDRImageDesc const& texPath,

@@ -47,24 +47,59 @@ public:
 		unsigned& operator[](int i) { return index[i]; }
 	};
 
-	virtual std::vector <glm::vec4>& GetVertices() = 0;
-	virtual std::vector <glm::vec4>& GetNormals() = 0;
-	virtual std::vector <glm::vec2>& GetTexCoords() = 0; //Alignment?
-	virtual std::vector <Mesh::Face>& GetFaces() = 0;
-
-	virtual int GetVertexCount() const = 0;
-	virtual int GetFaceCount() const = 0;
-
-	virtual void BindForDraw() 
+	virtual std::vector <glm::vec4>& GetVertices() 
 	{
-		glBindVertexArray(this->vao);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->ebo); //For now, since it seems not to bind otherwise
+		return vertices;
 	}
 
-	virtual void UnbindForDraw() const 
+	virtual std::vector <glm::vec4>& GetNormals() 
+	{
+		return normals;
+	}
+
+	virtual std::vector <glm::vec2>& GetTexCoords() //Alignment?
+	{
+		return texCoords;
+	}
+	
+	virtual std::vector <Mesh::Face>& GetFaces() 
+	{
+		return faces;
+	}
+
+	virtual int GetVertexCount() const 
+	{
+		return vertices.size();
+	}
+
+	virtual int GetFaceCount() const 
+	{
+		return faces.size();
+	}
+
+	virtual void BindVAO() 
+	{
+		glBindVertexArray(this->vao);
+		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->ebo); //For now, since it seems not to bind otherwise
+	}
+
+	virtual void UnbindVAO() const 
 	{
 		glBindVertexArray(0);
 	}
+
+	virtual void Draw() const 
+	{
+		int faceCount = this->GetFaceCount();
+		glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, (void*)0);
+	}
+
+	virtual void DrawInstanced(int count) const
+	{
+		int faceCount = this->GetFaceCount();
+		glDrawElementsInstanced(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, (void*)0, count);
+	}
+
 
 //PRIVATE METHODS
 protected:
@@ -95,13 +130,11 @@ protected:
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BONE_WEIGHTS]);
 		glBufferData(GL_ARRAY_BUFFER, GetVertexCount() * 4 * sizeof(GLfloat), &boneWeights[0][0], GL_STATIC_DRAW);
 
-		//NORMAL MAP EXPERIMENT
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[TANGENTS]);
 		glBufferData(GL_ARRAY_BUFFER, GetVertexCount() * 4 * sizeof(GLfloat), &m_tangents[0][0], GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BITANGENTS]);
 		glBufferData(GL_ARRAY_BUFFER, GetVertexCount() * 4 * sizeof(GLfloat), &m_bitangents[0][0], GL_STATIC_DRAW);
-
 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->ebo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->GetFaceCount() * sizeof(Mesh::Face), &faces[0][0], GL_STATIC_DRAW);
@@ -122,7 +155,6 @@ protected:
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[BONE_WEIGHTS]);
 		glVertexAttribPointer(4, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
 
-		//NORMAL MAP EXPERIMENT
 		glBindBuffer(GL_ARRAY_BUFFER, this->vbo[TANGENTS]);
 		glVertexAttribPointer(5, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
 

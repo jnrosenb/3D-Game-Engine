@@ -18,10 +18,12 @@ GameObject::GameObject()
 	gameobj_ID = go_count++;
 }
 
+
 GameObject::GameObject(GameObject& rhs)
 {
 	//TODO
 }
+
 
 GameObject::~GameObject()
 {
@@ -33,6 +35,18 @@ GameObject::~GameObject()
 	components.clear();
 	std::cout << "Destroyed GO" << std::endl;
 }
+
+
+//This method gets called after all the 
+//gameobjects have been created this frame
+void GameObject::Begin()
+{
+	for (auto comp : components)
+	{
+		comp->Begin();
+	}
+}
+
 
 void GameObject::Update(float dt)
 {
@@ -51,10 +65,14 @@ void GameObject::LateUpdate(float dt)
 	}
 }
 
-//void GameObject::Draw()
-//{
-//	//TODO
-//}
+
+void GameObject::Draw()
+{
+	for (auto comp : components)
+	{
+		comp->Draw();
+	}
+}
 
 /*
 template <typename T>

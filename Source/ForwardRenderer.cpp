@@ -161,20 +161,15 @@ void ForwardRenderer::Draw()
 		{
 			//BINDING
 			///graphicQueue[i].mesh->BindForDraw();
-			(*data.meshes)[j]->BindForDraw();
+			(*data.meshes)[j]->BindVAO();
 
 			//UNIFORM BINDING
 			shadowShader->setMat4f("projView", lightProjView);
 			shadowShader->setMat4f("model", graphicQueue[i].model);
 
-			//DRAW
-			int faceCount = (*data.meshes)[j]->GetFaceCount();
-			///int faceCount = graphicQueue[i].mesh->GetFaceCount();
-			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
-
-			//TODO - UNBIND SHADER AND MESH
-			///graphicQueue[i].mesh->UnbindForDraw();
-			(*data.meshes)[j]->UnbindForDraw();
+			//MESH DRAW AND UNBIND
+			(*data.meshes)[j]->Draw();
+			(*data.meshes)[j]->UnbindVAO();
 		}
 
 		shadowShader->UnbindShader();
@@ -198,7 +193,7 @@ void ForwardRenderer::Draw()
 			//BINDING
 			graphicQueue[i].shader->UseShader();
 			///graphicQueue[i].mesh->BindForDraw();
-			(*data.meshes)[j]->BindForDraw();
+			(*data.meshes)[j]->BindVAO();
 
 			//UNIFORM BINDING
 			graphicQueue[i].shader->setMat4f("model", graphicQueue[i].model);
@@ -212,7 +207,7 @@ void ForwardRenderer::Draw()
 			glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, 0);
 
 			//TODO - UNBIND SHADER AND MESH
-			(*data.meshes)[j]->BindForDraw();
+			(*data.meshes)[j]->BindVAO();
 			///graphicQueue[i].mesh->UnbindForDraw();
 			graphicQueue[i].shader->UnbindShader();
 		}

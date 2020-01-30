@@ -77,15 +77,11 @@ void main()
 	
 	worldPos = model * localPos;
 	gl_Position = ProjView * worldPos;
+
 	vec3 N = normalize(localN.xyz);
 	normalIn = normalModel * vec4(N, 0);
-	
-	//worldPos = model * position;
-	//gl_Position = ProjView * worldPos;
-	//normalIn = normalModel * normal;
 
 	texCoords = vec2(uv.x * xTiling, uv.y * yTiling);
-
 
 	//TBN matrix for normal mapping (Not handling animation yet)
 	TBN[0] = vec3(normalize(normalModel * tangents));

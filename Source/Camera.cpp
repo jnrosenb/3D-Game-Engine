@@ -13,15 +13,16 @@
 extern InputManager *inputMgr;
 
 ///MACROS
+#define PI				3.1415926535f
 #define EPSILON			0.000001f
 #define	DEF_WIDTH		1280
 #define DEF_HEIGHT		720
-#define DEF_NEAR		0.25f
+#define DEF_NEAR		0.1f
 #define DEF_FAR			1000.0f		//Units still not defined
-#define DEF_FOV			75.0f		//In degrees for now
+#define DEF_FOV			55.0f		//In degrees for now
 
 //GLOBALS
-glm::vec4 const rup = {0, 1, 0, 0};
+glm::vec3 const rup = {0, 1, 0};
 #include "DeferredRenderer.h"
 extern Renderer *renderer;
 
@@ -51,8 +52,9 @@ void Camera::initCamera()
 	this->flagOrthographic = false;
 
 	//Look and eye
-	m_eye = glm::vec4(0, 10, 30, 1);
+	m_eye = glm::vec4(0, 5, 15, 1);
 	m_look = glm::vec4(0, -0.25, -1, 0);
+	m_look = glm::normalize(m_look);
 
 	//Temporarily do it like this
 	m_aspectRatio = static_cast<double>(mViewport_width) / mViewport_height;
@@ -60,6 +62,9 @@ void Camera::initCamera()
 	//Mouse drag stuff
 	pressedLastFrame = false;
 	thresshold = 0;
+
+	//Perspective test
+	perspectiveAccumulator = 0.0f;
 }
 
 
@@ -77,9 +82,9 @@ void Camera::Update(float dt)
 	UpdateView(rup);
 
 	if (this->flagOrthographic)
-		UpdateOrthographic();
+		UpdateOrthographic(dt);
 	else
-		UpdatePerspective();
+		UpdatePerspective(dt);
 
 	this->sky->model = AuxMath::translate(this->m_eye);
 }
@@ -97,11 +102,46 @@ glm::mat4& Camera::getView()
 }
 
 
+glm::mat4& Camera::getViewInv()
+{
+	return m_viewInv;
+}
+
+
 glm::vec4& Camera::getEye() 
 {
 	return m_eye;
 }
 
+void Camera::setEye(glm::vec3 const& eye)
+{
+	this->m_eye = glm::vec4(eye, 1.0f);
+}
+
+void Camera::setLook(glm::vec3 const& look)
+{
+	this->m_look = glm::vec4(look, 0.0f);
+}
+
+float Camera::getNear()
+{
+	return this->m_near;
+}
+
+float Camera::getFar()
+{
+	return this->m_far;
+}
+
+float Camera::getFOV()
+{
+	return this->m_fov;
+}
+
+float Camera::getAspectRatio()
+{
+	return this->m_aspectRatio;
+}
 
 glm::mat4& Camera::getProj()
 {
@@ -120,39 +160,52 @@ SkyDome *Camera::GetSkydome()
 }
 
 
-void Camera::UpdateView(const glm::vec4 &rup)
+void Camera::UpdateView(const glm::vec3 &rup)
 {
-	glm::vec4 right, up, u, v, n;
-	right = AuxMath::cross(m_look, rup);
-	up = AuxMath::cross(right, m_look);
+	glm::vec3 look, right, up, u, v, n;
+	look = glm::vec3(m_look.x, m_look.y, m_look.z);
+	right = glm::cross(look, rup);
+	up = glm::cross(right, look);
 
-	float rightLength = sqrt(pow(right.x, 2) + pow(right.y, 2) + pow(right.z, 2));
-	float upLength = sqrt(pow(up.x, 2) + pow(up.y, 2) + pow(up.z, 2));
-	float lookLength = sqrt(pow(m_look.x, 2) + pow(m_look.y, 2) + pow(m_look.z, 2));
-	if (fabs(rightLength) <= EPSILON || fabs(upLength) <= EPSILON || fabs(lookLength) <= EPSILON)
+	//normalize the stuff
+	u = glm::normalize(right);
+	v = glm::normalize(up);
+	n = -look;
+	
+	//Not sure if keeping this - This error will happen if m_look is parallel to rup
+	if (u == glm::vec3(0) || v == glm::vec3(0) || n == glm::vec3(0))
 	{
 		//ERROR, up or right are zero
-		std::cout << "Error in view method. Look or rup have zero length" << std::endl;
+		std::cout << "ERROR in view method. Look or rup have zero length" << std::endl;
 		m_view = glm::mat4();
+		m_viewInv = glm::mat4();
 	}
-	u = { right.x / rightLength, right.y / rightLength, right.z / rightLength, 0 };
-	v = { up.x / upLength, up.y / upLength, up.z / upLength, 0 };
-	n = { -m_look.x / lookLength, -m_look.y / lookLength, -m_look.z / lookLength, 0 };
 
+	//This is the transposed cam R (world to cam, so transposed of the camera's model R, which goes from cam to world) 
+	//applied on top of the inverse T (world to cam, so -eye)
 	glm::vec3 LtP = {
-		-(u.x * m_eye.x) - (u.y * m_eye.y) - (u.z * m_eye.z),
-		-(v.x * m_eye.x) - (v.y * m_eye.y) - (v.z * m_eye.z),
-		-(n.x * m_eye.x) - (n.y * m_eye.y) - (n.z * m_eye.z),
+		(u.x * -m_eye.x) + (u.y * -m_eye.y) + (u.z * -m_eye.z),
+		(v.x * -m_eye.x) + (v.y * -m_eye.y) + (v.z * -m_eye.z),
+		(n.x * -m_eye.x) + (n.y * -m_eye.y) + (n.z * -m_eye.z),
 	};
 
-	m_view =  { u.x, v.x, n.x, 0,
-				u.y, v.y, n.y, 0,
-				u.z, v.z, n.z, 0,
-				LtP.x, LtP.y, LtP.z, 1 };
+	m_view =  { 
+		u.x, v.x, n.x, 0,
+		u.y, v.y, n.y, 0,
+		u.z, v.z, n.z, 0,
+		LtP.x, LtP.y, LtP.z, 1 
+	};
+
+	m_viewInv = {
+		u.x, u.y, u.z, 0,
+		v.x, v.y, v.z, 0,
+		n.x, n.y, n.z, 0,
+		m_eye.x, m_eye.y, m_eye.z, 1
+	};
 }
 
 
-void Camera::UpdatePerspective()
+void Camera::UpdatePerspective(float dt)
 {
 	if (fabs(m_near) <= EPSILON || fabs(m_aspectRatio) <= EPSILON || fabs(m_near - m_far) <= EPSILON)
 	{
@@ -161,9 +214,8 @@ void Camera::UpdatePerspective()
 		m_proj = glm::mat4();
 	}
 
-	float PI = 4.0f * atan(1.0f);
 	float radians = (m_fov * PI) / 180.0f;
-	float W = 2 * m_near * (float)tan(radians / 2.0f);
+	float W = 2 * m_near * std::tanf(radians / 2.0f);
 	float H = W / m_aspectRatio;
 
 	float A = (m_near + m_far) / (m_near - m_far);
@@ -171,6 +223,9 @@ void Camera::UpdatePerspective()
 	float C = (2 * m_near) / W;
 	float D = (2 * m_near) / H;
 	
+	//Perspective test
+	perspectiveAccumulator += dt * 0.1f;
+
 	m_proj = {
 		C, 0, 0, 0,
 		0, D, 0, 0,
@@ -180,7 +235,7 @@ void Camera::UpdatePerspective()
 }
 
 
-void Camera::UpdateOrthographic()
+void Camera::UpdateOrthographic(float dt)
 {
 	float w = 20.0f; //TODO - CHANGE - FOR NOW, MAGIC NUMBER
 	float h = w / m_aspectRatio;
@@ -188,11 +243,14 @@ void Camera::UpdateOrthographic()
 	float A = -2 / (m_far - m_near);
 	float B = (-m_near - m_far) / (m_far - m_near);
 
+	//Perspective test
+	perspectiveAccumulator += dt * 0.1f;
+
 	m_proj = {
 		2 / w, 0, 0, 0,
 		0, 2 / h, 0, 0,
 		0, 0, A, 0,
-		0, 0, B, 1 
+		0, 0, B, 1
 	};
 }
 
@@ -203,9 +261,9 @@ void Camera::UpdateOrthographic()
 #define ROT_SPEED	0.075f
 void Camera::handleInput(float dt)
 {
-	float moveSpeed = 50.0f * dt;
+	float moveSpeed = 100.0f * dt;
 
-	glm::vec4 right = glm::normalize(AuxMath::cross(m_look, rup));
+	glm::vec4 right = glm::normalize(AuxMath::cross(m_look, glm::vec4(0, 1, 0, 0)));
 	if (/*inputMgr->getKeyPress(SDL_SCANCODE_RIGHT) ||  */inputMgr->getKeyPress(SDL_SCANCODE_D))
 	{
 		this->m_eye += moveSpeed * right;
@@ -257,9 +315,23 @@ void Camera::handleInput(float dt)
 	if (inputMgr->getKeyTrigger(SDL_SCANCODE_TAB))
 	{
 		DeferredRenderer *rend = static_cast<DeferredRenderer*>(renderer);
-		rend->toggleAO();
-		std::cout << "AO TOGGLED!" << std::endl;
+		rend->toggleDebugPass();
+		std::cout << "DEBUG DRAW TOGGLED!" << std::endl;
 	}
+
+	if (inputMgr->getKeyTrigger(SDL_SCANCODE_F8))
+	{
+		DeferredRenderer *rend = static_cast<DeferredRenderer*>(renderer);
+		rend->toggleDebugViewMode();
+		std::cout << "DEBUG VIEW MODE TOGGLED!" << std::endl;
+	}
+	if (inputMgr->getKeyTrigger(SDL_SCANCODE_F9))
+	{
+		DeferredRenderer *rend = static_cast<DeferredRenderer*>(renderer);
+		rend->toggleVisualCascades();
+		std::cout << "VISUAL CASCADES TOGGLED!" << std::endl;
+	}
+
 
 	//MSAA ON
 	if (inputMgr->getKeyTrigger(SDL_SCANCODE_T))
@@ -293,7 +365,7 @@ void Camera::handleInput(float dt)
 			int deltay = y - prevy;
 
 			glm::vec4 right, up;
-			right = AuxMath::cross(m_look, rup);
+			right = AuxMath::cross(m_look, glm::vec4(0, 1, 0, 0));
 			up = AuxMath::cross(right, m_look);
 			glm::normalize(right);
 			glm::normalize(up);
@@ -302,6 +374,7 @@ void Camera::handleInput(float dt)
 			m_look = AuxMath::rotate(angle, up) * m_look;
 			angle = deltay * 1.0f * ROT_SPEED;
 			m_look = AuxMath::rotate(angle, right) * m_look;
+			m_look = glm::normalize(m_look);
 		}
 
 		pressedLastFrame = true;

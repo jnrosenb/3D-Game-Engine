@@ -5,6 +5,7 @@
 
 
 //TODO - RIGHT NOW NOT DEALING WITH HIERARCHIES***
+#define PI			3.14159265359f
 
 
 Transform::Transform(GameObject *owner) :
@@ -52,6 +53,7 @@ void Transform::Update(float dt)
 		this->R = AuxMath::rotate(m_rotation.z, glm::vec3(0, 0, 1)) *
 			AuxMath::rotate(m_rotation.y, glm::vec3(0, 1, 0)) *
 			AuxMath::rotate(m_rotation.x, glm::vec3(1, 0, 0));
+		this->q = AuxMath::Quaternion(R);
 
 		//Scale
 		this->H[0][0] = m_scale.x;
@@ -147,13 +149,29 @@ void Transform::SetPosition(glm::vec3 const& newPos)
 }
 
 
-glm::mat4 const& Transform::GetModel()
+glm::mat4 const& Transform::GetModel() const
 {
 	return this->model;
 }
 
 
-glm::mat4 const& Transform::GetNormalModel()
+glm::mat4 const& Transform::GetNormalModel() const 
 {
 	return this->normalsModel;
+}
+
+
+glm::mat4 const& Transform::GetRotationMatrix() const 
+{
+	return this->R;
+}
+
+AuxMath::Quaternion const& Transform::GetRotationQuaternion() const
+{
+	return this->q;
+}
+
+glm::vec4 const& Transform::GetScale() const
+{
+	return this->m_scale;
 }

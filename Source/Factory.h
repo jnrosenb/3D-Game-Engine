@@ -16,26 +16,24 @@
 class GameObject; 
 using namespace rapidjson;
 
+#include "Paths.h"
 #include "ResourceManager.h"
 #include "GameObject.h"
 #include "GameObjectManager.h"
 #include "Renderer.h"
 #include "RendererComponent.h"
 #include "TransformComponent.h"
+#include "AnimationComponent.h"
+#include "ParticleSystemComponent.h"
+#include "Particle.h"
+#include "RigidbodyComponent.h"
 #include "PathFollowComponent.h"
 #include "IKGoalComponent.h"
-#include "AnimationComponent.h"
-#include "ClothComponent.h"
+//--------------------
 extern GameobjectManager* goMgr;
 extern ResourceManager* resMgr;
 extern Renderer *renderer;
-
-
-//PATHS TO DIFFERENT ASSET DIRECTORIES
-static char const* abs_path = "C:\\Users\\Jose\\Desktop\\OpenGl_Framework\\Source\\";
-static std::string const GameobjectsDir = "..\\Assets\\Archetypes\\Gameobjects\\";
-static std::string const ScenesDir = "..\\Assets\\Archetypes\\Scenes\\";
-static std::string const MaterialsDir = "..\\Assets\\Archetypes\\Materials\\";
+extern EnginePaths *globalPaths;
 
 
 ////////////////////////////
@@ -59,7 +57,7 @@ public:
 	void LoadScene(std::string const& sceneName, bool is_global_path = false)
 	{
 		// TODO - make path relative (or use base directory macro)
-		std::string path = abs_path + ScenesDir + sceneName; 
+		std::string path = globalPaths->AssetsDir + "Prefabs\\Scenes\\" + sceneName;
 		if (is_global_path)
 			path = sceneName;
 		std::string example = loadFile(path.c_str());
@@ -75,13 +73,74 @@ public:
 			GameObject *go = new GameObject(); 
 			const rapidjson::Value& attribute = *itr;
 			assert(attribute.IsObject());
-			for (rapidjson::Value::ConstMemberIterator itr2 = attribute.MemberBegin(); itr2 != attribute.MemberEnd(); ++itr2) 
+
+			//This is for the gameobj creation
+			if (attribute.HasMember("name"))
 			{
-				std::string obj_path = itr2->value.GetString();
+				const Value& acc = attribute["name"];
+				assert(acc.IsString());
+				std::string obj_path = acc.GetString();
 				LoadComponents(go, obj_path);
 				goMgr->AddGameObjects(go);
 			}
+
+			//First attempt at overriding in here
+			if (attribute.HasMember("transform"))
+			{
+				Transform *transform = go->GetComponent<Transform>();
+				if (transform == nullptr)
+					return;
+
+				const Value& compOverride = attribute["transform"];
+				assert(compOverride.IsObject());
+				if (compOverride.HasMember("position"))
+				{
+					const Value& acc = compOverride["position"];
+					assert(acc.IsArray());
+					transform->m_position = glm::vec4(acc[0].GetFloat(), acc[1].GetFloat(), acc[2].GetFloat(), 1.0f);
+				}
+				if (compOverride.HasMember("rotation"))
+				{
+					const Value& acc = compOverride["rotation"];
+					assert(acc.IsArray());
+					transform->m_rotation = glm::vec4(acc[0].GetFloat(), acc[1].GetFloat(), acc[2].GetFloat(), 1.0f);
+				}
+				if (compOverride.HasMember("scale"))
+				{
+					const Value& acc = compOverride["scale"];
+					assert(acc.IsArray());
+					transform->m_scale = glm::vec4(acc[0].GetFloat(), acc[1].GetFloat(), acc[2].GetFloat(), 1.0f);
+				}
+			}
+
+			//Second attempt at overriding in here
+			if (attribute.HasMember("renderer"))
+			{
+				Render *renderComp = go->GetComponent<Render>();
+				if (renderComp == nullptr)
+					return;
+
+				const Value& compOverride = attribute["renderer"];
+				assert(compOverride.IsObject());
+				if (compOverride.HasMember("x_tiling"))
+				{
+					const Value& ac4 = compOverride["x_tiling"];
+					assert(ac4.IsInt());
+					renderComp->xTiling = ac4.GetInt();
+				}
+				if (compOverride.HasMember("y_tiling"))
+				{
+					const Value& ac4 = compOverride["y_tiling"];
+					assert(ac4.IsInt());
+					renderComp->yTiling = ac4.GetInt();
+				}
+
+
+			}
 		}
+
+		//After first batch creation, call begin on all gameObjects
+		goMgr->CallBeginOnGameObjects();
 
 		//LOAD WHITE TEXTURE FOR WHEN NO TEXTURE IS USED
 		///SDL_Surface *surfaceWhite = resMgr->loadSurface("../White.jpg");
@@ -225,7 +284,7 @@ public:
 
 	void LoadComponents(GameObject* go, std::string const& obj_path) 
 	{
-		std::string full_path = abs_path + GameobjectsDir + obj_path;
+		std::string full_path = globalPaths->AssetsDir + "Prefabs\\Gameobjects\\" + obj_path;
 		std::string example = loadFile(full_path.c_str());
 		Document doc;
 		doc.Parse(example.c_str());
@@ -409,6 +468,198 @@ public:
 
 				render->DeserializeInit();
 			}
+			else if (comp_name == "rigidbody")
+			{
+				RigidbodyComponent *rgbdy = go->AddComponent<RigidbodyComponent>();
+
+				if (attribute.HasMember("mass"))
+				{
+					const Value& ac4 = attribute["mass"];
+					assert(ac4.IsFloat());
+					rgbdy->mass = ac4.GetFloat();
+				}
+
+				if (attribute.HasMember("shape"))
+				{
+					const Value& ac4 = attribute["shape"];
+					assert(ac4.IsString());
+					std::string shape = ac4.GetString();
+					
+					// TODO
+				}
+
+				//TEMPORARY, REMOVE LATER
+				if (attribute.HasMember("player"))
+				{
+					const Value& ac4 = attribute["player"];
+					assert(ac4.IsBool());
+					bool isPlayer = ac4.GetBool();
+					rgbdy->isPlayer = isPlayer;
+				}
+
+				rgbdy->DeserializeInit();
+			}
+			else if (comp_name == "particleSystem")
+			{
+				ParticleSystemComponent *psc = go->AddComponent<ParticleSystemComponent>();
+
+				if (attribute.HasMember("load_model"))
+				{
+					const Value& ac2 = attribute["load_model"];
+					assert(ac2.IsBool());
+					bool use_model = ac2.GetBool();
+					psc->use_loaded_mesh = use_model;
+
+					if (use_model)
+					{
+						assert(attribute.HasMember("model_name"));
+						const Value& acc = attribute["model_name"];
+						assert(acc.IsString());
+						std::string modelPath = acc.GetString();
+						psc->modelPath = modelPath;
+					}
+					else
+					{
+						assert(attribute.HasMember("primitive"));
+						const Value& ac3 = attribute["primitive"];
+						assert(ac3.IsString());
+						std::string primitive = ac3.GetString();
+						psc->primitive = primitive;
+					}
+				}
+				else
+				{
+					assert(attribute.HasMember("primitive"));
+					const Value& ac3 = attribute["primitive"];
+					assert(ac3.IsString());
+					std::string primitive = ac3.GetString();
+					psc->primitive = primitive;
+				}
+
+				if (attribute.HasMember("particleCount"))
+				{
+					const Value& ac4 = attribute["particleCount"];
+					assert(ac4.IsInt());
+					psc->count = ac4.GetInt();
+				}
+
+				if (attribute.HasMember("x_tiling"))
+				{
+					const Value& ac4 = attribute["x_tiling"];
+					assert(ac4.IsInt());
+					psc->xTiling = ac4.GetInt();
+				}
+
+				if (attribute.HasMember("y_tiling"))
+				{
+					const Value& ac4 = attribute["y_tiling"];
+					assert(ac4.IsInt());
+					psc->yTiling = ac4.GetInt();
+				}
+
+				if (attribute.HasMember("diffuse_texture"))
+				{
+					const Value& ac4 = attribute["diffuse_texture"];
+					assert(ac4.IsString());
+					std::string diffuseTexture = ac4.GetString();
+
+					SDL_Surface *surf = resMgr->loadSurface(diffuseTexture);
+					renderer->generateTextureFromSurface(surf, diffuseTexture, 5);
+					psc->diffuseTexture = diffuseTexture;
+					psc->useDiffuseTexture = true;
+				}
+
+				if (attribute.HasMember("advectors"))
+				{
+					//Advectors, will be used before operators, since they define a base velocity not based on previous values
+					const Value& ac4 = attribute["advectors"];
+					assert(ac4.IsArray());
+					for (Value::ConstValueIterator itr = ac4.Begin(); itr != ac4.End(); ++itr)
+					{
+						const rapidjson::Value& attribute = *itr;
+						assert(attribute.IsObject());
+						assert(attribute.HasMember("type"));
+						const Value& ac5 = attribute["type"];
+						assert(ac5.IsString());
+						std::string type = ac5.GetString();
+
+						if (type == "vortex")
+						{
+							Operator *op = new VortexOperation();
+							VortexOperation *castOp = static_cast<VortexOperation*>(op);
+							if (attribute.HasMember("rotation_rate"))
+							{
+								const Value& acc = attribute["rotation_rate"];
+								assert(acc.IsFloat());
+								castOp->rotationRate = acc.GetFloat();
+							}
+							if (attribute.HasMember("tightness"))
+							{
+								const Value& acc = attribute["tightness"];
+								assert(acc.IsFloat());
+								castOp->tightness = acc.GetFloat();
+							}
+							psc->RegisterParticleAdvector(op);
+						}
+						if (type == "gravitational_pull")
+						{
+							Operator *op = new GravitationalOperator();
+							GravitationalOperator *castOp = static_cast<GravitationalOperator*>(op);
+
+							if (attribute.HasMember("mass"))
+							{
+								const Value& acc = attribute["mass"];
+								assert(acc.IsFloat());
+								castOp->mass = acc.GetFloat();
+							}
+							psc->RegisterParticleAdvector(op);
+						}
+						if (type == "spiral")
+						{
+							Operator *op = new SpiralOperation();
+							SpiralOperation *castOp = static_cast<SpiralOperation*>(op);
+
+							if (attribute.HasMember("rotation_rate"))
+							{
+								const Value& acc = attribute["rotation_rate"];
+								assert(acc.IsFloat());
+								castOp->rotationRate = acc.GetFloat();
+							}
+							psc->RegisterParticleAdvector(op);
+						}
+					}
+				}
+
+				if (attribute.HasMember("operators"))
+				{
+					//Operators will integrate based on previous velocity values
+					const Value& ac4 = attribute["operators"];
+					assert(ac4.IsArray());
+					for (Value::ConstValueIterator itr = ac4.Begin(); itr != ac4.End(); ++itr)
+					{
+						const rapidjson::Value& attribute = *itr;
+						assert(attribute.IsObject());
+
+						assert(attribute.HasMember("type"));
+						const Value& ac5 = attribute["type"];
+						assert(ac5.IsString());
+						std::string type = ac5.GetString();
+						
+						if (type == "bounce")
+						{
+							//Friction thing
+							//Damping thing
+						}
+						else if (type == "damping")
+						{
+							//Target vel
+							//Speed of convergence
+						}
+					}
+				}
+
+				psc->DeserializeInit();
+			}
 			else if (comp_name == "PathFollow")
 			{
 				PathFollowComponent *pathFollow = go->AddComponent<PathFollowComponent>();
@@ -471,76 +722,6 @@ public:
 				//Call this to end setup
 				goalComp->DeserializeInit();
 			}
-			else if (comp_name == "cloth") 
-			{
-				ClothComponent *clothComp = go->AddComponent<ClothComponent>();
-
-				if (attribute.HasMember("cols"))
-				{
-					const Value& acc = attribute["cols"];
-					assert(acc.IsInt());
-					clothComp->cols = acc.GetInt();
-				}
-				if (attribute.HasMember("rows"))
-				{
-					const Value& acc = attribute["rows"];
-					assert(acc.IsInt());
-					clothComp->rows = acc.GetInt();
-				}
-				if (attribute.HasMember("mass"))
-				{
-					const Value& acc = attribute["mass"];
-					assert(acc.IsFloat());
-					clothComp->mass = acc.GetFloat();
-				}
-				if (attribute.HasMember("spring_coeff"))
-				{
-					const Value& acc = attribute["spring_coeff"];
-					assert(acc.IsFloat());
-					clothComp->kCoeff1 = acc.GetFloat();
-					clothComp->kCoeff2 = acc.GetFloat();
-					clothComp->kCoeff3 = acc.GetFloat();
-				}
-				/// if (attribute.HasMember("wind_coeff"))
-				/// {
-				/// 	const Value& acc = attribute["wind_coeff"];
-				/// 	assert(acc.IsFloat());
-				/// 	clothComp->kw = acc.GetFloat();
-				/// }
-				if (attribute.HasMember("rest_length"))
-				{
-					const Value& acc = attribute["rest_length"];
-					assert(acc.IsFloat());
-					clothComp->d = acc.GetFloat();
-				}
-				/// if (attribute.HasMember("stretch_percentage"))
-				/// {
-				/// 	const Value& acc = attribute["stretch_percentage"];
-				/// 	assert(acc.IsFloat());
-				/// 	clothComp->stretch = acc.GetFloat();
-				/// }
-				if (attribute.HasMember("damping"))
-				{
-					const Value& acc = attribute["damping"];
-					assert(acc.IsFloat());
-					clothComp->damping = acc.GetFloat();
-				}
-				if (attribute.HasMember("wind_direction"))
-				{
-					const Value& acc = attribute["wind_direction"];
-					assert(acc.IsArray());
-					glm::vec3 i = glm::normalize(glm::vec3(acc[0].GetFloat(), acc[1].GetFloat(), acc[2].GetFloat()));
-					clothComp->windDirection = glm::vec4(i, 0.0f);
-				}
-				if (attribute.HasMember("wind_intensity"))
-				{
-					const Value& acc = attribute["wind_intensity"];
-					assert(acc.IsFloat());
-					clothComp->windIntensity = acc.GetFloat();
-				}
-
-				clothComp->DeserializeInit();
-			}
 		}
 	}
 
@@ -571,6 +752,7 @@ public:
 ////////////////////////////
 ////	COMPONENTS		////
 ////////////////////////////
+/*
 class ComponentFactory 
 {
 
@@ -585,9 +767,10 @@ public:
 		ComponentTypeMap[TRANSFORM] = new Transform(0);
 		ComponentTypeMap[RENDERER] = new Render(0);
 		ComponentTypeMap[ANIMATION] = new AnimationComponent(0);
+		ComponentTypeMap[PARTICLE_SYSTEM] = new ParticleSystemComponent(0);
+		//------------------
 		ComponentTypeMap[PATH_FOLLOW] = new AnimationComponent(0);
 		ComponentTypeMap[IK_GOAL] = new IKGoalComponent(0);
-		//ComponentTypeMap[CLOTH] = new ClothComponent(0);
 
 		std::cout << "Created component clone factory" << std::endl;
 	}
@@ -612,3 +795,4 @@ public:
 private:
 	std::vector<BaseComponent*> ComponentTypeMap;
 };
+//*/

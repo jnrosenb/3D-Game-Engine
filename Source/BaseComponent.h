@@ -14,6 +14,8 @@ enum COMPONENT_TYPES
 	TRANSFORM = 0,
 	RENDERER,
 	ANIMATION,
+	PARTICLE_SYSTEM,
+	RIGIDBODY,
 	PATH_FOLLOW,	//UGH, ERASE
 	IK_GOAL,		//UGH, ERASE
 	CLOTH,			//SAME
@@ -40,11 +42,19 @@ public:
 	}
 
 	virtual BaseComponent* clone() = 0;
-	virtual void Update(float dt) = 0;
+	virtual void Update(float dt) {};
 	virtual void LateUpdate(float dt) {}
+	virtual void PhysicsUpdate(float dt) {}
+	virtual void Draw() {}
+
+	//These two should be privates. 
+	//Also, start thinking how to bring this together with scripting
 	virtual void DeserializeInit() = 0;
+	virtual void Begin() {}
 
 	COMPONENT_TYPES GetType() const { return type; }
+	
+	GameObject *GetOwner() const { return m_owner; }
 
 private:
 	BaseComponent(BaseComponent& rhs);

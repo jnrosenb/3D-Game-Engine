@@ -26,8 +26,10 @@ public:
 		return new Render(m_owner);
 	}
 	virtual void Update(float dt) override;
+	virtual void Draw() override;
 	virtual void DeserializeInit() override;
 
+	Model *GetModel() const;
 
 	//For now, animation component will be set here
 	void SetupAnimationComponent();
@@ -40,19 +42,18 @@ public:
 private:
 	virtual void initShader();
 	virtual void initModel();
-
 	void SetClampedRoughness(float r);
 
 public:	//TODO - Change for a public interface
 	
+	bool use_loaded_mesh;
 	Model *model = NULL;
 	std::string modelPath;
+	std::string primitive;
+
 	std::string ShaderName;
 	glm::vec4 diffuseColor;
 	glm::vec4 specularColor;
-	bool use_loaded_mesh;
-	std::string primitive;
-	Mesh *mesh = NULL;
 	Shader *shader = NULL;
 
 	//maps

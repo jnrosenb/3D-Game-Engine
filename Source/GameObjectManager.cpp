@@ -38,6 +38,24 @@ void GameobjectManager::LateUpdate(float dt)
 	}
 }
 
+
+void GameobjectManager::CallBeginOnGameObjects()
+{
+	for (auto go : gameObjects)
+	{
+		go->Begin();
+	}
+}
+
+
+void GameobjectManager::Draw()
+{
+	for (auto go : gameObjects)
+	{
+		go->Draw();
+	}
+}
+
 GameObject* GameobjectManager::AddGameObjects(GameObject *go)
 {
 	if (go) 

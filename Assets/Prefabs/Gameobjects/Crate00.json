@@ -3,19 +3,21 @@
     "components": [
       {
         "id": "transform",
-        "position": [ 15, 3, 15 ],
+        "position": [ -25, 3, -5 ],
         "rotation": [ 0, 67, 0 ],
-        "scale": [ 2, 5, 5 ]
+        "scale": [ 15, 17, 15 ]
       },
       {
         "id": "render",
         "diffuse": [ 1.0, 1.0, 1.0, 1.0 ],
+        "roughness": 0.001,
+        "metallic": 1.0,
         "load_model": true,
         "model_name": "Cube.fbx",
-        "diffuse_texture": "crate.png",
-        "normal_map": "../Normal_Maps/crate_NRM.jpg",
-        "x_tiling": 4,
-        "y_tiling": 4
+        "diffuse_texture": "crate_03.png",
+        "normal_map": "../Normal_Maps/crate_03_NRM.jpg",
+        "x_tiling": 24,
+        "y_tiling": 48
       }
     ]
 }

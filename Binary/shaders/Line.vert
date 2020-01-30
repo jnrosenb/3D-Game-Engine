@@ -6,8 +6,11 @@
 //////////////////////////////////////////
 
 #version 330 core
+#define MAX_BONES			100
      
 layout(location = 0) in vec4 position;
+layout(location = 3) in ivec4 bonesInd;
+layout(location = 4) in vec4 boneWgts;
 
 layout(std140) uniform test_gUBlock
 {
@@ -22,5 +25,5 @@ uniform mat4 model;
 
 void main()
 {
-	gl_Position = ProjView * position;
+	gl_Position = ProjView * model * position;
 };

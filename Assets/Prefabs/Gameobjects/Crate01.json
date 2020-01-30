@@ -3,9 +3,9 @@
     "components": [
       {
         "id": "transform",
-        "position": [ -15, 2, 15 ],
-        "rotation": [ 0, 125, 0 ],
-        "scale": [ 3, 5, 1 ]
+        "position": [ -15, -2, 5 ],
+        "rotation": [ 0, 0, 0 ],
+        "scale": [ 5, 5, 5 ]
       },
       {
         "id": "render",
