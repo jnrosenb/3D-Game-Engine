@@ -28,6 +28,7 @@ public:
 	void PhysicsUpdate(float dt);
 
 	void RegisterRigidbody(RigidbodyComponent* rgbdy);
+	std::vector<RigidbodyComponent*> const& GetRigidbodies() const;
 
 private:
 	bool CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B);

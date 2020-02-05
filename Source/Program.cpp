@@ -137,19 +137,16 @@ int main(int argc, char **argv)
 		//Get frame time
 		frc->FrameStart();
 		float dt = frc->getFrameTime() / 1000.0f;
-		
-		
 		//std::cout << "Normal dt: " << dt << std::endl;
-
 
 		//EVENT LOOP
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
 		{
 
-			#if USING_IMGUI
+#if USING_IMGUI
 			ImGui_ImplSDL2_ProcessEvent(&event);
-			#endif
+#endif
 
 			switch (event.type)
 			{
@@ -170,22 +167,26 @@ int main(int argc, char **argv)
 		}
 
 		//IMGUI UPDATE
-		#if USING_IMGUI
+#if USING_IMGUI
 		imguiMgr->Update(dt, static_cast<int>(1 / dt));
-		#endif
+#endif
 
 		//Update input
 		inputMgr->update(dt);
+	
+		//Components to skip in case of pause
+		if (frc->isPaused() == 0)
+		{
+			//COMPONENTS UPDATE AND DRAW
+			goMgr->Update(dt);
+			goMgr->LateUpdate(dt);
 
-		//COMPONENTS UPDATE AND DRAW
-		goMgr->Update(dt);
-		goMgr->LateUpdate(dt);
+			//PHYSICS UPDATE - FOR NOW HERE
+			physicsMgr->PhysicsUpdate(dt);
+		}
+
+		//Graphic manager update and draw
 		goMgr->Draw();
-
-		//PHYSICS UPDATE - FOR NOW HERE
-		physicsMgr->PhysicsUpdate(dt);
-
-		//Graphic manager update and draw 
 		renderer->Update(dt);
 		renderer->Draw();
 

@@ -6,7 +6,8 @@
 
 
 
-FrameRateController::FrameRateController(int framesPerSecond) 
+FrameRateController::FrameRateController(int framesPerSecond) : 
+	paused(false), step(false)
 {
 	pTicksBegin = 0, pTicksEnd = 0, pFrameTime;
 
@@ -31,7 +32,19 @@ FrameRateController::~FrameRateController()
 
 void FrameRateController::FrameStart()
 {
-	pTicksBegin = SDL_GetTicks();
+	pTicksBegin = SDL_GetTicks(); 
+	handleInput();
+}
+
+void FrameRateController::TogglePause()
+{
+	this->paused = !paused;
+}
+
+void FrameRateController::Step()
+{
+	step = true;
+	paused = false;
 }
 
 Uint32 FrameRateController::getFrameTime()
@@ -39,8 +52,21 @@ Uint32 FrameRateController::getFrameTime()
 	return pFrameTime;
 }
 
-void FrameRateController::FrameEnd() 
+bool FrameRateController::isPaused()
 {
+	return paused;
+}
+
+void FrameRateController::FrameEnd()
+{
+	if (paused)
+		return;
+	if (step)
+	{		
+		paused = true;
+		step = false;
+	}
+
 	pTicksEnd = SDL_GetTicks();
 
 	while (pTicksEnd - pTicksBegin < pTicksNeededPerFrame) 
@@ -49,4 +75,23 @@ void FrameRateController::FrameEnd()
 	}
 
 	pFrameTime = pTicksEnd - pTicksBegin;
+	++frameNumber;
+}
+
+
+////////////////////////////////////
+////   INPUT MANAGEMENT         ////
+////////////////////////////////////
+#include "InputManager.h"
+extern InputManager *inputMgr;
+void FrameRateController::handleInput()
+{
+	if (inputMgr->getKeyTrigger(SDL_SCANCODE_L))
+	{
+		TogglePause();
+	}
+	if (inputMgr->getKeyTrigger(SDL_SCANCODE_K))
+	{
+		Step();
+	}
 }

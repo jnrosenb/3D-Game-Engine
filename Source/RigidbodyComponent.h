@@ -10,6 +10,7 @@
 
 class Shader;
 class Mesh;
+class Model;
 
 
 //Rigidbody component
@@ -38,12 +39,17 @@ public:
 	//These should be private
 	virtual void DeserializeInit() override;
 	virtual void Begin() override;
+	
+	//Returns true if the rigidbody interacts with particles
+	bool HasParticleInteraction() const { return hasParticleInteraction; }
 
 	//GETTERS
 	float GetMass() const { return this->mass; }
 
 	//OBB getter, for now
 	glm::vec3 GetOBBRadiusVector() const;
+	float GetOOBBMaximumLength() const;
+	glm::vec3 GetPositionEstimate() const;
 
 private:
 	void ColliderSetup();
@@ -62,11 +68,14 @@ private:
 	//Collider related info
 	glm::mat4 IbodyInv;
 	glm::vec3 OBBRadius;
+	bool hasParticleInteraction;
+
 	//Also collider info, but more on debug draw side of things
 	AABB aabb;
 	Mesh *debugMesh;
 	Mesh *debugPointMesh;
-	Mesh *debugRayMesh;
+	Mesh *debugRayMesh;//////////////**
+	Model *debugRay;/////////////////**
 	Shader *debugShader;
 	Shader *debugShaderLine;
 	glm::vec4 DebugForce;
@@ -74,6 +83,8 @@ private:
 	//Integration parameters
 	glm::vec4 Force;
 	glm::vec4 Torque;
+	glm::vec4 prevAngAccel;
+	glm::vec4 L;
 
 	//Vector of diferentiated params
 	std::vector<glm::vec4> Params;  // x(t) - q       - P - L

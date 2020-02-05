@@ -9,6 +9,20 @@
 
 class Operator;
 
+//Obstacle avoidance
+class RigidbodyComponent;
+
+
+struct flockingParams 
+{
+	float maxAccel;
+	float radius;
+	float fov;
+	float separationWeight;
+	float cohesionWeight;
+	float avoidanceWeight;
+};
+
 
 struct particleDescriptor 
 {
@@ -26,45 +40,107 @@ class Particle
 {
 public:
 	Particle();
-	~Particle();
+	virtual ~Particle();
 
-	void Initialize(particleDescriptor const& descriptor,
+	virtual void Initialize(particleDescriptor const& descriptor,
 		std::vector<Operator*> *m_advectors,
 		std::vector<Operator*> *m_operators,
 		glm::vec3 const& velocity = glm::vec3(0));
-	void Update(float dt);
+	//Needed so virtual calls it
+	virtual void Initialize(particleDescriptor const& descriptor,
+		flockingParams const& m_flockingParams, 
+		glm::vec3 const& velocity = glm::vec3(0)) {}
+
+	virtual void Update(float dt);
+	//Needed so virtual calls it
+	virtual void Update(float dt, glm::vec3 const& target,
+		std::vector<Particle*> const& particles,
+		std::vector<RigidbodyComponent*> const& rigidbodies) {}
 
 	//GETTERS
-	float GetMass() const;
-	float GetTimeToLive() const;
-	glm::vec3 const& GetPosition() const;
-	glm::vec3 const& GetVelocity() const;
-	glm::vec3 const& GetSize() const;
-	glm::vec3 const& GetColor() const;
-	glm::vec3 const& GetAxis() const;
-	glm::vec3 const& GetSpawnerPosition() const;
+	virtual float GetMass() const;
+	virtual float GetTimeToLive() const;
+	virtual glm::vec3 const& GetPosition() const;
+	virtual glm::vec3 const& GetVelocity() const;
+	virtual glm::vec3 const& GetSize() const;
+	virtual glm::vec3 const& GetColor() const;
+	virtual glm::vec3 const& GetAxis() const;
+	virtual glm::vec3 const& GetSpawnerPosition() const; 
+	virtual glm::vec3 const& GetRotation() const;
+	virtual glm::mat3 const& GetRotationMatrix();
 
 	//SETTERS
-	void SetPosition(glm::vec3 const& pos);
-	void SetVelocity(glm::vec3 const& vel);
-	void AddVelocity(glm::vec3 const& vel);
+	virtual void SetPosition(glm::vec3 const& pos);
+	virtual void SetVelocity(glm::vec3 const& vel);
+	virtual void AddVelocity(glm::vec3 const& vel);
 
-private:
+	//INTERFACE
+	virtual void rotate(float dx, float dy, float dz); 
+	
+	//Add forces/accels
+	void AddAcceleration(glm::vec3 a);
+	void Damp(glm::vec3& val, float damping = 0.03f);
+
+protected:
 	float timeToLive;
 	float mass;
+	float fov;
+	bool needToRecalc;
 
 	glm::vec3 spawnerPosition;
+	
 	glm::vec3 size;
 	glm::vec3 position;
+	glm::vec3 rotation;
+
+	//Experiment
+	glm::vec3 L;
+	glm::vec3 accel;
+	float maxAccel;
+
 	glm::vec3 color;
 	glm::vec3 velocity;
-	glm::vec3 newVel;
+	glm::vec3 prevVel;
 	glm::vec3 axis;
 
+	glm::mat3 R;
+
+private:
 	//Operators vec
 	std::vector<Operator*> *m_operatorsPTR;
 	std::vector<Operator*> *m_advectorsPTR;
 };
+
+
+
+class InteractingParticle : public Particle 
+{
+
+public:
+	InteractingParticle();
+	virtual ~InteractingParticle();
+
+	virtual void Initialize(particleDescriptor const& descriptor, 
+		flockingParams const& m_flockingParams, glm::vec3 const& velocity = glm::vec3(0));
+	virtual void Update(float dt, glm::vec3 const& target,
+		std::vector<Particle*> const& particles,
+		std::vector<RigidbodyComponent*> const& rigidbodies);
+
+private:
+	//Experiment
+	glm::vec3 target;
+
+	int maxNumberOfNeighbours;
+	float radius;
+	float colliderRadius;
+	float separationWeight;
+	float cohesionWeight;
+	float avoidanceWeight;
+};
+
+
+
+
 
 
 ///////////////////////////////
@@ -75,7 +151,9 @@ class Operator
 {
 public:
 	virtual ~Operator() {}
-	virtual void operator()(float dt, Particle& p) = 0;
+	virtual void operator()(float dt, Particle& p) {}
+	virtual void operator()(float dt, Particle& p,
+		std::vector<Particle*> const& particles) {}
 };
 
 
@@ -139,7 +217,7 @@ public:
 		glm::vec3 vel = p.GetVelocity() + dt * a;
 		
 		//Finally, set velocity
-		p.AddVelocity(vel);
+		p.SetVelocity(vel);
 	}
 };
 
@@ -161,11 +239,18 @@ public:
 	{
 		CenterOfGravitation = glm::vec3(p.GetSpawnerPosition());
 		float particleMass = p.GetMass();
+		glm::vec3 GravitationCenterToPosition = p.GetPosition() - CenterOfGravitation;
+		
+		//TEMPORAL
+		if (fabsf(GravitationCenterToPosition.x) < 0.0001f &&
+			fabsf(GravitationCenterToPosition.y) < 0.0001f &&
+			fabsf(GravitationCenterToPosition.z) < 0.0001f)
+			return;
 
 		//Calculate gravitational force between objects
 		float G = 9.8f;
-		glm::vec3 dir = glm::normalize(p.GetPosition() - CenterOfGravitation);
-		float term = (particleMass * mass) / glm::length(p.GetPosition() - CenterOfGravitation);
+		glm::vec3 dir = glm::normalize(GravitationCenterToPosition);
+		float term = (particleMass * mass) / glm::length(GravitationCenterToPosition);
 		glm::vec3 F = dir * std::powf(term, 3) * -G;
 		glm::vec3 vel = p.GetVelocity() + dt * (F/p.GetMass());
 
@@ -173,3 +258,5 @@ public:
 		p.SetVelocity(vel);
 	}
 };
+
+

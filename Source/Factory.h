@@ -111,6 +111,7 @@ public:
 					assert(acc.IsArray());
 					transform->m_scale = glm::vec4(acc[0].GetFloat(), acc[1].GetFloat(), acc[2].GetFloat(), 1.0f);
 				}
+				transform->DeserializeInit();
 			}
 
 			//Second attempt at overriding in here
@@ -135,7 +136,7 @@ public:
 					renderComp->yTiling = ac4.GetInt();
 				}
 
-
+				renderComp->DeserializeInit();
 			}
 		}
 
@@ -478,6 +479,17 @@ public:
 					assert(ac4.IsFloat());
 					rgbdy->mass = ac4.GetFloat();
 				}
+				
+				if (attribute.HasMember("interact_with_particles"))
+				{
+					const Value& ac4 = attribute["interact_with_particles"];
+					assert(ac4.IsBool());
+					rgbdy->hasParticleInteraction = ac4.GetBool();
+				}
+				else 
+				{
+					rgbdy->hasParticleInteraction = true;
+				}
 
 				if (attribute.HasMember("shape"))
 				{
@@ -542,6 +554,65 @@ public:
 					assert(ac4.IsInt());
 					psc->count = ac4.GetInt();
 				}
+				
+				if (attribute.HasMember("interactive"))
+				{
+					const Value& ac4 = attribute["interactive"];
+					assert(ac4.IsBool());
+					psc->interactive = ac4.GetBool();
+
+					if (psc->interactive && attribute.HasMember("flocking_params"))
+					{
+						const Value& ac4 = attribute["flocking_params"];
+						assert(ac4.IsObject());
+
+						if (ac4.HasMember("max_acceleration"))
+						{
+							const Value& ac5 = ac4["max_acceleration"];
+							assert(ac5.IsFloat());
+							psc->m_flockingParams.maxAccel = ac5.GetFloat();
+						}
+
+						if (ac4.HasMember("radius"))
+						{
+							const Value& ac5 = ac4["radius"];
+							assert(ac5.IsFloat());
+							psc->m_flockingParams.radius = ac5.GetFloat();
+						}
+
+						if (ac4.HasMember("fov"))
+						{
+							const Value& ac5 = ac4["fov"];
+							assert(ac5.IsFloat());
+							psc->m_flockingParams.fov = ac5.GetFloat();
+						}
+
+						if (ac4.HasMember("separation_weight"))
+						{
+							const Value& ac5 = ac4["separation_weight"];
+							assert(ac5.IsFloat());
+							psc->m_flockingParams.separationWeight = ac5.GetFloat();
+						}
+
+						if (ac4.HasMember("cohesion_weight"))
+						{
+							const Value& ac5 = ac4["cohesion_weight"];
+							assert(ac5.IsFloat());
+							psc->m_flockingParams.cohesionWeight = ac5.GetFloat();
+						}
+
+						if (ac4.HasMember("avoidance_weight"))
+						{
+							const Value& ac5 = ac4["avoidance_weight"];
+							assert(ac5.IsFloat());
+							psc->m_flockingParams.avoidanceWeight = ac5.GetFloat();
+						}
+					}
+				}
+				else 
+				{
+					psc->interactive = false;
+				}
 
 				if (attribute.HasMember("x_tiling"))
 				{
@@ -555,6 +626,14 @@ public:
 					const Value& ac4 = attribute["y_tiling"];
 					assert(ac4.IsInt());
 					psc->yTiling = ac4.GetInt();
+				}
+
+				if (attribute.HasMember("size"))
+				{
+					const Value& ac4 = attribute["size"];
+					assert(ac4.IsArray());
+					psc->size = glm::vec3(ac4.GetArray()[0].GetFloat(), 
+						ac4.GetArray()[1].GetFloat(), ac4.GetArray()[2].GetFloat());
 				}
 
 				if (attribute.HasMember("diffuse_texture"))
@@ -601,32 +680,6 @@ public:
 							}
 							psc->RegisterParticleAdvector(op);
 						}
-						if (type == "gravitational_pull")
-						{
-							Operator *op = new GravitationalOperator();
-							GravitationalOperator *castOp = static_cast<GravitationalOperator*>(op);
-
-							if (attribute.HasMember("mass"))
-							{
-								const Value& acc = attribute["mass"];
-								assert(acc.IsFloat());
-								castOp->mass = acc.GetFloat();
-							}
-							psc->RegisterParticleAdvector(op);
-						}
-						if (type == "spiral")
-						{
-							Operator *op = new SpiralOperation();
-							SpiralOperation *castOp = static_cast<SpiralOperation*>(op);
-
-							if (attribute.HasMember("rotation_rate"))
-							{
-								const Value& acc = attribute["rotation_rate"];
-								assert(acc.IsFloat());
-								castOp->rotationRate = acc.GetFloat();
-							}
-							psc->RegisterParticleAdvector(op);
-						}
 					}
 				}
 
@@ -645,6 +698,30 @@ public:
 						assert(ac5.IsString());
 						std::string type = ac5.GetString();
 						
+						if (type == "gravitational_pull")
+						{
+							Operator *op = new GravitationalOperator();
+							GravitationalOperator *castOp = static_cast<GravitationalOperator*>(op);
+							if (attribute.HasMember("mass"))
+							{
+								const Value& acc = attribute["mass"];
+								assert(acc.IsFloat());
+								castOp->mass = acc.GetFloat();
+							}
+							psc->RegisterParticleOperator(op);
+						}
+						if (type == "spiral")
+						{
+							Operator *op = new SpiralOperation();
+							SpiralOperation *castOp = static_cast<SpiralOperation*>(op);
+							if (attribute.HasMember("rotation_rate"))
+							{
+								const Value& acc = attribute["rotation_rate"];
+								assert(acc.IsFloat());
+								castOp->rotationRate = acc.GetFloat();
+							}
+							psc->RegisterParticleOperator(op);
+						}
 						if (type == "bounce")
 						{
 							//Friction thing

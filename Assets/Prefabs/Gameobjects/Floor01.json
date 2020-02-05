@@ -4,12 +4,13 @@
     {
       "id": "transform",
       "position": [ 0, -3, 0 ],
-      "rotation": [ -90, 0, 0 ],
+      "rotation": [ 0, 0, 0 ],
       "scale": [ 300, 300, 1.0 ]
     },
     {
       "id": "rigidbody",
-      "mass": 0.0
+      "mass": 0.0,
+      "interact_with_particles": false
     },
     {
       "id": "render",

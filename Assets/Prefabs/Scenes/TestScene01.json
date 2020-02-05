@@ -29,23 +29,31 @@
     {
       "name": "PhysicObj01.json",
       "transform": {
-        "position": [ 4, -2, 0 ],
-        "rotation": [ 0, 60, 0 ],
+        "position": [ 0, -2, 0 ],
+        "rotation": [ 0, 0, 0 ],
         "scale": [ 2, 2, 2 ]
+      }
+    },
+    {
+      "name": "FlockingSpawn.json",
+      "transform": {
+        "position": [ 16, 0, 0 ],
+        "rotation": [ 0, 60, 0 ],
+        "scale": [ 6, 6, 6 ]
       }
     },
     {
       "name": "ParticleSpawner.json",
       "transform": {
         "position": [ -6, 0, 0 ],
-        "rotation": [ 0, 45, 0 ],
-        "scale": [ 4, 4, 4 ]
+        "rotation": [ 0, 60, 0 ],
+        "scale": [ 1, 1, 1 ]
       }
     },
     {
       "name": "Bunny02.json",
       "transform": {
-        "position": [ -7, 3, -20 ],
+        "position": [ -7, 4, -20 ],
         "rotation": [ 0, 40, 50 ],
         "scale": [ 0.03, 0.02, 0.02 ]
       }
@@ -53,7 +61,7 @@
     {
       "name": "Bunny02.json",
       "transform": {
-        "position": [ 8, 3, 0 ],
+        "position": [ 8, 4, -15 ],
         "rotation": [ 45, 45, 60 ],
         "scale": [ 0.01, 0.01, 0.01 ]
       }

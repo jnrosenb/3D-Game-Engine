@@ -73,6 +73,13 @@ void PhysicsManager::RegisterRigidbody(RigidbodyComponent* rgbdy)
 	this->m_rigidbodies.push_back(rgbdy);
 }
 
+
+std::vector<RigidbodyComponent*> const& PhysicsManager::GetRigidbodies() const
+{
+	return m_rigidbodies;
+}
+
+
 bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B)
 {
 	Transform *TA = A->GetOwner()->GetComponent<Transform>();
@@ -83,7 +90,6 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 	glm::vec4 restitutionForce(0);
 	bool intersects = AuxMath::TestOBB_OBB(A_OBB, B_OBB, restitutionForce);
 	
-	std::cout << "INTERSECTS: " << intersects << std::endl;
 	if (A->GetMass() > 0.0f && B->GetMass() > 0.0f) 
 	{
 		//Restitute
@@ -91,8 +97,8 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 		TB->translate(restitutionForce * -0.5f);
 
 		//Impulse code (for now, just apply a force)
-		A->ApplyForce(restitutionForce * 0.5f, {0, 0, 0});
-		B->ApplyForce(restitutionForce * -0.5f, { 0, 0, 0 });
+		///A->ApplyForce(restitutionForce * 0.5f, {0, 0, 0});
+		///B->ApplyForce(restitutionForce * -0.5f, { 0, 0, 0 });
 	}
 	else if (A->GetMass() > 0.0f)
 	{
@@ -100,7 +106,7 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 		TA->translate(restitutionForce);
 
 		//Impulse code (for now, just apply a force)
-		A->ApplyForce(restitutionForce, { 0, 0, 0 });
+		///A->ApplyForce(restitutionForce, { 0, 0, 0 });
 	}
 	else if (B->GetMass() > 0.0f)
 	{
@@ -108,7 +114,7 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 		TB->translate(restitutionForce * -1.0f);
 
 		//Impulse code (for now, just apply a force)
-		B->ApplyForce(restitutionForce * -1.0f, { 0, 0, 0 });
+		///B->ApplyForce(restitutionForce * -1.0f, { 0, 0, 0 });
 	}
 	
 	return intersects;

@@ -5,8 +5,11 @@
 #include <string>
 #include "../External/Includes/glm/glm.hpp"
 #include "../External/Includes/glm/gtc/matrix_transform.hpp"
+#include <assert.h>
 
-#define SQRT_EPSILON 0.001f
+
+#define QPI				3.14159265359f
+#define SQRT_EPSILON	0.001f
 
 namespace AuxMath 
 {
@@ -33,6 +36,11 @@ namespace AuxMath
 			x(v.x), y(v.y), z(v.z)
 		{}
 
+
+		Quaternion(glm::vec3 const& v) : s(0.0f),
+			x(v.x), y(v.y), z(v.z)
+		{}
+
 		Quaternion(glm::vec4 const& q) : s(q.w),
 			x(q.x), y(q.y), z(q.z)
 		{}
@@ -43,11 +51,121 @@ namespace AuxMath
 
 		Quaternion(glm::mat4 const& rhs)
 		{
-			this->s = 0.5f * std::sqrtf(rhs[0][0] + rhs[1][1] + rhs[2][2] + 1);
-			this->x = (rhs[2][1] - rhs[1][2]) / 4*s;
-			this->y = (rhs[0][2] - rhs[2][0]) / 4*s;
-			this->z = (rhs[1][0] - rhs[0][1]) / 4*s;
+			float max = rhs[0][0] + rhs[1][1] + rhs[2][2];
+			int index = 0;
+			if (max < rhs[0][0]) 
+			{
+				max = rhs[0][0]; 
+				index = 1;
+			}
+			if (max < rhs[1][1])
+			{
+				max = rhs[1][1];
+				index = 2;
+			}
+			if (max < rhs[2][2]) 
+			{
+				max = rhs[2][2];
+				index = 3;
+			}
+			
+			if (index == 0) 
+			{
+				this->s = 0.5f * std::sqrtf(rhs[0][0] + rhs[1][1] + rhs[2][2] + 1);
+				this->x = 0.5f * (rhs[2][1] - rhs[1][2]) / 2*s;
+				this->y = 0.5f * (rhs[0][2] - rhs[2][0]) / 2*s;
+				this->z = 0.5f * (rhs[1][0] - rhs[0][1]) / 2*s;
+			}
+			else if (index == 1)
+			{
+				this->x = 0.5f * std::sqrtf(rhs[0][0] - rhs[1][1] - rhs[2][2] + 1);
+				this->s = 0.5f * (rhs[2][1] - rhs[1][2]) / 2*x;
+				this->y = 0.5f * (rhs[0][1] + rhs[1][0]) / 2*x;
+				this->z = 0.5f * (rhs[2][0] + rhs[0][2]) / 2*x;
+			}
+			else if (index == 2)
+			{
+				this->y = 0.5f * std::sqrtf(-rhs[0][0] + rhs[1][1] - rhs[2][2] + 1);
+				this->s = 0.5f * (rhs[0][2] - rhs[2][0]) / 2*y;
+				this->x = 0.5f * (rhs[0][1] + rhs[1][0]) / 2*y;
+				this->z = 0.5f * (rhs[1][2] + rhs[2][1]) / 2*y;
+			}
+			else 
+			{
+				this->z = 0.5f * std::sqrtf(-rhs[0][0] - rhs[1][1] + rhs[2][2] + 1);
+				this->s = 0.5f * (rhs[1][0] - rhs[0][1]) / 2*z;
+				this->x = 0.5f * (rhs[2][0] + rhs[0][2]) / 2*z;
+				this->y = 0.5f * (rhs[2][1] + rhs[1][2]) / 2*z;
+			}
 		}
+
+
+		Quaternion(glm::mat3 const& rhs)
+		{
+			float max = rhs[0][0] + rhs[1][1] + rhs[2][2];
+			int index = 0;
+			if (max < rhs[0][0])
+			{
+				max = rhs[0][0];
+				index = 1;
+			}
+			if (max < rhs[1][1])
+			{
+				max = rhs[1][1];
+				index = 2;
+			}
+			if (max < rhs[2][2])
+			{
+				max = rhs[2][2];
+				index = 3;
+			}
+
+			if (index == 0)
+			{
+				this->s = 0.5f * std::sqrtf(rhs[0][0] + rhs[1][1] + rhs[2][2] + 1);
+				this->x = 0.5f * (rhs[2][1] - rhs[1][2]) / 2 * s;
+				this->y = 0.5f * (rhs[0][2] - rhs[2][0]) / 2 * s;
+				this->z = 0.5f * (rhs[1][0] - rhs[0][1]) / 2 * s;
+			}
+			else if (index == 1)
+			{
+				this->x = 0.5f * std::sqrtf(rhs[0][0] - rhs[1][1] - rhs[2][2] + 1);
+				this->s = 0.5f * (rhs[2][1] - rhs[1][2]) / 2 * x;
+				this->y = 0.5f * (rhs[0][1] + rhs[1][0]) / 2 * x;
+				this->z = 0.5f * (rhs[2][0] + rhs[0][2]) / 2 * x;
+			}
+			else if (index == 2)
+			{
+				this->y = 0.5f * std::sqrtf(-rhs[0][0] + rhs[1][1] - rhs[2][2] + 1);
+				this->s = 0.5f * (rhs[0][2] - rhs[2][0]) / 2 * y;
+				this->x = 0.5f * (rhs[0][1] + rhs[1][0]) / 2 * y;
+				this->z = 0.5f * (rhs[1][2] + rhs[2][1]) / 2 * y;
+			}
+			else
+			{
+				this->z = 0.5f * std::sqrtf(-rhs[0][0] - rhs[1][1] + rhs[2][2] + 1);
+				this->s = 0.5f * (rhs[1][0] - rhs[0][1]) / 2 * z;
+				this->x = 0.5f * (rhs[2][0] + rhs[0][2]) / 2 * z;
+				this->y = 0.5f * (rhs[2][1] + rhs[1][2]) / 2 * z;
+			}
+		}
+
+
+		bool operator==(float v) const
+		{
+			return (v == s && v == x && v == y && v == z);
+		}
+
+		bool operator==(AuxMath::Quaternion q) const
+		{
+			return (q.s == s && q.x == x && q.y == y && q.z == z);
+		}
+		
+		bool operator==(glm::vec4 q) const
+		{
+			return (q.w == s && q.x == x && q.y == y && q.z == z);
+		}
+
 
 		Quaternion& operator=(Quaternion const& rhs)
 		{
@@ -221,7 +339,7 @@ namespace AuxMath
 		//Length
 		float SqrLen() const
 		{
-			return s * s + x * x + y * y + z * z;
+			return (s*s) + (x*x) + (y*y) + (z*z);
 		}
 		
 		float Len() const
@@ -231,7 +349,7 @@ namespace AuxMath
 
 		bool IsUnitQuaternion() const
 		{
-			return fabs(SqrLen() - 1.0f) <= SQRT_EPSILON;
+			return fabs(SqrLen() - 1.0f) < SQRT_EPSILON;
 		}
 
 		//Dot
@@ -273,6 +391,33 @@ namespace AuxMath
 			matrix[1][2] = _2yz + _2sx;
 
 			return matrix;
+		}
+
+
+		static void QuaternionToEuler(Quaternion const& q, glm::vec3& euler) 
+		{
+			float yaw, pitch, roll;
+			
+			// pitch (x-axis rotation)
+			float sinr_cosp = 2*(q.s*q.x + q.y*q.z);
+			float cosr_cosp = 1 - 2*(q.x*q.x + q.y*q.y);
+			pitch = std::atan2(sinr_cosp, cosr_cosp);
+			
+			// yaw (y-axis rotation)
+			float sinp = 2 * (q.s * q.y - q.z * q.x);
+			if (std::abs(sinp) >= 1)
+				yaw = std::copysign(QPI / 2, sinp); // use 90 degrees if out of range
+			else
+				yaw = std::asin(sinp);
+			
+			// roll (z-axis rotation)
+			float siny_cosp = 2 * (q.s * q.z + q.x * q.y);
+			float cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
+			roll = std::atan2(siny_cosp, cosy_cosp);
+			
+			//Check if NAN
+			assert(roll == roll && pitch == pitch && yaw == yaw);
+			euler = {pitch, yaw, roll};
 		}
 
 

@@ -5,10 +5,10 @@
 ///INCLUDES
 #include "../External/Includes/glm/glm.hpp"
 #include "BaseComponent.h"
+#include "Particle.h"
 #include <vector>
 #include <string>
 
-class Particle;
 class Operator;
 class GameObject;
 class Shader;
@@ -65,6 +65,10 @@ private:
 
 	//Vector of particles
 	std::vector<Particle*> m_particles;
+	bool interactive;
+	flockingParams m_flockingParams;
+
+	//Operators (for non interactive particles)
 	std::vector<Operator*> m_operators;
 	std::vector<Operator*> m_advectors;
 	int count;
@@ -74,6 +78,9 @@ private:
 	//TEMPORARY MEASURE
 	GLuint instanceBuffer;
 
+	//JUST WHILE NO SCRIPTING
+	glm::vec3 target;
+
 	//For now, pass this directly to particle. Later use descriptor
 	bool use_loaded_mesh;
 	Model *model = NULL;
@@ -81,6 +88,7 @@ private:
 	std::string primitive;
 	std::string diffuseTexture;;
 	int xTiling, yTiling;
+	glm::vec3 size;
 	//bools (replace with feature mask on future)
 	bool useDiffuseTexture;
 };

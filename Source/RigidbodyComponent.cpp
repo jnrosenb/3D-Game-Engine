@@ -37,6 +37,7 @@ RigidbodyComponent::RigidbodyComponent(GameObject *owner) :
 	isPlayer = false;
 
 	//Initial setup of params
+	prevAngAccel = glm::vec4(0);
 	Params  = std::vector<glm::vec4>(4);
 	dParams = std::vector<glm::vec4>(4);
 }
@@ -52,6 +53,9 @@ RigidbodyComponent::~RigidbodyComponent()
 		delete debugPointMesh;
 	if (debugRayMesh)
 		delete debugRayMesh;
+
+	if (debugRay)
+		delete debugRay;
 
 	delete debugShader;
 	delete debugShaderLine;
@@ -81,6 +85,7 @@ void RigidbodyComponent::DeserializeInit()
 
 	//Rigidbody parameters
 	invMass = (mass == 0) ? 0.0f : 1.0f / mass;
+	L = glm::vec4(0);
 }
 
 
@@ -174,6 +179,8 @@ void RigidbodyComponent::DebugDrawSetup(AABB const& aabb)
 	this->debugShader->BindUniformBlock("test_gUBlock", 1);
 	this->debugShaderLine = new Shader("Line.vert", "Line.frag");
 	this->debugShaderLine->BindUniformBlock("test_gUBlock", 1);
+
+	this->debugRay = new Model("Vector.fbx");
 }
 
 
@@ -189,6 +196,7 @@ void RigidbodyComponent::PhysicsUpdate(float dt)
 {
 	//Initial stuff we need
 	Transform *T = this->m_owner->GetComponent<Transform>();
+	Params[0] = T->GetPosition();
 
 	/////////////////////////////////
 	////    LINEAR STUFF         ////
@@ -202,12 +210,11 @@ void RigidbodyComponent::PhysicsUpdate(float dt)
 		linearVel = linearVel + accel * dt;
 
 		//For now, damp the velocity to fake friction
-		DampVelocity(linearVel);
+		DampVelocity(linearVel, 0.01f);
 
 		//Integrate for position
-		glm::vec4 position = T->GetPosition();//this->Params[0];
+		glm::vec4& position = Params[0];
 		position = position + linearVel * dt;
-		Params[0] = position;
 
 		T->translate(linearVel * dt);
 	}
@@ -222,50 +229,30 @@ void RigidbodyComponent::PhysicsUpdate(float dt)
 		AuxMath::Quaternion const& q0 = T->GetRotationQuaternion();
 		glm::mat4 Iinv = R * IbodyInv * glm::transpose(R);
 
-		//Get previous angular momentum, integrate torque, get w
 		///--Param[3] as w--
-		glm::vec4 angAccel = Iinv * Torque;
-		Params[3] = Params[3] + angAccel * dt;
-		DampVelocity(Params[3], 0.005f);
-		AuxMath::Quaternion w(Params[3]);
-		w.s = 0.0f;
-		//w.print("Angular velocity: ");
-
+		//glm::vec4 angAccel = Iinv * Torque;
+		//Params[3] = Params[3] + angAccel * dt;
+		//DampVelocity(Params[3], 0.25f);
+		//AuxMath::Quaternion w(Params[3]);
+		
 		///--Param[3] as L--
-		//glm::vec4& L = Params[3];
-		//L = L + Torque * dt;
-		//AuxMath::Quaternion w(Iinv * L); //Get angular velocity
-		//w.s = 0.0f;
+		L = L + Torque * dt;
+		DampVelocity(L, 0.1f);
+		Params[3] = Iinv * L;
+		AuxMath::Quaternion w(Params[3]);
 
 		///Get quaternion velocity (slope vector), then integrate
-		//q0.print("Q0 is           : ");
-		AuxMath::Quaternion qvel = 0.5f * w * q0;
-		//qvel.print("QVel            : ");
-		AuxMath::Quaternion q = q0 + dt * qvel;
+		AuxMath::Quaternion qvel = 0.5f * (w * q0);
+		AuxMath::Quaternion q = q0 + (dt * qvel);
+		q = q0.Conjugate() * q;
+		q = q.Normalize();
 
-		//Find difference between this q and previous
-		q = q0.Inverse() * q;
-		q.Normalize();
-
-		//DEDUCE THIS CODE (TAKEN ONLINE)-------------------------------
-		float yaw, pitch, roll;
-		// pitch (x-axis rotation)
-		float sinr_cosp = 2 * (q.s * q.x + q.y * q.z);
-		float cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y);
-		pitch = std::atan2(sinr_cosp, cosr_cosp);
-		// yaw (y-axis rotation)
-		float sinp = 2 * (q.s * q.y - q.z * q.x);
-		if (std::abs(sinp) >= 1)
-			yaw = std::copysign(M_PI / 2, sinp); // use 90 degrees if out of range
-		// roll (z-axis rotation)
-		float siny_cosp = 2 * (q.s * q.z + q.x * q.y);
-		float cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
-		roll = std::atan2(siny_cosp, cosy_cosp);
-		//--------------------------------------------------------------
-
-		T->rotate(pitch, yaw, roll);
-		//std::cout << ">> pitch: " << pitch << ", yaw: " << yaw << ", roll: " << roll << std::endl;
-		//std::cout << "----------------------------" << std::endl;
+		//T->rotateWorld(q);
+		T->rotate(q);
+	}
+	else 
+	{
+		prevAngAccel = glm::vec4(0);
 	}
 
 	/////////////////////////////////
@@ -299,7 +286,7 @@ void RigidbodyComponent::Draw()
 {
 	AnimationComponent *animComp = this->m_owner->GetComponent<AnimationComponent>();
 	Transform *T = this->m_owner->GetComponent<Transform>();
-	
+
 	DrawDebugData data = {};
 	data.diffuseColor = { 0, 0, 1, 0.5f };
 	data.model = T->GetModel();
@@ -318,24 +305,107 @@ void RigidbodyComponent::Draw()
 	data2.shader = debugShader;
 	///renderer->QueueForDebugDraw(data2);
 
+	////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////
 
 	//FORCE DRAWING TEST
-	if (DebugForce.x != 0.0f && DebugForce.z != 0.0f)
-		int a = 123;
 	glm::mat4 rayModel(1);
-	float f = glm::length(DebugForce);
-	glm::vec4 forceDir = DebugForce / f;
+	///float f = glm::length(DebugForce);
+	///glm::vec4 forceDir = DebugForce / f;
+	glm::vec4 forceDir = glm::normalize(this->dParams[0]);
 	//Rotation (gonna only rotate x axis)
-	rayModel[0] = forceDir * 5.0f;
+	float scale = 3.0f;
+	glm::vec3 fwd = glm::vec3(forceDir);
+	glm::vec3 right = glm::cross(fwd, { 0,1,0 });
+	glm::vec3 up = glm::cross(right, fwd);
+	glm::mat3 R = { fwd, up, right };//{ right, up, fwd }; 
+	R = R * glm::mat3(scale);
+	rayModel[0] = glm::vec4(R[0].x, R[0].y, R[0].z, 0.0f);
+	rayModel[1] = glm::vec4(R[1].x, R[1].y, R[1].z, 0.0f);
+	rayModel[2] = glm::vec4(R[2].x, R[2].y, R[2].z, 0.0f);
 	//Translation
 	rayModel[3] = T->GetPosition();
+	//Final diagonal
 	rayModel[3][3] = 1.0f;
 	//------------------
 	DrawDebugData data3 = {};
-	data3.diffuseColor = { 0, 1, 0, 1.0f };
+	data3.diffuseColor = { 0, 1, 1, 1.0f };
 	data3.model = rayModel;
-	data3.mesh = debugRayMesh;
-	data3.shader = debugShaderLine;
+	data3.mesh = debugRay->meshes[0];//debugRayMesh;
+	data3.shader = debugShader;//debugShaderLine;
+	renderer->QueueForDebugDraw(data3);
+
+	////////////////////////////////////////////////
+	////////////////////////////////////////////////
+
+
+	//Local axis drawing test (FORWARD)
+	glm::mat4 fwdModel(1);
+	glm::vec4 fwdDir = T->GetRotationMatrix()[2];
+	//Rotation (gonna only rotate x axis)
+	fwd = glm::vec3(fwdDir);
+	right = glm::cross(fwd, { 0,1,0 });
+	up = glm::cross(right, fwd);
+	glm::mat3 Rot = { fwd, up, right };
+	Rot = Rot * glm::mat3(3.0f);
+	fwdModel[0] = glm::vec4(Rot[0].x, Rot[0].y, Rot[0].z, 0.0f);
+	fwdModel[1] = glm::vec4(Rot[1].x, Rot[1].y, Rot[1].z, 0.0f);
+	fwdModel[2] = glm::vec4(Rot[2].x, Rot[2].y, Rot[2].z, 0.0f);
+	//Translation
+	fwdModel[3] = T->GetPosition();
+	fwdModel[3][3] = 1.0f;
+	//------------------
+	data3 = {};
+	data3.diffuseColor = { 0, 0, 1, 1.0f };
+	data3.model = fwdModel;
+	data3.mesh = debugRay->meshes[0];;
+	data3.shader = debugShader;;
+	renderer->QueueForDebugDraw(data3);
+
+	//Local axis drawing test (UP)
+	fwdModel = glm::mat4(1);
+	fwdDir = T->GetRotationMatrix()[1];
+	//Rotation (gonna only rotate x axis)
+	fwd = glm::vec3(fwdDir);
+	right = T->GetRotationMatrix()[0]; //glm::cross(fwd, { 0,1,0 });
+	up = T->GetRotationMatrix()[2];    //glm::cross(right, fwd);
+	Rot = { fwd, up, right };
+	Rot = Rot * glm::mat3(3.0f);
+	fwdModel[0] = glm::vec4(Rot[0].x, Rot[0].y, Rot[0].z, 0.0f);
+	fwdModel[1] = glm::vec4(Rot[1].x, Rot[1].y, Rot[1].z, 0.0f);
+	fwdModel[2] = glm::vec4(Rot[2].x, Rot[2].y, Rot[2].z, 0.0f);
+	//Translation
+	fwdModel[3] = T->GetPosition();
+	fwdModel[3][3] = 1.0f;
+	//------------------
+	data3 = {};
+	data3.diffuseColor = { 1, 0, 0, 1.0f };
+	data3.model = fwdModel;
+	data3.mesh = debugRay->meshes[0];;
+	data3.shader = debugShader;;
+	renderer->QueueForDebugDraw(data3);
+
+	//Local axis drawing test (RIGHT)
+	fwdModel = glm::mat4(1);
+	fwdDir = T->GetRotationMatrix()[0];
+	//Rotation (gonna only rotate x axis)
+	fwd = glm::vec3(fwdDir);
+	right = glm::cross(fwd, { 0,1,0 });
+	up = glm::cross(right, fwd);
+	Rot = { fwd, up, right };
+	Rot = Rot * glm::mat3(3.0f);
+	fwdModel[0] = glm::vec4(Rot[0].x, Rot[0].y, Rot[0].z, 0.0f);
+	fwdModel[1] = glm::vec4(Rot[1].x, Rot[1].y, Rot[1].z, 0.0f);
+	fwdModel[2] = glm::vec4(Rot[2].x, Rot[2].y, Rot[2].z, 0.0f);
+	//Translation
+	fwdModel[3] = T->GetPosition();
+	fwdModel[3][3] = 1.0f;
+	//------------------
+	data3 = {};
+	data3.diffuseColor = { 0, 1, 0, 1.0f };
+	data3.model = fwdModel;
+	data3.mesh = debugRay->meshes[0];;
+	data3.shader = debugShader;;
 	renderer->QueueForDebugDraw(data3);
 }
 
@@ -345,12 +415,29 @@ glm::vec3 RigidbodyComponent::GetOBBRadiusVector() const
 	return this->OBBRadius;
 }
 
+//THIS WILL ONLY WORK IF POSITION IS INTEGRATED CORRECTLY
+glm::vec3 RigidbodyComponent::GetPositionEstimate() const
+{
+	return static_cast<glm::vec3>(Params[0]);
+}
+
+
+float RigidbodyComponent::GetOOBBMaximumLength() const
+{
+	return std::fmax(std::fmax(OBBRadius.y, OBBRadius.z), OBBRadius.x);
+}
+
 
 ////////////////////////////////////
 ////   INPUT MANAGEMENT         ////
 ////////////////////////////////////
 void RigidbodyComponent::handleInput(float dt)
 {
+	/// if (inputMgr->getKeyPress(SDL_SCANCODE_TAB))
+	/// {
+	/// 	isPlayer = !isPlayer;
+	/// }
+
 	if (!isPlayer) 
 		return;
 
@@ -361,6 +448,10 @@ void RigidbodyComponent::handleInput(float dt)
 	fwd.y = 0.0f;
 	glm::vec3 rup = {0, 1, 0};
 	glm::vec3 right = glm::cross(fwd, rup);
+
+	
+	///Camera
+	//deferred->GetCurrentCamera()->setEye(glm::vec3(T->GetPosition()) + glm::vec3(0.0f, 25.0f, 50.0f));
 
 	if (inputMgr->getKeyPress(SDL_SCANCODE_RIGHT))
 	{
@@ -377,28 +468,5 @@ void RigidbodyComponent::handleInput(float dt)
 	if (inputMgr->getKeyPress(SDL_SCANCODE_DOWN))
 	{
 		ApplyForce( -moveSpeed * fwd, { 0,1,0 });
-	}
-
-	//ROTATION TESTS
-	if (inputMgr->getKeyPress(SDL_SCANCODE_J))
-	{
-		ApplyForce(moveSpeed * right, { 0,1,0 });
-		ApplyForce(moveSpeed * right, { 0,-1,0 });
-	}
-	if (inputMgr->getKeyPress(SDL_SCANCODE_F))
-	{
-		ApplyForce(moveSpeed * right, { 0,1,0 });
-	}
-	if (inputMgr->getKeyPress(SDL_SCANCODE_V))
-	{
-		ApplyForce(-moveSpeed * right, { 0,1,0 });
-	}
-	if (inputMgr->getKeyPress(SDL_SCANCODE_G))
-	{
-		ApplyForce(moveSpeed * fwd, { 0,1,0 });
-	}
-	if (inputMgr->getKeyPress(SDL_SCANCODE_H))
-	{
-		ApplyForce(moveSpeed * right, { 0,0,1 });
 	}
 }

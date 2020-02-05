@@ -9,26 +9,22 @@
     },
     {
       "id": "particleSystem",
-      "particleCount": 100,
+      "interactive": true,
+      "particleCount": 500,
       "load_model": true,
-      "model_name": "Sphere.fbx",
+      "model_name": "agent.fbx",
       "diffuse_texture": "crate.png",
       "x_tiling": 4,
       "y_tiling": 4,
-      "size": [ 0.5, 0.5, 0.5 ],
-      "advectors": [
-        {
-          "type": "vortex",
-          "rotation_rate": 10.0,
-          "tightness": 1.5
-        }
-      ],
-      "operators": [
-        {
-          "type": "spiral",
-          "rotation_rate": 10.0
-        }
-      ]
+      "size": [0.5, 0.5, 0.5],
+      "flocking_params": {
+        "max_acceleration": 30.0,
+        "separation_weight": 0.4,
+        "cohesion_weight": 0.2,
+        "avoidance_weight": 0.5,
+        "radius": 15.0,
+        "fov": 180.0
+      }
     },
     {
       "id": "rigidbody",
@@ -38,7 +34,6 @@
       "id": "render",
       "diffuse": [ 1.0, 0.7, 0.4, 1.0 ],
       "load_model": false,
-      "diffuse_texture": "crate.png",
       "model_name": "Cube.fbx",
       "primitive": "sphere",
       "x_tiling": 4,
