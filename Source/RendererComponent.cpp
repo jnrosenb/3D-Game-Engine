@@ -47,8 +47,12 @@ Render::~Render()
 void Render::DeserializeInit()
 {
 	initShader();
-
+	
 	initModel();
+}
+
+void Render::Begin()
+{
 }
 
 void Render::Update(float dt)
@@ -100,10 +104,10 @@ void Render::Draw()
 	}
 
 	// Pass it to renderer's queue
-	renderer->QueueForDraw(data);
-
-	// TODO - there should be a check for transparency flag
-	//        on material, to see to which queue to send
+	if (useAlpha)
+		renderer->QueueForDrawAlpha(data);
+	else
+		renderer->QueueForDraw(data);
 }
 
 

@@ -1,5 +1,5 @@
 {
-    "tag": "object01",
+  "tag": "object01",
   "components": [
     {
       "id": "transform",
@@ -10,12 +10,16 @@
 
     {
       "id": "rigidbody",
-      "mass": 10.0,
-      "player": true
+      "mass": 5.0,
+      "player": true,
+
+      "interact_with_particles": true,
+      "particle_collider": "sphere"
     },
     {
       "id": "render",
       "diffuse": [ 1.0, 1.0, 0.0, 1.0 ],
+      "diffuse_texture": "brick.jpg",
       "vertex_id": 0,
       "load_model": false,
       "model_name": "Cube.fbx",

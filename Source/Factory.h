@@ -25,6 +25,7 @@ using namespace rapidjson;
 #include "TransformComponent.h"
 #include "AnimationComponent.h"
 #include "ParticleSystemComponent.h"
+#include "GridWaveComponent.h"
 #include "Particle.h"
 #include "RigidbodyComponent.h"
 #include "PathFollowComponent.h"
@@ -81,7 +82,7 @@ public:
 				assert(acc.IsString());
 				std::string obj_path = acc.GetString();
 				LoadComponents(go, obj_path);
-				goMgr->AddGameObjects(go);
+				goMgr->AddGameObjects(go);//ONLY ADDED WHEN IT HAS A NAME? (still, name is needed so no biggie for now)
 			}
 
 			//First attempt at overriding in here
@@ -280,6 +281,52 @@ public:
 			//Set the actual number of lights on the scene
 			renderer->lightCount += pointLights;
 		}
+
+
+
+		/////////////////////////////////////////////////
+		return;
+		//STRESS TEST***********************************
+		//CREATE MANY RIGIDBODIES***********************
+		int range = 6; //13 for near 2000
+		for (int i = -(range / 2); i < (range / 2); ++i)
+		{
+			for (int j = -(range / 2); j < (range / 2); ++j)
+			{
+				for (int k = -(range / 2); k < (range / 2); ++k)
+				{
+					float separation = 5.0f;
+					GameObject *go = new GameObject();
+					//Transform
+					Transform *transform = go->AddComponent<Transform>();
+					transform->m_position = glm::vec4(separation * i, separation * k, separation * j, 1);
+					transform->m_scale = glm::vec4(2, 2, 2, 1);
+					transform->DeserializeInit();
+					//Renderer
+					Render *render = go->AddComponent<Render>();
+					render->primitive = "cube";
+					render->xTiling = 5;
+					render->yTiling = 5;
+					SDL_Surface *surf = resMgr->loadSurface("crate.png");
+					renderer->generateTextureFromSurface(surf, "crate.png", 5);
+					render->diffuseTexture = "crate.png";
+					render->useDiffuseTexture = true;
+					render->diffuseColor = glm::vec4(static_cast<float>(rand()) / RAND_MAX,
+						static_cast<float>(rand()) / RAND_MAX, static_cast<float>(rand()) / RAND_MAX, 1);
+					render->DeserializeInit();
+					//Rigidbody
+					RigidbodyComponent *rgbdy = go->AddComponent<RigidbodyComponent>();
+					rgbdy->mass = 10.0f;
+					rgbdy->hasParticleInteraction = false;
+					rgbdy->isPlayer = false;
+					rgbdy->DeserializeInit();
+					//Begin and add to manager
+					goMgr->AddGameObjects(go);
+				}
+			}
+		}
+		goMgr->CallBeginOnGameObjects();
+		//STRESS TEST FOR RIGIDBODIES*******************
 	}
 
 
@@ -314,7 +361,7 @@ public:
 				assert(attribute.HasMember("position"));
 				const Value& acc = attribute["position"];
 				assert(acc.IsArray());
-				transform->translate( acc[0].GetFloat(), acc[1].GetFloat(), acc[2].GetFloat() );
+				transform->m_position = glm::vec4(acc[0].GetFloat(), acc[1].GetFloat(), acc[2].GetFloat(), 1.0f);
 				assert(attribute.HasMember("rotation"));
 				const Value& ac2 = attribute["rotation"];
 				assert(ac2.IsArray());
@@ -368,6 +415,17 @@ public:
 					const Value& ac4 = attribute["x_tiling"];
 					assert(ac4.IsInt());
 					render->xTiling = ac4.GetInt();
+				}
+				
+				if (attribute.HasMember("use_alpha"))
+				{
+					const Value& ac4 = attribute["use_alpha"];
+					assert(ac4.IsBool());
+					render->useAlpha = ac4.GetBool();
+				}
+				else 
+				{
+					render->useAlpha = false;
 				}
 
 				if (attribute.HasMember("y_tiling"))
@@ -485,10 +543,18 @@ public:
 					const Value& ac4 = attribute["interact_with_particles"];
 					assert(ac4.IsBool());
 					rgbdy->hasParticleInteraction = ac4.GetBool();
+
+					//If it does, which kind of collider does it have
+					if (attribute.HasMember("particle_collider"))
+					{
+						const Value& ac4 = attribute["particle_collider"];
+						assert(ac4.IsString());
+						rgbdy->ParticleCollider = ac4.GetString();
+					}
 				}
 				else 
 				{
-					rgbdy->hasParticleInteraction = true;
+					rgbdy->hasParticleInteraction = false;
 				}
 
 				if (attribute.HasMember("shape"))
@@ -594,6 +660,13 @@ public:
 							psc->m_flockingParams.separationWeight = ac5.GetFloat();
 						}
 
+						if (ac4.HasMember("optimal_separation"))
+						{
+							const Value& ac5 = ac4["optimal_separation"];
+							assert(ac5.IsFloat());
+							psc->m_flockingParams.optimalSeparation = ac5.GetFloat();
+						}
+
 						if (ac4.HasMember("cohesion_weight"))
 						{
 							const Value& ac5 = ac4["cohesion_weight"];
@@ -628,12 +701,49 @@ public:
 					psc->yTiling = ac4.GetInt();
 				}
 
+				if (attribute.HasMember("mass"))
+				{
+					const Value& ac4 = attribute["mass"];
+					assert(ac4.IsFloat());
+					psc->ParticleMass = ac4.GetFloat();
+				}
+				
+				if (attribute.HasMember("avoid_obstacle"))
+				{
+					const Value& ac4 = attribute["avoid_obstacle"];
+					assert(ac4.IsBool());
+					psc->avoidObstacle = ac4.GetBool();
+				}
+				else 
+				{
+					psc->avoidObstacle = false;
+				}
+
+				if (attribute.HasMember("avoidance_distance"))
+				{
+					const Value& ac4 = attribute["avoidance_distance"];
+					assert(ac4.IsFloat());
+					psc->ParticleAvoidanceDistance = ac4.GetFloat();
+				}
+
 				if (attribute.HasMember("size"))
 				{
 					const Value& ac4 = attribute["size"];
 					assert(ac4.IsArray());
 					psc->size = glm::vec3(ac4.GetArray()[0].GetFloat(), 
 						ac4.GetArray()[1].GetFloat(), ac4.GetArray()[2].GetFloat());
+				}
+
+				if (attribute.HasMember("color"))
+				{
+					const Value& ac4 = attribute["color"];
+					assert(ac4.IsArray());
+					psc->diffuseColor = glm::vec4(ac4.GetArray()[0].GetFloat(),
+						ac4.GetArray()[1].GetFloat(), ac4.GetArray()[2].GetFloat(), 1.0f);
+				}
+				else 
+				{
+					psc->diffuseColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
 				}
 
 				if (attribute.HasMember("diffuse_texture"))
@@ -737,6 +847,65 @@ public:
 
 				psc->DeserializeInit();
 			}
+			else if (comp_name == "gridWave")
+			{
+				GridWaveComponent* gridWave = go->AddComponent<GridWaveComponent>();
+
+				//Width
+				if (attribute.HasMember("width"))
+				{
+					const Value& ac4 = attribute["width"];
+					assert(ac4.IsInt());
+					gridWave->gridWidth = ac4.GetInt();
+				}
+
+				//Height
+				if (attribute.HasMember("height"))
+				{
+					const Value& ac4 = attribute["height"];
+					assert(ac4.IsInt());
+					gridWave->gridHeight = ac4.GetInt();
+				}
+
+				//World size y
+				if (attribute.HasMember("world_width"))
+				{
+					const Value& ac4 = attribute["world_width"];
+					assert(ac4.IsFloat());
+					gridWave->worldWidth = ac4.GetFloat();
+				}
+
+				//World size x
+				if (attribute.HasMember("world_height"))
+				{
+					const Value& ac4 = attribute["world_height"];
+					assert(ac4.IsFloat());
+					gridWave->worldHeight = ac4.GetFloat();
+				}
+
+				//k, alpha (temporary)
+				if (attribute.HasMember("amplitude"))
+				{
+					const Value& ac4 = attribute["amplitude"];
+					assert(ac4.IsFloat());
+					gridWave->phillipAmplitude = ac4.GetFloat();
+				}
+				if (attribute.HasMember("k"))
+				{
+					const Value& ac4 = attribute["k"];
+					assert(ac4.IsFloat());
+					gridWave->k = ac4.GetFloat();
+				}
+				if (attribute.HasMember("alpha"))
+				{
+					const Value& ac4 = attribute["alpha"];
+					assert(ac4.IsFloat());
+					gridWave->alpha = ac4.GetFloat();
+				}
+
+
+				gridWave->DeserializeInit();
+			}
 			else if (comp_name == "PathFollow")
 			{
 				PathFollowComponent *pathFollow = go->AddComponent<PathFollowComponent>();
@@ -824,52 +993,3 @@ public:
 		}
 	}
 };
-
-
-////////////////////////////
-////	COMPONENTS		////
-////////////////////////////
-/*
-class ComponentFactory 
-{
-
-public:
-	//Fill the componentTypeMap hash
-	ComponentFactory() 
-	{
-		//not sure if necessary but still
-		for (int i = 0; i < COMPONENT_TYPES::COUNT; ++i) 
-			ComponentTypeMap.push_back(0);
-
-		ComponentTypeMap[TRANSFORM] = new Transform(0);
-		ComponentTypeMap[RENDERER] = new Render(0);
-		ComponentTypeMap[ANIMATION] = new AnimationComponent(0);
-		ComponentTypeMap[PARTICLE_SYSTEM] = new ParticleSystemComponent(0);
-		//------------------
-		ComponentTypeMap[PATH_FOLLOW] = new AnimationComponent(0);
-		ComponentTypeMap[IK_GOAL] = new IKGoalComponent(0);
-
-		std::cout << "Created component clone factory" << std::endl;
-	}
-
-	~ComponentFactory()
-	{
-		std::cout << "Destroying component clone factory" << std::endl;
-		for (auto comp : ComponentTypeMap)
-			delete comp;
-		ComponentTypeMap.clear();
-	}
-
-	BaseComponent* GetComponent(COMPONENT_TYPES type, GameObject *owner) 
-	{
-		//TODO - make this a safer call? (assert or something)
-		BaseComponent *comp = ComponentTypeMap[type]->clone();
-		comp->m_owner = owner;
-		///comp->DeserializeInit(); //TODO check if it was ok to comment
-		return comp;
-	}
-
-private:
-	std::vector<BaseComponent*> ComponentTypeMap;
-};
-//*/

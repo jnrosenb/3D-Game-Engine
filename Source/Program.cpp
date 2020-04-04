@@ -113,12 +113,15 @@ int main(int argc, char **argv)
 	inputMgr = new InputManager();
 	goMgr = new GameobjectManager();
 	resMgr = new ResourceManager();
+	#if USING_IMGUI
 	imguiMgr = new ImGuiManager();
+	#endif
 
 	//Load the first scene
+	///superFactory.LoadScene("TestScene01.json");   //GJK
 	///superFactory.LoadScene("WorkingScene.json");
-	superFactory.LoadScene("TestScene01.json");
 	///superFactory.LoadScene("PhysicScene01.json");
+	superFactory.LoadScene("WaterSurface.json");
 	renderer->init();
 
     #if USING_IMGUI
@@ -167,9 +170,9 @@ int main(int argc, char **argv)
 		}
 
 		//IMGUI UPDATE
-#if USING_IMGUI
+		#if USING_IMGUI
 		imguiMgr->Update(dt, static_cast<int>(1 / dt));
-#endif
+		#endif
 
 		//Update input
 		inputMgr->update(dt);
@@ -186,6 +189,7 @@ int main(int argc, char **argv)
 		}
 
 		//Graphic manager update and draw
+		physicsMgr->DebugDraw(renderer);
 		goMgr->Draw();
 		renderer->Update(dt);
 		renderer->Draw();
@@ -203,12 +207,14 @@ int main(int argc, char **argv)
 	//Custom stuff cleanup
 	delete renderer;
 	delete inputMgr;
-	delete imguiMgr;
 	delete resMgr;
 	delete physicsMgr;
 	delete frc;
 	delete goMgr;
 	delete globalPaths;
+	#if USING_IMGUI
+	delete imguiMgr;
+	#endif	
 
     // clean up
     SDL_GL_DeleteContext(context);

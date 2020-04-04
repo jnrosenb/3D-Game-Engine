@@ -10,7 +10,7 @@
 #include "../External/Includes/glm/glm.hpp"
 #include <vector>
 #include <unordered_map>
-#include "Stat.h"
+#include "Math/Stat.h"
 #include "Shader.h"
 #include "Mesh.h"
 

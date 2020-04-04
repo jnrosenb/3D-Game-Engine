@@ -1,0 +1,86 @@
+{
+  "Skydome": {
+    "Texture": "Factory_Catwalk_2k.hdr",
+    "Irradiance": "Factory_Catwalk_Env.hdr"
+  },
+  "Lights": [
+    {
+      "Type": "Directional",
+      "Position": [ 0, 105, -100 ],
+      "Color": [ 0.15, 0.15, 0.15 ],
+      "Look": [ 1, -1, 1 ],
+      "Near": 0.1,
+      "far": 100.0,
+      "Width": 10,
+      "Height": 10,
+      "Intensity": 1.0,
+      "ShadowIntensity": 1.0
+    }
+  ],
+  "Objects": [
+    {
+      "name": "Floor01.json",
+      "transform": {
+        "position": [ 0, -10, 0 ],
+        "rotation": [ -90.0, 0, 0 ],
+        "scale": [ 150, 150.0, 10.0 ]
+      }
+    },
+    {
+      "name": "Floor01.json",
+      "transform": {
+        "position": [ 0, -5, -50 ],
+        "rotation": [ 0.0, 0, 0 ],
+        "scale": [ 100, 12.0, 10.0 ]
+      },
+      "renderer": {
+        "x_tiling": 1,
+        "y_tiling": 10
+      }
+    },
+    {
+      "name": "Floor01.json",
+      "transform": {
+        "position": [ 0, -5, 50 ],
+        "rotation": [ 0.0, 0, 0 ],
+        "scale": [ 100, 12.0, 10.0 ]
+      },
+      "renderer": {
+        "x_tiling": 1,
+        "y_tiling": 10
+      }
+    },
+    {
+      "name": "Floor01.json",
+      "transform": {
+        "position": [ 50, -5, 0 ],
+        "rotation": [ 0.0, 0, 0 ],
+        "scale": [ 10, 12.0, 100.0 ]
+      },
+      "renderer": {
+        "x_tiling": 10,
+        "y_tiling": 1
+      }
+    },
+    {
+      "name": "Floor01.json",
+      "transform": {
+        "position": [ -50, -5, 0 ],
+        "rotation": [ 0.0, 0, 0 ],
+        "scale": [ 10, 12.0, 100.0 ]
+      },
+      "renderer": {
+        "x_tiling": 10,
+        "y_tiling": 1
+      }
+    },
+    {
+      "name": "Grid01.json",
+      "transform": {
+        "position": [ 0, 0.0, 0 ],
+        "rotation": [ 180, 0, 0 ],
+        "scale": [ 100.0, 1.0, 100.0 ]
+      }
+    }
+  ]
+}

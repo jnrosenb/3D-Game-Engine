@@ -38,8 +38,8 @@ public:
 private:
 
 	//Load methods
-	void Load_Vertices(std::vector<glm::vec4> &vertices);
-	void Load_Normals(std::vector<glm::vec4> &normals);
+	///void Load_Vertices(std::vector<glm::vec4> &vertices);
+	///void Load_Normals(std::vector<glm::vec4> &normals);
 	void Load_TexCoords(std::vector<glm::vec2> &uvs);
 	void Load_Faces(std::vector<Mesh::Face> &faces);
 	void Load_Tangents_and_Bitangents(std::vector<glm::vec4> &tangents, 

@@ -30,4 +30,8 @@ public:
 private:
 	SDL_Window *window;
 	
+	//FPS window
+	int windowSize = 16;
+	int accumIndex = 0;
+	float accum[16] = {};
 };

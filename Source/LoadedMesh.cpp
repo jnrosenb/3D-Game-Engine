@@ -50,20 +50,22 @@ LoadedMesh::~LoadedMesh()
 {
 }
 
+
+/*
 void LoadedMesh::Load_Vertices(std::vector<glm::vec4> &vertices)
 {
 	for (glm::vec4 const &vertex : vertices) 
 	{
 		this->vertices.push_back(vertex);
 
-		/*Bounding box stuff
-		if (vertex.x < Bounding_Limits[0]) Bounding_Limits[0] = vertex.x;		//xmin
-		else if (vertex.x > Bounding_Limits[1]) Bounding_Limits[1] = vertex.x;	//xmax
-		if (vertex.y < Bounding_Limits[2]) Bounding_Limits[2] = vertex.y;		//ymin
-		else if (vertex.y > Bounding_Limits[3]) Bounding_Limits[3] = vertex.y;	//ymax
-		if (vertex.z < Bounding_Limits[4]) Bounding_Limits[4] = vertex.z;		//zmin
-		else if (vertex.z > Bounding_Limits[5]) Bounding_Limits[5] = vertex.z;	//zmax
-		//*/
+		/// //Bounding box stuff
+		/// if (vertex.x < Bounding_Limits[0]) Bounding_Limits[0] = vertex.x;		//xmin
+		/// else if (vertex.x > Bounding_Limits[1]) Bounding_Limits[1] = vertex.x;	//xmax
+		/// if (vertex.y < Bounding_Limits[2]) Bounding_Limits[2] = vertex.y;		//ymin
+		/// else if (vertex.y > Bounding_Limits[3]) Bounding_Limits[3] = vertex.y;	//ymax
+		/// if (vertex.z < Bounding_Limits[4]) Bounding_Limits[4] = vertex.z;		//zmin
+		/// else if (vertex.z > Bounding_Limits[5]) Bounding_Limits[5] = vertex.z;	//zmax
+		
 	}
 }
 
@@ -74,6 +76,8 @@ void LoadedMesh::Load_Normals(std::vector<glm::vec4> &normals)
 		this->normals.push_back(normal);
 	}
 }
+//*/
+
 
 void LoadedMesh::Load_TexCoords(std::vector<glm::vec2> &uvs)
 {

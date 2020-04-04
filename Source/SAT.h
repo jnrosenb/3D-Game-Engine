@@ -3,6 +3,7 @@
 #pragma once
 
 #include "../External/Includes/glm/glm.hpp"
+#include <vector>
 
 
 namespace AuxMath
@@ -31,5 +32,8 @@ namespace AuxMath
 	//Checks given an axis L and two OBB, if axis separates. Returns -1 if overlap, 0 else
 	int CheckAxis(glm::vec3 const& L, AuxMath::OBB const& A, AuxMath::OBB const& B,
 		float& minRestitution, glm::vec3& restitutionNormal);
+
+	//Method used temporarily by GJK to get vertices on world space
+	void VerticesFromOBB(OBB const& obb, std::vector<glm::vec4>& vertices);
 }
 

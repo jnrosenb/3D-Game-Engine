@@ -9,37 +9,41 @@
     },
     {
       "id": "particleSystem",
-      "particleCount": 100,
+      "particleCount": 199,
+      "mass": 1.0,
       "load_model": true,
-      "model_name": "Sphere.fbx",
+      "model_name": "agent.fbx",
       "diffuse_texture": "crate.png",
       "x_tiling": 4,
       "y_tiling": 4,
-      "size": [ 0.5, 0.5, 0.5 ],
+      "size": [ 1.5, 1.5, 1.5 ],
       "advectors": [
         {
           "type": "vortex",
-          "rotation_rate": 10.0,
+          "rotation_rate": 100.0,
           "tightness": 1.5
         }
       ],
       "operators": [
         {
           "type": "spiral",
-          "rotation_rate": 10.0
+          "rotation_rate": 0.5
         }
       ]
     },
     {
       "id": "rigidbody",
-      "mass": 1.0
+      "mass": 1.0,
+
+      "interact_with_particles": true,
+      "particle_collider": "sphere"
     },
     {
       "id": "render",
       "diffuse": [ 1.0, 0.7, 0.4, 1.0 ],
-      "load_model": false,
-      "diffuse_texture": "crate.png",
-      "model_name": "Cube.fbx",
+      "load_model": true,
+      "model_name": "OldBot.fbx",
+      "diffuse_texture": "OldBot_UV.jpg",
       "primitive": "sphere",
       "x_tiling": 4,
       "y_tiling": 4

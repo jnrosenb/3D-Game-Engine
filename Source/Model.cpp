@@ -8,6 +8,7 @@
 #include "Quad.h"
 #include "Polar.h"
 #include "Cube.h"
+#include "Meshes/DynamicGrid.h"
 #include "Plane.h"
 
 #include "Mesh.h"
@@ -50,6 +51,8 @@ Model::Model(bool isPrimitive, std::string primitive)
 		meshes.push_back(new Plane(64));
 	else if (primitive == "cube")
 		meshes.push_back(new Cube());
+	else if (primitive == "dynamic_plane")
+		meshes.push_back(new DynamicGridMesh());
 
 	//For now, real all vertices on the list of meshes, and find the AABB in body space
 	CalculateAABB();
@@ -68,12 +71,20 @@ Model::~Model()
 
 void Model::CalculateAABB()
 {
-	boundingBox.min.x = std::numeric_limits<float>::max();
-	boundingBox.min.y = std::numeric_limits<float>::max();
-	boundingBox.min.z = std::numeric_limits<float>::max();
-	boundingBox.max.x = std::numeric_limits<float>::lowest();
-	boundingBox.max.y = std::numeric_limits<float>::lowest();
-	boundingBox.max.z = std::numeric_limits<float>::lowest();
+	//Old AABB (min max)
+	///boundingBox.min.x = std::numeric_limits<float>::max();
+	///boundingBox.min.y = std::numeric_limits<float>::max();
+	///boundingBox.min.z = std::numeric_limits<float>::max();
+	///boundingBox.max.x = std::numeric_limits<float>::lowest();
+	///boundingBox.max.y = std::numeric_limits<float>::lowest();
+	///boundingBox.max.z = std::numeric_limits<float>::lowest();
+
+	float min_x = std::numeric_limits<float>::max();
+	float min_y = std::numeric_limits<float>::max();
+	float min_z = std::numeric_limits<float>::max();
+	float max_x = std::numeric_limits<float>::lowest();
+	float max_y = std::numeric_limits<float>::lowest();
+	float max_z = std::numeric_limits<float>::lowest();
 
 	//For now, create a big AABB (in body space) around all the meshes
 	for (Mesh *mesh : meshes)
@@ -82,20 +93,42 @@ void Model::CalculateAABB()
 		{
 			glm::vec4& v = mesh->GetVertices()[i];
 
-			if (v.x < boundingBox.min.x)
-				boundingBox.min.x = v.x;
-			if (v.y < boundingBox.min.y)
-				boundingBox.min.y = v.y;
-			if (v.z < boundingBox.min.z)
-				boundingBox.min.z = v.z;
-			if (v.x > boundingBox.max.x)
-				boundingBox.max.x = v.x;
-			if (v.y > boundingBox.max.y)
-				boundingBox.max.y = v.y;
-			if (v.z > boundingBox.max.z)
-				boundingBox.max.z = v.z;
+			//Old AABB (min-max)
+			/// if (v.x < boundingBox.min.x)
+			/// 	boundingBox.min.x = v.x;
+			/// if (v.y < boundingBox.min.y)
+			/// 	boundingBox.min.y = v.y;
+			/// if (v.z < boundingBox.min.z)
+			/// 	boundingBox.min.z = v.z;
+			/// if (v.x > boundingBox.max.x)
+			/// 	boundingBox.max.x = v.x;
+			/// if (v.y > boundingBox.max.y)
+			/// 	boundingBox.max.y = v.y;
+			/// if (v.z > boundingBox.max.z)
+			/// 	boundingBox.max.z = v.z;
+
+			min_x = (v.x < min_x) ? v.x : min_x;
+			min_y = (v.y < min_y) ? v.y : min_y;
+			min_z = (v.z < min_z) ? v.z : min_z;
+			max_x = (v.x > max_x) ? v.x : max_x;
+			max_y = (v.y > max_y) ? v.y : max_y;
+			max_z = (v.z > max_z) ? v.z : max_z;
 		}
 	}
+
+	// Now, use mins and max to build the AABB
+	// -> Center/Radius configuration
+	// -> CENTER IS NOT GONNA BE SAME AS GO'S PIVOT FOR AABB (necesarily)
+	boundingBox.center = {
+		0.5f * (max_x + min_x),
+		0.5f * (max_y + min_y),
+		0.5f * (max_z + min_z),
+	};
+	boundingBox.radius = {
+		0.5f * std::fabsf(max_x - min_x),
+		0.5f * std::fabsf(max_y - min_y),
+		0.5f * std::fabsf(max_z - min_z),
+	};
 
 	//TODO - Later : Create a collection of AABB instead. This way, we get a more convex shape
 

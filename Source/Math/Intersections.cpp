@@ -16,11 +16,12 @@ namespace AuxMath
 	//////////////////////////////////
 	/////     SHAPES TO SHAPES   /////
 	//////////////////////////////////
-	bool AABBToAABBIntersection(AABB const& obj1, AABB const& obj2)
+	bool AABBToAABBIntersection(glm::vec3 const& center01, glm::vec3 const& radius01, 
+		glm::vec3 const& center02, glm::vec3 const& radius02)
 	{
-		if (obj1.min.x > obj2.max.x || obj1.max.x < obj2.min.x ) return false;
-		if (obj1.min.y > obj2.max.y || obj1.max.y < obj2.min.y) return false;
-		if (obj1.min.z > obj2.max.z || obj1.max.z < obj2.min.z) return false;
+		if ((center01 - radius01).x > (center02 + radius02).x || (center01 + radius01).x < (center02 - radius02).x) return false;
+		if ((center01 - radius01).y > (center02 + radius02).y || (center01 + radius01).y < (center02 - radius02).y) return false;
+		if ((center01 - radius01).z > (center02 + radius02).z || (center01 + radius01).z < (center02 - radius02).z) return false;
 		return true;
 	}
 	

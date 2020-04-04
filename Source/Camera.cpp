@@ -52,7 +52,7 @@ void Camera::initCamera()
 	this->flagOrthographic = false;
 
 	//Look and eye
-	m_eye = glm::vec4(0, 5, 15, 1);
+	m_eye = glm::vec4(0, 30, 80, 1);
 	m_look = glm::vec4(0, -0.25, -1, 0);
 	m_look = glm::normalize(m_look);
 

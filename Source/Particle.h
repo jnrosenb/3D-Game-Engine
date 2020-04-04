@@ -6,6 +6,7 @@
 #include <string>
 #include "../External/Includes/glm/glm.hpp"
 #include "Model.h"
+#include "Affine.h"
 
 class Operator;
 
@@ -18,16 +19,21 @@ struct flockingParams
 	float maxAccel;
 	float radius;
 	float fov;
+
 	float separationWeight;
 	float cohesionWeight;
 	float avoidanceWeight;
+	float optimalSeparation;
 };
 
 
 struct particleDescriptor 
 {
 	float timeToLive;
-	
+	float avoidDistance;
+	float mass;
+	bool avoidObstacles;
+
 	glm::vec3 spawnerPosition;
 	glm::vec3 size;
 	glm::vec3 position;
@@ -42,6 +48,7 @@ public:
 	Particle();
 	virtual ~Particle();
 
+
 	virtual void Initialize(particleDescriptor const& descriptor,
 		std::vector<Operator*> *m_advectors,
 		std::vector<Operator*> *m_operators,
@@ -51,7 +58,7 @@ public:
 		flockingParams const& m_flockingParams, 
 		glm::vec3 const& velocity = glm::vec3(0)) {}
 
-	virtual void Update(float dt);
+	virtual void Update(float dt, std::vector<RigidbodyComponent*> const& rigidbodies);
 	//Needed so virtual calls it
 	virtual void Update(float dt, glm::vec3 const& target,
 		std::vector<Particle*> const& particles,
@@ -65,9 +72,11 @@ public:
 	virtual glm::vec3 const& GetSize() const;
 	virtual glm::vec3 const& GetColor() const;
 	virtual glm::vec3 const& GetAxis() const;
-	virtual glm::vec3 const& GetSpawnerPosition() const; 
+	virtual glm::vec3 const& GetSpawnerPosition() const;
+	virtual glm::vec3 const& GetDebugTorque() const;
 	virtual glm::vec3 const& GetRotation() const;
 	virtual glm::mat3 const& GetRotationMatrix();
+	virtual glm::vec3 const& Particle::GetUpVector();
 
 	//SETTERS
 	virtual void SetPosition(glm::vec3 const& pos);
@@ -81,10 +90,29 @@ public:
 	void AddAcceleration(glm::vec3 a);
 	void Damp(glm::vec3& val, float damping = 0.03f);
 
+
+protected:
+	//Base init method, called by every public initializer
+	virtual void BaseInit(particleDescriptor const& descriptor,
+		glm::vec3 const& velocity = glm::vec3(0));
+
+	//Collision detection/avoidance
+	virtual void ManageObstacleAvoidance(std::vector<RigidbodyComponent*> const& rigidbodies, 
+		glm::vec3& accel, float finalScaling);
+	
+	//Different colliders
+	virtual int SphereColliderAvoidance(glm::vec3 const& Va, glm::vec3 const& Pa, glm::vec3 const& Ctr,
+		glm::vec3 const& planeNormal, float radius, float DMax, glm::vec3& outDir);
+	virtual int AABBColliderAvoidance(glm::vec3 const& Va, glm::vec3 const& Pa, glm::vec3 const& Ctr,
+		glm::vec3 const& planeNormal, glm::vec3 radiuses, float DMax, glm::vec3& outDir);
+
+
 protected:
 	float timeToLive;
 	float mass;
 	float fov;
+	float avoidDist;
+	bool avoidObstacles;
 	bool needToRecalc;
 
 	glm::vec3 spawnerPosition;
@@ -92,11 +120,14 @@ protected:
 	glm::vec3 size;
 	glm::vec3 position;
 	glm::vec3 rotation;
-
+	
 	//Experiment
 	glm::vec3 L;
 	glm::vec3 accel;
 	float maxAccel;
+
+	//Just as visual cue for now
+	glm::vec3 torqueDebug;
 
 	glm::vec3 color;
 	glm::vec3 velocity;
@@ -126,6 +157,7 @@ public:
 		std::vector<Particle*> const& particles,
 		std::vector<RigidbodyComponent*> const& rigidbodies);
 
+
 private:
 	//Experiment
 	glm::vec3 target;
@@ -136,9 +168,8 @@ private:
 	float separationWeight;
 	float cohesionWeight;
 	float avoidanceWeight;
+	float optimalSeparation;
 };
-
-
 
 
 
@@ -205,16 +236,14 @@ public:
 
 	virtual void operator()(float dt, Particle& p) override
 	{
-		glm::vec4 particlePos = glm::vec4(p.GetPosition(), 1);
-
 		//SPIRAL - As rotation equation
 		///float degree = rotationRate * dt;
 		///glm::mat4 R = AuxMath::rotate(degree, p.GetAxis());
-		///glm::vec4 vel = R* glm::vec4(p.GetVelocity(), 1);
+		///glm::vec4 vel = R* glm::vec4(p.GetVelocity(), 0);
 
 		//SPIRAL - As magnetic field
-		glm::vec3 a = rotationRate * glm::cross(p.GetAxis(), p.GetVelocity());
-		glm::vec3 vel = p.GetVelocity() + dt * a;
+		glm::vec3 a = rotationRate * glm::cross(p.GetVelocity(), p.GetAxis()) + (p.GetAxis() * 500.0f);
+		glm::vec3 vel = p.GetVelocity() + (a*dt);
 		
 		//Finally, set velocity
 		p.SetVelocity(vel);

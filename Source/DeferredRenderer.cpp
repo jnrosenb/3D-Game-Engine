@@ -13,7 +13,7 @@
 #include "Sphere.h"
 #include "Quad.h"
 #include <cstdlib>
-#include "Stat.h"
+#include "Math/Stat.h"
 
 
 #include "../External/Includes/glm/gtc/matrix_transform.hpp"
@@ -370,6 +370,65 @@ void DeferredRenderer::GeometryPass()
 	}
 	geometryPassShader->UnbindShader();
 
+	//Transparent objects
+	geometryPassShader->UseShader();
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE, GL_ONE);
+	for (int i = 0; i < graphicQueueAlpha.size(); ++i)
+	{
+		//Get the current drawNode
+		DrawData &data = graphicQueueAlpha[i];
+
+		//Since a node has a model (and all the meshes of a model for now share bones), we pass the uniform array
+		if (graphicQueueAlpha[i].BoneTransformations)
+		{
+			geometryPassShader->setMat4fArray("BoneTransf", 100, (*(graphicQueueAlpha[i].BoneTransformations))[0]);
+			if (!DrawSkin)
+				continue;
+		}
+
+		for (int j = 0; j < data.meshes->size(); ++j)
+		{
+			//BINDING
+			(*data.meshes)[j]->BindVAO();
+
+			//SAMPLER UNIFORMS---------------------------------
+			//Diffuse texture, should be optional 
+			geometryPassShader->setTexture("diffuseTexture", data.diffuseTexture, 0);
+			//Roughness and metallic
+			if (data.metallic == -1.0f)
+			{
+				geometryPassShader->setTexture("metallicTexture", data.metallicTexture, 1);
+			}
+			if (data.roughness == -1.0f)
+			{
+				geometryPassShader->setTexture("roughnessTexture", data.roughnessTexture, 2);
+			}
+			//Normal map, should be optional
+			geometryPassShader->setTexture("normalMap", data.normalMap, 3);
+
+			//UNIFORM BINDING------------------------------------
+			geometryPassShader->setMat4f("model", data.model);
+			geometryPassShader->setMat4f("normalModel", data.normalsModel);
+			geometryPassShader->setInt("useNormalMap", data.useNormalMap);
+			geometryPassShader->setInt("useDiffuseTexture", data.useDiffuseTexture);
+			geometryPassShader->setFloat("roughness", data.roughness);
+			geometryPassShader->setFloat("metallic", data.metallic);
+			geometryPassShader->setVec4f("specularColor", data.specularColor.r,
+				data.specularColor.g, data.specularColor.b, data.specularColor.a);
+			geometryPassShader->setVec4f("diffuseColor", data.diffuseColor.r,
+				data.diffuseColor.g, data.diffuseColor.b, data.diffuseColor.a);
+			geometryPassShader->setInt("xTiling", data.xTiling);
+			geometryPassShader->setInt("yTiling", data.yTiling);
+
+			//DRAW and unbind
+			(*data.meshes)[j]->Draw();
+			(*data.meshes)[j]->UnbindVAO();
+		}
+	}
+	glDisable(GL_BLEND);
+	geometryPassShader->UnbindShader();
+
 	//Draw instanced objects
 	geometryInstancedShader->UseShader();
 	for (int i = 0; i < instanceQueue.size(); ++i)
@@ -401,35 +460,35 @@ void DeferredRenderer::GeometryPass()
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_ONE, GL_ONE);
 		for (int i = 0; i < debugQueue.size(); ++i)
-	{
-		//Get the current drawNode
-		DrawDebugData &data = debugQueue[i];
-		data.shader->UseShader();
-
-		//Later for having animated OBB
-		if (data.BoneTransformations)
-			geometryPassShader->setMat4fArray("BoneTransf", 100, (*(data.BoneTransformations))[0]);
-
-		//Later we could have each mesh have their own OBB. For now, one per rigidbody
-		///for (int j = 0; j < data.meshes->size(); ++j)
 		{
-			//BINDING
-			///(*data.meshes)[j]->BindForDraw();
-			data.mesh->BindVAO();
+			//Get the current drawNode
+			DrawDebugData &data = debugQueue[i];
+			data.shader->UseShader();
 
-			//UNIFORM BINDING
-			data.shader->setMat4f("model", data.model);
-			data.shader->setVec4f("diffuseColor", data.diffuseColor.r,
-				data.diffuseColor.g, data.diffuseColor.b, data.diffuseColor.a);
+			//Later for having animated OBB
+			if (data.BoneTransformations)
+				geometryPassShader->setMat4fArray("BoneTransf", 100, (*(data.BoneTransformations))[0]);
 
-			//DRAW and unbind
-			data.mesh->Draw();
-			data.mesh->UnbindVAO();
-			///(*data.meshes)[j]->Draw();
-			///(*data.meshes)[j]->UnbindVAO();
+			//Later we could have each mesh have their own OBB. For now, one per rigidbody
+			///for (int j = 0; j < data.meshes->size(); ++j)
+			{
+				//BINDING
+				///(*data.meshes)[j]->BindForDraw();
+				data.mesh->BindVAO();
+
+				//UNIFORM BINDING
+				data.shader->setMat4f("model", data.model);
+				data.shader->setVec4f("diffuseColor", data.diffuseColor.r,
+					data.diffuseColor.g, data.diffuseColor.b, data.diffuseColor.a);
+
+				//DRAW and unbind
+				data.mesh->Draw();
+				data.mesh->UnbindVAO();
+				///(*data.meshes)[j]->Draw();
+				///(*data.meshes)[j]->UnbindVAO();
+			}
+			data.shader->UnbindShader();
 		}
-		data.shader->UnbindShader();
-	}
 	}
 }
 
@@ -1668,54 +1727,6 @@ void DeferredRenderer::DrawCurve(std::vector<glm::vec4> const& points,
 	glBindBuffer(GL_ARRAY_BUFFER, LineVBO);
 	glBufferData(GL_ARRAY_BUFFER, points.size() * 4 * sizeof(float), &points[0], GL_STATIC_DRAW);
 	
-	glVertexAttribPointer(0, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
-	glEnableVertexAttribArray(0);
-
-	//Draw
-	glDrawArrays(GL_LINE_STRIP, 0, points.size());
-
-	glBindVertexArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	LineShader->UnbindShader();
-	glDeleteVertexArrays(1, &lineVAO);
-	glDeleteBuffers(1, &LineVBO);
-}
-
-//OBSOLETE (for bounding box)
-void DeferredRenderer::DrawBoundingBox(AABB const& AABB,
-	glm::vec3 const& color)
-{
-	std::vector<glm::vec4> points;
-	points.push_back( glm::vec4( AABB.max.x, AABB.max.y, AABB.max.z, 1.0f) ); // n_topRight
-	points.push_back( glm::vec4( AABB.min.x, AABB.max.y, AABB.max.z, 1.0f) ); // n_topLeft    
-	points.push_back( glm::vec4( AABB.min.x, AABB.min.y, AABB.max.z, 1.0f) ); // n_bottomLeft 
-	points.push_back( glm::vec4( AABB.max.x, AABB.min.y, AABB.max.z, 1.0f) ); // n_bottomRight
-	points.push_back( glm::vec4( AABB.max.x, AABB.max.y, AABB.max.z, 1.0f) ); // n_topRight   
-	points.push_back( glm::vec4( AABB.max.x, AABB.max.y, AABB.min.z, 1.0f) ); // f_topRight   
-	points.push_back( glm::vec4( AABB.min.x, AABB.max.y, AABB.min.z, 1.0f) ); // f_topLeft    
-	points.push_back( glm::vec4( AABB.min.x, AABB.max.y, AABB.max.z, 1.0f) ); // n_topLeft    
-	points.push_back( glm::vec4( AABB.min.x, AABB.max.y, AABB.min.z, 1.0f) ); // f_topLeft    
-	points.push_back( glm::vec4( AABB.min.x, AABB.min.y, AABB.min.z, 1.0f) ); // f_bottomLeft 
-	points.push_back( glm::vec4( AABB.min.x, AABB.min.y, AABB.max.z, 1.0f) ); // n_bottomLeft 
-	points.push_back( glm::vec4( AABB.min.x, AABB.min.y, AABB.min.z, 1.0f) ); // f_bottomLeft 
-	points.push_back( glm::vec4( AABB.max.x, AABB.min.y, AABB.min.z, 1.0f) ); // f_bottomRight
-	points.push_back( glm::vec4( AABB.max.x, AABB.min.y, AABB.max.z, 1.0f) ); // n_bottomRight
-	points.push_back( glm::vec4( AABB.max.x, AABB.min.y, AABB.min.z, 1.0f) ); // f_bottomRight
-	points.push_back( glm::vec4( AABB.max.x, AABB.max.y, AABB.min.z, 1.0f) ); // f_topRight   
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glViewport(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
-
-	GLuint lineVAO, LineVBO = static_cast<unsigned>(-1);
-	glGenVertexArrays(1, &lineVAO);
-	glGenBuffers(1, &LineVBO);
-	LineShader->UseShader();
-	LineShader->setVec3f("diffuseColor", color.x, color.y, color.z);
-
-	glBindVertexArray(lineVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, LineVBO);
-	glBufferData(GL_ARRAY_BUFFER, points.size() * 4 * sizeof(float), &points[0], GL_STATIC_DRAW);
-
 	glVertexAttribPointer(0, 4, GL_FLOAT, false, 4 * sizeof(GLfloat), (void*)0);
 	glEnableVertexAttribArray(0);
 

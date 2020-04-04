@@ -54,7 +54,7 @@ void Transform::Update(float dt)
 	glm::mat4 RW(1);
 	if (needToRecalculateModel_world)
 	{
-		std::cout << "GONNA ROTATE WORLD IN < " << m_rotationWorld.x << ", " << m_rotationWorld.y << ", " << m_rotationWorld.z << " >" << std::endl;
+		//std::cout << "GONNA ROTATE WORLD IN < " << m_rotationWorld.x << ", " << m_rotationWorld.y << ", " << m_rotationWorld.z << " >" << std::endl;
 		RW = AuxMath::rotate(m_rotationWorld.z, glm::vec3(0, 0, 1)) *
 			AuxMath::rotate(m_rotationWorld.y, glm::vec3(0, 1, 0)) *
 			AuxMath::rotate(m_rotationWorld.x, glm::vec3(1, 0, 0));
@@ -112,7 +112,7 @@ void Transform::translate(glm::vec3 const& translation)
 
 void Transform::translate(float dx, float dy, float dz)
 {
-	this->m_position += glm::vec4(dx, dy, dz, 1.0f);
+	this->m_position += glm::vec4(dx, dy, dz, 0.0f);
 
 	needToRecalculateModel = 1;
 }
@@ -128,9 +128,9 @@ void Transform::rotate(AuxMath::Quaternion const& dq)
 	glm::vec3 euler;
 	AuxMath::Quaternion::QuaternionToEuler(dq, euler);
 	euler = euler * (180.0f / PI);
-	std::cout << "---------------------------" << std::endl;
-	dq.print("Quat: ");
-	std::cout << "EULER: " << euler.x << ", " << euler.y << ", " << euler.z << std::endl;
+	///std::cout << "---------------------------" << std::endl;
+	///dq.print("Quat: ");
+	///std::cout << "EULER: " << euler.x << ", " << euler.y << ", " << euler.z << std::endl;
 	rotate(euler.x, euler.y, euler.z);
 }
 

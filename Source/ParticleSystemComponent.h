@@ -9,10 +9,16 @@
 #include <vector>
 #include <string>
 
+
+//ERASE LATER------------------------------
+#include "Shader.h"
+#include "Model.h"
+//ERASE LATER------------------------------
+///class Shader;
+///class Model;
+
 class Operator;
 class GameObject;
-class Shader;
-class Model;
 
 //TEMPORARY MEASURE - INCLUDES
 #include "../External/Includes/Glad_/Glad/glad.h"
@@ -48,6 +54,9 @@ public:
 
 	void EmitOnce(int num, float ttl, EMISSION_SHAPE shape);
 
+	//TODO
+	void ToggleContinuousEmition();
+	void ContinuousEmition(int AvgNum, float ttl, EMISSION_SHAPE shape);
 
 private:
 	virtual void initModel();
@@ -56,6 +65,22 @@ private:
 	void RegisterParticleAdvector(Operator *op);
 
 	void handleInput(float dt);
+
+
+//ERASE LATER------------------------------
+private:
+	Model *debugRay;
+	Shader	*debugShader;
+	Model *targetMesh;
+	void DebugDrawSetup()
+	{
+		this->debugShader = new Shader("Solid.vert", "Solid.frag");
+		this->debugShader->BindUniformBlock("test_gUBlock", 1);
+		this->debugRay = new Model("Vector.fbx");
+		this->targetMesh = new Model(true, "sphere");
+	}
+//ERASE LATER------------------------------
+
 
 public:
 	//To compare when using templates
@@ -72,7 +97,13 @@ private:
 	std::vector<Operator*> m_operators;
 	std::vector<Operator*> m_advectors;
 	int count;
-	
+
+	//Some particle params
+	float ParticleMass;
+	float ParticleAvoidanceDistance;
+	bool avoidObstacle;
+
+	//Vector of model matrices, for instancing
 	std::vector<glm::mat4> modelMatrices;
 
 	//TEMPORARY MEASURE
@@ -86,7 +117,8 @@ private:
 	Model *model = NULL;
 	std::string modelPath;
 	std::string primitive;
-	std::string diffuseTexture;;
+	std::string diffuseTexture;
+	glm::vec4 diffuseColor;
 	int xTiling, yTiling;
 	glm::vec3 size;
 	//bools (replace with feature mask on future)

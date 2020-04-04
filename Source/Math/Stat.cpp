@@ -4,8 +4,24 @@
 #include <cmath>
 #include <iostream>
 	
+#define PI		3.14159265359f
+#define TwoPi	2*PI
+
+
 namespace AuxMath
 {
+
+	glm::vec2 SampleGaussian_BoxMuller(float stdev) 
+	{
+		glm::vec2 result(0);
+		float u = rand() / static_cast<float>(RAND_MAX);
+		float v = rand() / static_cast<float>(RAND_MAX);
+
+		result.x = std::sqrt(-2 * stdev * std::log(u)) * std::cos(TwoPi*v);
+		result.y = std::sqrt(-2 * stdev * std::log(u)) * std::sin(TwoPi*v);
+		return result;
+	}
+
 
 	void genGaussianWeights(int kernelRadius, std::vector<float>& weights) 
 	{
@@ -23,6 +39,7 @@ namespace AuxMath
 
 		normalizeWeights(weights, sum);
 	}
+
 
 	void normalizeWeights(std::vector<float>& weights, float sum) 
 	{

@@ -23,6 +23,38 @@ DebugBox::DebugBox(std::vector<glm::vec4> const& points)
 	this->init();
 }
 
+DebugBox::DebugBox(glm::vec3 const& size)
+{
+	float xVal = size.x * 0.5f;
+	float yVal = size.y * 0.5f;
+	float zVal = size.z * 0.5f;
+
+	//VERTICES
+	vertices.push_back(glm::vec4( xVal,  yVal,  zVal, 1.0f)); // n_topRight
+	vertices.push_back(glm::vec4(-xVal,  yVal,  zVal, 1.0f)); // n_topLeft    
+	vertices.push_back(glm::vec4(-xVal, -yVal,  zVal, 1.0f)); // n_bottomLeft 
+	vertices.push_back(glm::vec4( xVal, -yVal,  zVal, 1.0f)); // n_bottomRight
+	vertices.push_back(glm::vec4( xVal,  yVal,  zVal, 1.0f)); // n_topRight   
+	vertices.push_back(glm::vec4( xVal,  yVal, -zVal, 1.0f)); // f_topRight   
+	vertices.push_back(glm::vec4(-xVal,  yVal, -zVal, 1.0f)); // f_topLeft    
+	vertices.push_back(glm::vec4(-xVal,  yVal,  zVal, 1.0f)); // n_topLeft    
+	vertices.push_back(glm::vec4(-xVal,  yVal, -zVal, 1.0f)); // f_topLeft    
+	vertices.push_back(glm::vec4(-xVal, -yVal, -zVal, 1.0f)); // f_bottomLeft 
+	vertices.push_back(glm::vec4(-xVal, -yVal,  zVal, 1.0f)); // n_bottomLeft 
+	vertices.push_back(glm::vec4(-xVal, -yVal, -zVal, 1.0f)); // f_bottomLeft 
+	vertices.push_back(glm::vec4( xVal, -yVal, -zVal, 1.0f)); // f_bottomRight
+	vertices.push_back(glm::vec4( xVal, -yVal,  zVal, 1.0f)); // n_bottomRight
+	vertices.push_back(glm::vec4( xVal, -yVal, -zVal, 1.0f)); // f_bottomRight
+	vertices.push_back(glm::vec4( xVal,  yVal, -zVal, 1.0f)); // f_topRight
+
+	//Bones indices (Empty for primitive)
+	for (int i = 0; i < GetVertexCount(); ++i)
+		this->boneIndices.push_back(glm::ivec4(-1));
+
+	//Init step
+	this->init();
+}
+
 
 DebugBox::~DebugBox()
 {

@@ -37,9 +37,16 @@ extern Renderer *renderer;
 ParticleSystemComponent::ParticleSystemComponent(GameObject *owner) :
 	BaseComponent(owner, COMPONENT_TYPES::PARTICLE_SYSTEM)
 {
+
+	//ERASE LATER------------------------------
+	DebugDrawSetup();
+	//ERASE LATER------------------------------
+
 	//For some vars which may or may not be defined in json
 	xTiling = 1;
 	yTiling = 1;
+	ParticleMass = 1.0f;
+	ParticleAvoidanceDistance = 3.0f;
 	useDiffuseTexture = false;
 }
 
@@ -49,6 +56,15 @@ ParticleSystemComponent::~ParticleSystemComponent()
 
 	if (model)
 		delete model;
+
+	//ERASE LATER-------------------------------
+	if (debugShader)
+		delete debugShader;
+	if (debugRay)
+		delete debugRay;
+	if (targetMesh)
+		delete targetMesh;
+	//ERASE LATER-------------------------------
 
 	//TEMPORARY MEASURE - DELETE
 	glDeleteBuffers(1, &instanceBuffer);
@@ -96,7 +112,7 @@ void ParticleSystemComponent::Update(float dt)
 		for (Particle *p : m_particles)
 		{
 			if (p->GetTimeToLive() > 0.0f)
-				p->Update(dt);
+				p->Update(dt, physicsMgr->GetRigidbodies());
 		}
 	}
 }
@@ -115,11 +131,6 @@ void ParticleSystemComponent::Draw()
 
 		glm::mat4 modelMatrix(1);
 		
-		//Old bad way
-		///modelMatrix[0][0] = 0.25f;
-		///modelMatrix[1][1] = 0.25f;
-		///modelMatrix[2][2] = 0.25f;
- 		///modelMatrix[3] = glm::vec4(p->GetPosition(), 1.0f);
 		//New good way
 		glm::mat3 pH(1);
 		pH[0][0] = p->GetSize().x;
@@ -131,15 +142,115 @@ void ParticleSystemComponent::Draw()
 
 		modelMatrices[index] = modelMatrix;
 		++index;
-		
 		data.instanceCount += 1;
+
+
+
+		//Debug draw stuff - Forward and up vectors
+		////////////////////////////////////////////////
+		////////////////////////////////////////////////
+		
+		//(FORWARD)
+		glm::mat4 fwdModel(1);
+		glm::vec3 fwdDir = p->GetRotationMatrix()[2];
+		//Rotation (gonna only rotate x axis)
+		glm::vec3 fwd = glm::vec3(fwdDir);
+		glm::vec3 right = glm::cross(fwd, { 0,1,0 });
+		glm::vec3 up = glm::cross(right, fwd);
+		glm::mat3 Rot = { fwd, up, right };
+		Rot = Rot * glm::mat3(3.0f);
+		fwdModel[0] = glm::vec4(Rot[0].x, Rot[0].y, Rot[0].z, 0.0f);
+		fwdModel[1] = glm::vec4(Rot[1].x, Rot[1].y, Rot[1].z, 0.0f);
+		fwdModel[2] = glm::vec4(Rot[2].x, Rot[2].y, Rot[2].z, 0.0f);
+		//Translation
+		fwdModel[3] = glm::vec4(p->GetPosition().x, p->GetPosition().y, p->GetPosition().z, 0);
+		fwdModel[3][3] = 1.0f;
+		//------------------
+		DrawDebugData data3 = {};
+		data3.diffuseColor = { 0, 0, 1, 1.0f };
+		data3.model = fwdModel;
+		data3.mesh = debugRay->meshes[0];;
+		data3.shader = debugShader;;
+		renderer->QueueForDebugDraw(data3);
+
+		//(UP)
+		/// fwdModel = glm::mat4(1);
+		/// fwdDir = p->GetRotationMatrix()[1];
+		/// //Rotation (gonna only rotate x axis)
+		/// fwd = glm::vec3(fwdDir);
+		/// right = p->GetRotationMatrix()[0]; //glm::cross(fwd, { 0,1,0 });
+		/// up = p->GetRotationMatrix()[2];    //glm::cross(right, fwd);
+		/// Rot = { fwd, up, right };
+		/// Rot = Rot * glm::mat3(3.0f);
+		/// fwdModel[0] = glm::vec4(Rot[0].x, Rot[0].y, Rot[0].z, 0.0f);
+		/// fwdModel[1] = glm::vec4(Rot[1].x, Rot[1].y, Rot[1].z, 0.0f);
+		/// fwdModel[2] = glm::vec4(Rot[2].x, Rot[2].y, Rot[2].z, 0.0f);
+		/// //Translation
+		/// fwdModel[3] = glm::vec4(p->GetPosition().x, p->GetPosition().y, p->GetPosition().z, 0);
+		/// fwdModel[3][3] = 1.0f;
+		/// //------------------
+		/// data3 = {};
+		/// data3.diffuseColor = { 1, 0, 0, 1.0f };
+		/// data3.model = fwdModel;
+		/// data3.mesh = debugRay->meshes[0];;
+		/// data3.shader = debugShader;;
+		/// renderer->QueueForDebugDraw(data3);
+
+
+		//(VELOCITY)
+		fwdModel = glm::mat4(1);
+		fwdDir = glm::normalize(p->GetVelocity());
+		//Rotation (gonna only rotate x axis)
+		fwd = glm::vec3(fwdDir);
+		right = glm::cross(fwd, { 0,1,0 });
+		up = glm::cross(right, fwd);
+		Rot = { fwd, up, right };
+		Rot = Rot * glm::mat3(3.0f);
+		fwdModel[0] = glm::vec4(Rot[0].x, Rot[0].y, Rot[0].z, 0.0f);
+		fwdModel[1] = glm::vec4(Rot[1].x, Rot[1].y, Rot[1].z, 0.0f);
+		fwdModel[2] = glm::vec4(Rot[2].x, Rot[2].y, Rot[2].z, 0.0f);
+		//Translation
+		fwdModel[3] = glm::vec4(p->GetPosition().x, p->GetPosition().y, p->GetPosition().z, 0);
+		fwdModel[3][3] = 1.0f;
+		//------------------
+		data3 = {};
+		data3.diffuseColor = { 1, 1, 0, 1.0f };
+		data3.model = fwdModel;
+		data3.mesh = debugRay->meshes[0];;
+		data3.shader = debugShader;;
+		renderer->QueueForDebugDraw(data3);
+
+
+		//(VELOCITY)
+		fwdModel = glm::mat4(1);
+		fwdDir = glm::normalize(p->GetDebugTorque());
+		//Rotation (gonna only rotate x axis)
+		fwd = glm::vec3(fwdDir);
+		right = glm::cross(fwd, { 0,1,0 });
+		up = glm::cross(right, fwd);
+		Rot = { fwd, up, right };
+		Rot = Rot * glm::mat3(3.0f);
+		fwdModel[0] = glm::vec4(Rot[0].x, Rot[0].y, Rot[0].z, 0.0f);
+		fwdModel[1] = glm::vec4(Rot[1].x, Rot[1].y, Rot[1].z, 0.0f);
+		fwdModel[2] = glm::vec4(Rot[2].x, Rot[2].y, Rot[2].z, 0.0f);
+		//Translation
+		fwdModel[3] = glm::vec4(p->GetPosition().x, p->GetPosition().y, p->GetPosition().z, 0);
+		fwdModel[3][3] = 1.0f;
+		//------------------
+		data3 = {};
+		data3.diffuseColor = { 1, 0, 1, 1.0f };
+		data3.model = fwdModel;
+		data3.mesh = debugRay->meshes[0];;
+		data3.shader = debugShader;;
+		renderer->QueueForDebugDraw(data3);
+
 	}
 
 	//TEMPORARY MEASURE
 	data.TempVBO = instanceBuffer;
 	data.useDiffuseTexture = useDiffuseTexture;
 	data.diffuseTexture = renderer->GetTexture(this->diffuseTexture);
-	data.diffuseColor = glm::vec4(1, 0, 0, 1);
+	data.diffuseColor = diffuseColor;
 	data.meshes = &model->meshes;
 	data.modelMatrices = &modelMatrices;
 	data.xTiling = xTiling;
@@ -180,7 +291,7 @@ void ParticleSystemComponent::DeserializeInit()
 	}
 
 	//CHANGE THIS FOR A DYNAMIC TARGET
-	target = glm::vec3(-25, 4, -3);
+	target = glm::vec3(0, 5, 0);
 }
 
 
@@ -216,6 +327,9 @@ void ParticleSystemComponent::EmitOnce(int num, float ttl, EMISSION_SHAPE shape)
 		desc.position = pos;
 		desc.axis = glm::vec3(0, 1, 0);
 		desc.size = size;
+		desc.mass = ParticleMass;
+		desc.avoidObstacles = avoidObstacle;
+		desc.avoidDistance = ParticleAvoidanceDistance;
 
 		//TEMPORARY IF
 		if (interactive)
@@ -228,13 +342,26 @@ void ParticleSystemComponent::EmitOnce(int num, float ttl, EMISSION_SHAPE shape)
 }
 
 
+
+void ParticleSystemComponent::ToggleContinuousEmition()
+{
+	//TODO
+}
+
+
+void ParticleSystemComponent::ContinuousEmition(int AvgNum, float ttl, EMISSION_SHAPE shape)
+{
+	//TODO
+}
+
+
 void ParticleSystemComponent::SampleSpawnPosition(EMISSION_SHAPE shape, 
 	glm::vec3& pos)
 {
 	if (shape == EMISSION_SHAPE::SPHERE) 
 	{
 		//HARDCODED FOR NOW
-		float radius = 6.0f;
+		float radius = 0.5f;
 
 		//Shitty way of sampling uniform cube and discarding
 		float x, y, z;
@@ -299,18 +426,41 @@ void ParticleSystemComponent::RegisterParticleOperator(Operator *op)
 ////////////////////////////////
 void ParticleSystemComponent::handleInput(float dt)
 {
-	if (inputMgr->getKeyTrigger(SDL_SCANCODE_RETURN))
+	if (inputMgr->getKeyPress(SDL_SCANCODE_RETURN))
 	{
 		std::cout << "SPAWNING DEAD PARTICLES" << std::endl;
-		EmitOnce(500, 50.0f, EMISSION_SHAPE::SPHERE);
+		EmitOnce(1, 3.0f, EMISSION_SHAPE::SPHERE);
 	}
 
+	if (!interactive)
+		return;
+
+	Transform *T = this->m_owner->GetComponent<Transform>();
+	target = T->GetPosition();
+	float speed = 0.25f;
 	if (inputMgr->getKeyPress(SDL_SCANCODE_LEFT))
 	{
-		target = target - glm::vec3(1, 0, 0);
+		target = target - glm::vec3(speed, 0, 0);
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_RIGHT))
 	{
-		target = target + glm::vec3(1, 0, 0);
+		target = target + glm::vec3(speed, 0, 0);
 	}
+	if (inputMgr->getKeyPress(SDL_SCANCODE_UP))
+	{
+		target = target + glm::vec3(0, speed, 0);
+	}
+	if (inputMgr->getKeyPress(SDL_SCANCODE_DOWN))
+	{
+		target = target - glm::vec3(0, speed, 0);
+	}
+	if (inputMgr->getKeyPress(SDL_SCANCODE_PAGEUP))
+	{
+		target = target + glm::vec3(0, 0, speed);
+	}
+	if (inputMgr->getKeyPress(SDL_SCANCODE_PAGEDOWN))
+	{
+		target = target - glm::vec3(0, 0, speed);
+	}
+	T->SetPosition(target);
 }

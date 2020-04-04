@@ -11,6 +11,7 @@ class DebugBox : public Mesh
 
 public:
 	DebugBox(std::vector<glm::vec4> const& points);
+	DebugBox(glm::vec3 const& size);
 	virtual ~DebugBox();
 
 	virtual std::vector <glm::vec4>& GetVertices();

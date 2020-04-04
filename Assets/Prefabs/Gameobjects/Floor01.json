@@ -8,11 +8,6 @@
       "scale": [ 300, 300, 1.0 ]
     },
     {
-      "id": "rigidbody",
-      "mass": 0.0,
-      "interact_with_particles": false
-    },
-    {
       "id": "render",
       "diffuse": [ 1.0, 1.0, 1.0, 1.0 ],
       "specular": [ 1.0, 1.0, 1.0, 1.0 ],
@@ -20,14 +15,14 @@
       "load_model": true,
       "roughness": 0.01,
       "metallic": 0.01,
-      "primitive": "Quad",
+      "primitive": "cube",
       "model_name": "Cube.fbx",
 
       "diffuse_texture": "Bricks_diff.jpg",
       "normal_map": "Bricks_nml.jpg",
 
-      "x_tiling": 70,
-      "y_tiling": 50
+      "x_tiling": 30,
+      "y_tiling": 30
     }
   ]
 }

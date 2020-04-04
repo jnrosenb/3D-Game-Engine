@@ -49,7 +49,13 @@ void ImGuiManager::Update(float dt, int fps)
 	
 	ImGui::Begin("Controller");
 
-	ImGui::Text("FPS: %d", fps);
+	//FPD window
+	float value = 0.0f;
+	accum[accumIndex++] = fps;
+	for (int i = 0; i < windowSize; ++i)
+		value += accum[i];
+	ImGui::Text("FPS: %d", static_cast<int>(value/windowSize));
+	accumIndex = accumIndex % windowSize;
 
 	static char str0[128] = "Hello, world!";
 	ImGui::InputText("input text", str0, IM_ARRAYSIZE(str0));

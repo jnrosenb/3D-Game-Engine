@@ -3,6 +3,8 @@
 
 #include "RigidbodyComponent.h"
 #include "GameObject.h"
+#include <limits>
+#include <assert.h>
 
 //To get and set position for physic objects
 #include "TransformComponent.h"
@@ -64,22 +66,6 @@ RigidbodyComponent::~RigidbodyComponent()
 
 void RigidbodyComponent::DeserializeInit()
 {
-	//Register this rgbdy on physics manager
-	physicsMgr->RegisterRigidbody(this);
-
-	//Setup initial params
-	Transform *T = this->m_owner->GetComponent<Transform>();
-	
-	Params[0] = T->GetPosition();
-	Params[1] = glm::vec4(0);
-	Params[2] = glm::vec4(0);
-	Params[3] = glm::vec4(0);
-
-	dParams[0] = glm::vec4(0);
-	dParams[1] = glm::vec4(0);
-	dParams[2] = glm::vec4(0);
-	dParams[3] = glm::vec4(0);
-
 	//Start with zero forces
 	ResetForces();
 
@@ -91,8 +77,25 @@ void RigidbodyComponent::DeserializeInit()
 
 void RigidbodyComponent::Begin()
 {
+	//Setup initial params (HERE BECAUSE IT DEPENDS ON OTHER COMPONENT)
+	Transform *T = this->m_owner->GetComponent<Transform>();
+
+	Params[0] = T->GetPosition();
+	Params[1] = glm::vec4(0);
+	Params[2] = glm::vec4(0);
+	Params[3] = glm::vec4(0);
+
+	dParams[0] = glm::vec4(0);
+	dParams[1] = glm::vec4(0);
+	dParams[2] = glm::vec4(0);
+	dParams[3] = glm::vec4(0);
+
+
 	//Setup OBB stuff
 	ColliderSetup();
+
+	//Register this rgbdy on physics manager
+	physicsMgr->RegisterRigidbody(this);
 }
 
 
@@ -119,21 +122,79 @@ void RigidbodyComponent::ColliderSetup()
 		DebugDrawSetup(aabb);
 
 		//More setup
-		float halfwidth = (aabb.max.x - aabb.min.x) * 0.5f;
-		float halfheight = (aabb.max.y - aabb.min.y) * 0.5f;
-		float halfdepth = (aabb.max.z - aabb.min.z) * 0.5f;
+		float halfwidth = aabb.radius.x;  ///(aabb.max.x - aabb.min.x) * 0.5f;
+		float halfheight = aabb.radius.y; ///(aabb.max.y - aabb.min.y) * 0.5f;
+		float halfdepth = aabb.radius.z;  ///(aabb.max.z - aabb.min.z) * 0.5f;
 		glm::mat4 I(1);
 		I[0][0] = (1 / 12.0f) * mass * (halfheight*halfheight + halfdepth*halfdepth);
 		I[1][1] = (1 / 12.0f) * mass * (halfwidth*halfwidth + halfdepth*halfdepth);
 		I[2][2] = (1 / 12.0f) * mass * (halfheight*halfheight + halfwidth*halfwidth);
 		IbodyInv = glm::inverse(I);
 
-		//Based on AABB stuff and scaling of transform, construct OBB dimension vector (radius)
-		OBBRadius = glm::vec3(
-			halfwidth * transformComp->GetScale().x,
-			halfheight * transformComp->GetScale().y,
-			halfdepth * transformComp->GetScale().z
-		);
+
+		//FOR NOW, FIXED SCALE!!!!------------------------------------------------------
+																						
+		//Construct OBB dimension vector (radius)										
+		OBBRadius = glm::vec3(															
+			halfwidth * transformComp->GetScale().x,									
+			halfheight * transformComp->GetScale().y,									
+			halfdepth * transformComp->GetScale().z										
+		);																				
+																						
+		//For now I'm only gonna leave it as the offset from the origin in object space,
+		//since I believe the addition of the world position is done later				
+		OBBCenterOffsetScaled = glm::vec4(															
+			aabb.center.x * transformComp->GetScale().x, 								
+			aabb.center.y * transformComp->GetScale().y,								
+			aabb.center.z * transformComp->GetScale().z,								
+			0.0f																		
+		);																				
+		//------------------------------------------------------------------------------
+	}
+}
+
+
+glm::vec3 RigidbodyComponent::GetAABBRadiusFromOBB()
+{
+	Transform *transformComp = this->m_owner->GetComponent<Transform>();
+	Render *rendererComp = this->m_owner->GetComponent<Render>();
+	if (rendererComp && transformComp)
+	{
+		glm::mat4 const& R = transformComp->GetRotationMatrix();
+		float xMax = std::numeric_limits<float>::lowest(), yMax = xMax, zMax = xMax;
+		float xMin = std::numeric_limits<float>::max(), yMin = xMin, zMin = xMin;
+
+		glm::vec3 xLocalDir = R[0] * OBBRadius.x;
+		glm::vec3 yLocalDir = R[1] * OBBRadius.y;
+		glm::vec3 zLocalDir = R[2] * OBBRadius.z;
+
+		for (int i = -1; i <= 1; i += 2)
+		{
+			for (int j = -1; j <= 1; j += 2)
+			{
+				for (int k = -1; k <= 1; k += 2)
+				{
+					glm::vec3 vertex = glm::vec3(
+						xLocalDir.x*i + yLocalDir.x*j + zLocalDir.x*k,
+						xLocalDir.y*i + yLocalDir.y*j + zLocalDir.y*k,
+						xLocalDir.z*i + yLocalDir.z*j + zLocalDir.z*k);
+					xMax = (vertex.x > xMax) ? vertex.x : xMax;
+					xMin = (vertex.x < xMin) ? vertex.x : xMin;
+					yMax = (vertex.y > yMax) ? vertex.y : yMax;
+					yMin = (vertex.y < yMin) ? vertex.y : yMin;
+					zMax = (vertex.z > zMax) ? vertex.z : zMax;
+					zMin = (vertex.z < zMin) ? vertex.z : zMin;
+				}
+			}
+		}
+
+		glm::vec3 result(0.5f * fabsf(xMax - xMin), 0.5f * fabsf(yMax - yMin), 0.5f * fabsf(zMax - zMin));
+		return result;
+	}
+	else 
+	{
+		assert(false);
+		return glm::vec3(-1);
 	}
 }
 
@@ -168,7 +229,7 @@ void RigidbodyComponent::DebugDrawSetup(AABB const& aabb)
 	//*/
 
 	//USING SEMI TRANSPARENT BLOCK
-	glm::vec3 size = {aabb.max - aabb.min};
+	glm::vec3 size = 2.0f * aabb.radius;//{aabb.max - aabb.min};
 	size = glm::vec3(std::fabs(size.x), std::fabs(size.y), std::fabs(size.z));
 	
 	this->debugMesh = new DebugBoxFilled(size);
@@ -222,7 +283,7 @@ void RigidbodyComponent::PhysicsUpdate(float dt)
 	/////////////////////////////////
 	////    ANGULAR STUFF        ////
 	/////////////////////////////////
-	if (Torque != glm::vec4(0) || Params[3] != glm::vec4(0))
+	if (Torque != glm::vec4(0) || L != glm::vec4(0))
 	{
 		//Get rotation matrix, rotation quaternion, and Iinv in world space
 		glm::mat4 const& R = T->GetRotationMatrix();
@@ -237,18 +298,19 @@ void RigidbodyComponent::PhysicsUpdate(float dt)
 		
 		///--Param[3] as L--
 		L = L + Torque * dt;
-		DampVelocity(L, 0.1f);
 		Params[3] = Iinv * L;
 		AuxMath::Quaternion w(Params[3]);
+		DampVelocity(L, 0.1f);
 
 		///Get quaternion velocity (slope vector), then integrate
-		AuxMath::Quaternion qvel = 0.5f * (w * q0);
+		AuxMath::Quaternion qvel = 0.5f * (q0 * w);
 		AuxMath::Quaternion q = q0 + (dt * qvel);
 		q = q0.Conjugate() * q;
 		q = q.Normalize();
 
 		//T->rotateWorld(q);
 		T->rotate(q);
+		//T->rotate(dt * qvel);
 	}
 	else 
 	{
@@ -287,9 +349,69 @@ void RigidbodyComponent::Draw()
 	AnimationComponent *animComp = this->m_owner->GetComponent<AnimationComponent>();
 	Transform *T = this->m_owner->GetComponent<Transform>();
 
+	////////////////////////////////////////////////
+	////////////////////////////////////////////////
+
+	//ARROWS
+	//Local axis drawing test (FORWARD)
+	DrawMeshWithOrientation(debugRay->meshes[0], debugShader, T->GetRotationMatrix()[2],
+		T->GetPosition(), 3.0f, { 0, 0, 1, 1 });
+
+	//Local axis drawing test (UP)
+	DrawMeshWithOrientation(debugRay->meshes[0], debugShader, T->GetRotationMatrix()[1],
+		T->GetPosition(), 3.0f, { 0, 1, 0, 1 });
+
+	//Local axis drawing test (RIGHT)
+	DrawMeshWithOrientation(debugRay->meshes[0], debugShader, T->GetRotationMatrix()[0],
+		T->GetPosition(), 3.0f, { 1, 0, 0, 1 });
+
+	//FORCE
+	DrawMeshWithOrientation(debugRay->meshes[0], debugShader, this->dParams[0],
+		T->GetPosition(), 3.0f, { 0, 1, 1, 1 });
+
+	////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////
+
+	//CONTACT POINT TEST (all corners)
+	/// glm::mat4 const& R123 = T->GetRotationMatrix();
+	/// glm::mat4 dotModel(0.2f);
+	/// glm::vec3 xLocalDir = R123[0] * OBBRadius.x;
+	/// glm::vec3 yLocalDir = R123[1] * OBBRadius.y;
+	/// glm::vec3 zLocalDir = R123[2] * OBBRadius.z;
+	/// for (int i = -1; i <= 1; i += 2)
+	/// {
+	/// 	for (int j = -1; j <= 1; j += 2)
+	/// 	{
+	/// 		for (int k = -1; k <= 1; k += 2)
+	/// 		{
+	/// 			glm::vec3 vertex = glm::vec3(xLocalDir.x*i + yLocalDir.x*j + zLocalDir.x*k, 
+	/// 				xLocalDir.y*i + yLocalDir.y*j + zLocalDir.y*k, 
+	/// 				xLocalDir.z*i + yLocalDir.z*j + zLocalDir.z*k);
+	/// 			DrawDebugData data2 = {};
+	/// 			data2.diffuseColor = { 0, 1, 0, 1.0f };
+	/// 			
+	/// 			glm::mat4 const& R44 = T->GetRotationMatrix();
+	/// 			dotModel[3] = (R44*OBBCenterOffsetScaled) + T->GetPosition() + glm::vec4(vertex.x, vertex.y, vertex.z, 0.0f);
+	/// 			
+	/// 			data2.model = dotModel;
+	/// 			data2.mesh = debugPointMesh;
+	/// 			data2.shader = debugShader;
+	/// 			renderer->QueueForDebugDraw(data2);
+	/// 		}
+	/// 	}
+	/// }
+
+	////////////////////////////////////////////////
+	////////////////////////////////////////////////
+	
+	//OBB
 	DrawDebugData data = {};
 	data.diffuseColor = { 0, 0, 1, 0.5f };
-	data.model = T->GetModel();
+
+	data.model = T->GetModel(); 
+	glm::mat4 const& R44 = T->GetRotationMatrix();
+	data.model[3] = (R44*OBBCenterOffsetScaled) + T->GetPosition();
+	
 	data.mesh = debugMesh;
 	data.shader = debugShader;
 	//Bones experiment SHITTY WAY - NOT USING BONES FOR THIS
@@ -297,122 +419,38 @@ void RigidbodyComponent::Draw()
 	renderer->QueueForDebugDraw(data);
 
 
-	//CONTACT POINT TEST
-	DrawDebugData data2 = {};
-	data2.diffuseColor = { 0, 1, 0, 1.0f };
-	data2.model = T->GetModel();
-	data2.mesh = debugPointMesh;
-	data2.shader = debugShader;
-	///renderer->QueueForDebugDraw(data2);
-
-	////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////
-
-	//FORCE DRAWING TEST
-	glm::mat4 rayModel(1);
-	///float f = glm::length(DebugForce);
-	///glm::vec4 forceDir = DebugForce / f;
-	glm::vec4 forceDir = glm::normalize(this->dParams[0]);
-	//Rotation (gonna only rotate x axis)
-	float scale = 3.0f;
-	glm::vec3 fwd = glm::vec3(forceDir);
-	glm::vec3 right = glm::cross(fwd, { 0,1,0 });
-	glm::vec3 up = glm::cross(right, fwd);
-	glm::mat3 R = { fwd, up, right };//{ right, up, fwd }; 
-	R = R * glm::mat3(scale);
-	rayModel[0] = glm::vec4(R[0].x, R[0].y, R[0].z, 0.0f);
-	rayModel[1] = glm::vec4(R[1].x, R[1].y, R[1].z, 0.0f);
-	rayModel[2] = glm::vec4(R[2].x, R[2].y, R[2].z, 0.0f);
-	//Translation
-	rayModel[3] = T->GetPosition();
-	//Final diagonal
-	rayModel[3][3] = 1.0f;
-	//------------------
-	DrawDebugData data3 = {};
-	data3.diffuseColor = { 0, 1, 1, 1.0f };
-	data3.model = rayModel;
-	data3.mesh = debugRay->meshes[0];//debugRayMesh;
-	data3.shader = debugShader;//debugShaderLine;
-	renderer->QueueForDebugDraw(data3);
-
 	////////////////////////////////////////////////
 	////////////////////////////////////////////////
 
-
-	//Local axis drawing test (FORWARD)
-	glm::mat4 fwdModel(1);
-	glm::vec4 fwdDir = T->GetRotationMatrix()[2];
-	//Rotation (gonna only rotate x axis)
-	fwd = glm::vec3(fwdDir);
-	right = glm::cross(fwd, { 0,1,0 });
-	up = glm::cross(right, fwd);
-	glm::mat3 Rot = { fwd, up, right };
-	Rot = Rot * glm::mat3(3.0f);
-	fwdModel[0] = glm::vec4(Rot[0].x, Rot[0].y, Rot[0].z, 0.0f);
-	fwdModel[1] = glm::vec4(Rot[1].x, Rot[1].y, Rot[1].z, 0.0f);
-	fwdModel[2] = glm::vec4(Rot[2].x, Rot[2].y, Rot[2].z, 0.0f);
-	//Translation
-	fwdModel[3] = T->GetPosition();
-	fwdModel[3][3] = 1.0f;
-	//------------------
-	data3 = {};
-	data3.diffuseColor = { 0, 0, 1, 1.0f };
-	data3.model = fwdModel;
-	data3.mesh = debugRay->meshes[0];;
-	data3.shader = debugShader;;
-	renderer->QueueForDebugDraw(data3);
-
-	//Local axis drawing test (UP)
-	fwdModel = glm::mat4(1);
-	fwdDir = T->GetRotationMatrix()[1];
-	//Rotation (gonna only rotate x axis)
-	fwd = glm::vec3(fwdDir);
-	right = T->GetRotationMatrix()[0]; //glm::cross(fwd, { 0,1,0 });
-	up = T->GetRotationMatrix()[2];    //glm::cross(right, fwd);
-	Rot = { fwd, up, right };
-	Rot = Rot * glm::mat3(3.0f);
-	fwdModel[0] = glm::vec4(Rot[0].x, Rot[0].y, Rot[0].z, 0.0f);
-	fwdModel[1] = glm::vec4(Rot[1].x, Rot[1].y, Rot[1].z, 0.0f);
-	fwdModel[2] = glm::vec4(Rot[2].x, Rot[2].y, Rot[2].z, 0.0f);
-	//Translation
-	fwdModel[3] = T->GetPosition();
-	fwdModel[3][3] = 1.0f;
-	//------------------
-	data3 = {};
-	data3.diffuseColor = { 1, 0, 0, 1.0f };
-	data3.model = fwdModel;
-	data3.mesh = debugRay->meshes[0];;
-	data3.shader = debugShader;;
-	renderer->QueueForDebugDraw(data3);
-
-	//Local axis drawing test (RIGHT)
-	fwdModel = glm::mat4(1);
-	fwdDir = T->GetRotationMatrix()[0];
-	//Rotation (gonna only rotate x axis)
-	fwd = glm::vec3(fwdDir);
-	right = glm::cross(fwd, { 0,1,0 });
-	up = glm::cross(right, fwd);
-	Rot = { fwd, up, right };
-	Rot = Rot * glm::mat3(3.0f);
-	fwdModel[0] = glm::vec4(Rot[0].x, Rot[0].y, Rot[0].z, 0.0f);
-	fwdModel[1] = glm::vec4(Rot[1].x, Rot[1].y, Rot[1].z, 0.0f);
-	fwdModel[2] = glm::vec4(Rot[2].x, Rot[2].y, Rot[2].z, 0.0f);
-	//Translation
-	fwdModel[3] = T->GetPosition();
-	fwdModel[3][3] = 1.0f;
-	//------------------
-	data3 = {};
-	data3.diffuseColor = { 0, 1, 0, 1.0f };
-	data3.model = fwdModel;
-	data3.mesh = debugRay->meshes[0];;
-	data3.shader = debugShader;;
-	renderer->QueueForDebugDraw(data3);
+	//AABB
+	/// glm::vec3 sizeAABB = GetAABBRadiusFromOBB();
+	/// data.diffuseColor = { 0, 1, 1, 0.25f };
+	/// glm::mat4 tempMod(1);
+	/// tempMod[0][0] = sizeAABB.x;
+	/// tempMod[1][1] = sizeAABB.y;
+	/// tempMod[2][2] = sizeAABB.z;
+	/// tempMod[3] = T->GetPosition(); //Here we should be adding the displacement in order for it to work I think
+	/// data.model = tempMod;
+	/// data.mesh = debugMesh;
+	/// data.shader = debugShader;
+	/// data.BoneTransformations = 0;
+	/// renderer->QueueForDebugDraw(data);
 }
 
 
 glm::vec3 RigidbodyComponent::GetOBBRadiusVector() const 
 {
 	return this->OBBRadius;
+}
+
+glm::vec4 RigidbodyComponent::GetOBBCenterOffsetScaled() const
+{
+	//TODO - FIND CLEANER ALTERNATIVE
+	Transform *T = this->m_owner->GetComponent<Transform>();
+	glm::mat4 R = T->GetRotationMatrix();
+	glm::vec4 OrientedOffset = R * OBBCenterOffsetScaled;
+	//glm::vec4 OrientedOffset = (R[0] * OBBCenterOffsetScaled.x) + (R[1] * OBBCenterOffsetScaled.y) + (R[2] * OBBCenterOffsetScaled.z);
+	return OrientedOffset;
 }
 
 //THIS WILL ONLY WORK IF POSITION IS INTEGRATED CORRECTLY
@@ -455,18 +493,71 @@ void RigidbodyComponent::handleInput(float dt)
 
 	if (inputMgr->getKeyPress(SDL_SCANCODE_RIGHT))
 	{
-		ApplyForce(moveSpeed * right, { 0,1,0 });
+		ApplyForce(moveSpeed * right, { 0,0.25f,0 });
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_LEFT))
 	{
-		ApplyForce( -moveSpeed * right, { 0,1,0 });
+		ApplyForce( -moveSpeed * right, { 0,0.25f,0 });
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_UP))
 	{
-		ApplyForce( moveSpeed * fwd, { 0,1,0 });
+		ApplyForce( moveSpeed * fwd, { 0,0.25f,0 });
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_DOWN))
 	{
-		ApplyForce( -moveSpeed * fwd, { 0,1,0 });
+		ApplyForce( -moveSpeed * fwd, { 0,0.25f,0 });
 	}
+
+
+	//TOGGLE TREE
+	if (inputMgr->getKeyTrigger(SDL_SCANCODE_SPACE))
+	{
+ 		physicsMgr->publicToggleVBH();
+	}
+}
+
+
+//////////////////////////////////////////////////////////
+//  DEBUG DRAW OF MESHES  //  TEMPORAL - MOVE TO DEBUG  //
+//////////////////////////////////////////////////////////
+
+void RigidbodyComponent::DrawMeshWithOrientation(Mesh *mesh, Shader *shader,
+	glm::vec4 const& dir, glm::vec4 const& worldPos, 
+	float scale, glm::vec4 const& color) 
+{
+	//Model matrix we'll give to the object
+	glm::mat4 rayModel(1);
+	
+	//Dealing with the direction vector used (forward)
+	///float f = glm::length(dir);
+	///glm::vec4 forceDir = dir / f;
+	glm::vec4 forceDir = glm::normalize(dir);
+	
+	//If dir is parallel to up, we need to use another to get right
+	glm::vec3 fwd = glm::vec3(forceDir);
+	glm::vec3 right = glm::cross(fwd, { 0,1,0 });
+	if (right == glm::vec3(0))
+		right = glm::cross(fwd, { 0,0,1 });
+	glm::vec3 up = glm::cross(right, fwd);
+	
+	//Rotation - Scale
+	glm::mat3 R = { fwd, up, right }; 
+	R = R * glm::mat3(scale);
+	rayModel[0] = glm::vec4(R[0].x, R[0].y, R[0].z, 0.0f);
+	rayModel[1] = glm::vec4(R[1].x, R[1].y, R[1].z, 0.0f);
+	rayModel[2] = glm::vec4(R[2].x, R[2].y, R[2].z, 0.0f);
+	
+	//Translation
+	rayModel[3] = worldPos;
+	
+	//Final diagonal
+	rayModel[3][3] = 1.0f;
+	
+	//Pass to graphic's manager
+	DrawDebugData data = {};
+	data.diffuseColor = color;
+	data.model = rayModel;
+	data.mesh = mesh;
+	data.shader = shader;
+	renderer->QueueForDebugDraw(data);
 }

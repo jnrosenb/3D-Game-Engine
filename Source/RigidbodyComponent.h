@@ -40,16 +40,20 @@ public:
 	virtual void DeserializeInit() override;
 	virtual void Begin() override;
 	
-	//Returns true if the rigidbody interacts with particles
+	//Getting data regarding interaction with particles
 	bool HasParticleInteraction() const { return hasParticleInteraction; }
+	std::string const& GetParticleCollider() const { return ParticleCollider; }
 
 	//GETTERS
 	float GetMass() const { return this->mass; }
+	bool IsStatic() const { return mass == 0.0f; }
 
 	//OBB getter, for now
 	glm::vec3 GetOBBRadiusVector() const;
+	glm::vec4 GetOBBCenterOffsetScaled() const;
 	float GetOOBBMaximumLength() const;
 	glm::vec3 GetPositionEstimate() const;
+	glm::vec3 GetAABBRadiusFromOBB();
 
 private:
 	void ColliderSetup();
@@ -60,6 +64,11 @@ private:
 	//TEMPORARY while no friction
 	void DampVelocity(glm::vec4& vel, float damping = 0.03f);
 
+	//TEMPORARY - Move to a debug class later
+	void DrawMeshWithOrientation(Mesh *mesh, Shader *shader,
+		glm::vec4 const& dir, glm::vec4 const& worldPos,
+		float scale, glm::vec4 const& color);
+
 public:
 	//To compare when using templates
 	static COMPONENT_TYPES const comp_class_type = RIGIDBODY;
@@ -68,7 +77,11 @@ private:
 	//Collider related info
 	glm::mat4 IbodyInv;
 	glm::vec3 OBBRadius;
+	glm::vec4 OBBCenterOffsetScaled;
+
+	//Particle stuff
 	bool hasParticleInteraction;
+	std::string ParticleCollider;
 
 	//Also collider info, but more on debug draw side of things
 	AABB aabb;

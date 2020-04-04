@@ -171,5 +171,61 @@ namespace AuxMath
 		}
 		return 0;
 	}
+
+
+	//Method used temporarily by GJK to get vertices on world space
+	void VerticesFromOBB(OBB const& obb, std::vector<glm::vec4>& vertices) 
+	{
+		glm::vec4 pos (obb.position.x , obb.position.y, obb.position.z, 1.0f);
+		glm::vec4 rad (obb.radius.x , obb.radius.y, obb.radius.z, 1.0f);
+		glm::vec4 axis[3] = { 
+			glm::vec4(obb.axis[0].x, obb.axis[0].y, obb.axis[0].z, 0.0f),
+			glm::vec4(obb.axis[1].x, obb.axis[1].y, obb.axis[1].z, 0.0f),
+			glm::vec4(obb.axis[2].x, obb.axis[2].y, obb.axis[2].z, 0.0f)
+		};
+
+
+		vertices.push_back(pos + (axis[0] * rad.x) + (axis[1] * rad.y) + (axis[2] * rad.z));
+		vertices.push_back(pos + (axis[0] * rad.x) + (axis[1] * rad.y) - (axis[2] * rad.z));
+		vertices.push_back(pos + (axis[0] * rad.x) - (axis[1] * rad.y) + (axis[2] * rad.z));
+		vertices.push_back(pos + (axis[0] * rad.x) - (axis[1] * rad.y) - (axis[2] * rad.z));
+		vertices.push_back(pos - (axis[0] * rad.x) + (axis[1] * rad.y) + (axis[2] * rad.z));
+		vertices.push_back(pos - (axis[0] * rad.x) + (axis[1] * rad.y) - (axis[2] * rad.z));
+		vertices.push_back(pos - (axis[0] * rad.x) - (axis[1] * rad.y) + (axis[2] * rad.z));
+		vertices.push_back(pos - (axis[0] * rad.x) - (axis[1] * rad.y) - (axis[2] * rad.z));
+
+		/// vertices.push_back({
+		/// 	pos.x + axis.x * rad.x, 
+		/// 	pos.y + axis.y * rad.y, 
+		/// 	pos.z + axis.z * rad.z, 1.0f});
+		/// vertices.push_back({ 
+		/// 	pos.x + axis.x * rad.x,
+		/// 	pos.y + axis.y * rad.y,
+		/// 	pos.z - axis.z * rad.z, 1.0f });
+		/// vertices.push_back({ 
+		/// 	pos.x - axis.x * rad.x,
+		/// 	pos.y + axis.y * rad.y,
+		/// 	pos.z - axis.z * rad.z, 1.0f });
+		/// vertices.push_back({ 
+		/// 	pos.x - axis.x * rad.x,
+		/// 	pos.y + axis.y * rad.y,
+		/// 	pos.z + axis.z * rad.z, 1.0f });
+		/// vertices.push_back({ 
+		/// 	pos.x - axis.x * rad.x,
+		/// 	pos.y - axis.y * rad.y,
+		/// 	pos.z + axis.z * rad.z, 1.0f });
+		/// vertices.push_back({ 
+		/// 	pos.x - axis.x * rad.x,
+		/// 	pos.y - axis.y * rad.y,
+		/// 	pos.z - axis.z * rad.z, 1.0f });
+		/// vertices.push_back({ 
+		/// 	pos.x + axis.x * rad.x,
+		/// 	pos.y - axis.y * rad.y,
+		/// 	pos.z - axis.z * rad.z, 1.0f });
+		/// vertices.push_back({ 
+		/// 	pos.x + axis.x * rad.x,
+		/// 	pos.y - axis.y * rad.y,
+		/// 	pos.z + axis.z * rad.z, 1.0f });
+	}
 }
 

@@ -12,6 +12,8 @@ namespace AuxMath
 		std::vector<glm::vec4> pairs;
 	};
 
+	glm::vec2 SampleGaussian_BoxMuller(float stdev);
+
 	void genGaussianWeights(int kernelRadius, std::vector<float>& weights);
 
 	void normalizeWeights(std::vector<float>& weights, float sum);

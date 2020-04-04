@@ -28,6 +28,7 @@ public:
 	virtual void Update(float dt) override;
 	virtual void Draw() override;
 	virtual void DeserializeInit() override;
+	virtual void Begin() override;
 
 	Model *GetModel() const;
 
@@ -71,4 +72,5 @@ public:	//TODO - Change for a public interface
 	//bools (replace with feature mask on future)
 	bool useDiffuseTexture;
 	bool useNormalMap;
+	bool useAlpha;
 };
