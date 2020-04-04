@@ -9,14 +9,14 @@
     },
     {
       "id": "gridWave",
-      "width": 16,
-      "height": 16,
-      "world_height": 120.0,
-      "world_width": 120.0,
+      "width": 32,
+      "height": 32,
+      "world_height": 256.0,
+      "world_width": 256.0,
 
-      "amplitude": 6.0,
-      "k": 0.05,
-      "alpha": 0.01
+      "amplitude": 1.0,
+      "g": 3.0,
+      "wind":[40.0, 0.0]
     },
     {
       "id": "render",
@@ -26,7 +26,8 @@
       "primitive": "dynamic_plane",
       "x_tiling": 10,
       "y_tiling": 10,
-      "use_alpha": true
+      "use_alpha": true,
+      "cast_shadow": false
     }
   ]
 }

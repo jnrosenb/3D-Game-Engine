@@ -118,10 +118,10 @@ int main(int argc, char **argv)
 	#endif
 
 	//Load the first scene
-	///superFactory.LoadScene("TestScene01.json");   //GJK
+	superFactory.LoadScene("TestScene01.json");   //GJK
 	///superFactory.LoadScene("WorkingScene.json");
 	///superFactory.LoadScene("PhysicScene01.json");
-	superFactory.LoadScene("WaterSurface.json");
+	///superFactory.LoadScene("WaterSurface.json");
 	renderer->init();
 
     #if USING_IMGUI

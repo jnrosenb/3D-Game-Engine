@@ -407,7 +407,9 @@ public:
 					const Value& ac3 = attribute["primitive"];
 					assert(ac3.IsString());
 					std::string primitive = ac3.GetString();
+					
 					render->primitive = primitive;
+					render->use_loaded_mesh = false;
 				}
 
 				if (attribute.HasMember("x_tiling"))
@@ -426,6 +428,17 @@ public:
 				else 
 				{
 					render->useAlpha = false;
+				}
+				
+				if (attribute.HasMember("cast_shadow"))
+				{
+					const Value& ac4 = attribute["cast_shadow"];
+					assert(ac4.IsBool());
+					render->castShadow = ac4.GetBool();
+				}
+				else 
+				{
+					render->castShadow = true;
 				}
 
 				if (attribute.HasMember("y_tiling"))
@@ -890,17 +903,17 @@ public:
 					assert(ac4.IsFloat());
 					gridWave->phillipAmplitude = ac4.GetFloat();
 				}
-				if (attribute.HasMember("k"))
+				if (attribute.HasMember("g"))
 				{
-					const Value& ac4 = attribute["k"];
+					const Value& ac4 = attribute["g"];
 					assert(ac4.IsFloat());
-					gridWave->k = ac4.GetFloat();
+					gridWave->G = ac4.GetFloat();
 				}
-				if (attribute.HasMember("alpha"))
+				if (attribute.HasMember("wind"))
 				{
-					const Value& ac4 = attribute["alpha"];
-					assert(ac4.IsFloat());
-					gridWave->alpha = ac4.GetFloat();
+					const Value& ac4 = attribute["wind"];
+					assert(ac4.IsArray());
+					gridWave->wind = glm::vec2(ac4[0].GetFloat(), ac4[1].GetFloat());
 				}
 
 

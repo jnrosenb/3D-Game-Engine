@@ -5,10 +5,11 @@
 ///INCLUDES
 #include "BaseComponent.h"
 #include <vector>
+#include <tuple>
 #include "../External/Includes/glm/glm.hpp"
 #include <cmath>
 #include <complex>
-#include "Math/FFT2.h"	//Potential replacement for Fourier.h
+#include "Math/FFT2.h"
 
 class Mesh;
 class Shader;
@@ -57,8 +58,12 @@ private:
 	float worldHeight;
 
 	//TEMPORAL - For testing purposes
-	float k, alpha, phillipAmplitude;
+	float G, phillipAmplitude;
+	glm::vec2 wind;
 	float totalTime;
+
+	//Auxiliary for IFT params
+	std::vector<std::tuple<std::complex<float>, std::complex<float>>> PowerGrid;
 
 	//For drawing the plane mesh
 	std::vector<glm::vec4> vertices;
