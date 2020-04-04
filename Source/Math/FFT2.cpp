@@ -26,7 +26,8 @@ namespace AuxMath
 		int gridH = grid.getHeight();
 		float vFreq = (row <= gridH / 2) ? row / physHeight : (-gridH + row) / physHeight;
 		
-		return {0.35f, 0};//hFreq, vFreq }; //0.25-0.35
+		//return {hFreq, vFreq }; //0.25-0.35
+		return {0.35f, 0.13f}; //0.25-0.35
 	}
 }
 

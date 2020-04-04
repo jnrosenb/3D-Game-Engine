@@ -116,6 +116,7 @@ struct DrawData
 	//Future flag (for now, bools)
 	int useDiffuseTexture;
 	int useNormalMap;
+	int castShadow;
 
 	//PBR PARAMS
 	float roughness;

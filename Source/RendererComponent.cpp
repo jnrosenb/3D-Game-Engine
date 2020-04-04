@@ -33,6 +33,7 @@ Render::Render(GameObject *owner) :
 	yTiling = 1;
 	useDiffuseTexture = false;
 	useNormalMap = false;
+	castShadow = true;
 }
 
 Render::~Render()
@@ -80,6 +81,7 @@ void Render::Draw()
 	
 	data.useDiffuseTexture = static_cast<int>(useDiffuseTexture);
 	data.useNormalMap = static_cast<int>(useNormalMap);
+	data.castShadow = castShadow;
 
 	data.roughness = this->roughness;
 	data.metallic = this->metallic;
@@ -137,6 +139,7 @@ void Render::initModel()
 	}
 	else 
 	{
+		std::cout << "CREATING PRIMITIVE MODEL *******************************" << std::endl;
 		this->model = new Model(true, this->primitive);
 	}
 }

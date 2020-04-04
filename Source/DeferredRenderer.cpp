@@ -664,6 +664,10 @@ void DeferredRenderer::CascadedShadowPass()
 			shadowShader->UseShader();
 			DrawData &data = graphicQueue[i];
 
+			//Make non casting shadow being skipped
+			if (data.castShadow == 0)
+				continue;
+
 			//Since a node has a model 
 			//(and all the meshes of a model for now share bones):
 			if (data.BoneTransformations)

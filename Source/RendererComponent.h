@@ -73,4 +73,5 @@ public:	//TODO - Change for a public interface
 	bool useDiffuseTexture;
 	bool useNormalMap;
 	bool useAlpha;
+	bool castShadow;
 };

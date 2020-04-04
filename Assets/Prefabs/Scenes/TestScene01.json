@@ -26,6 +26,14 @@
         "scale": [ 150, 150.0, 10.0 ]
       }
     },
+    {
+      "name": "Grid01.json",
+      "transform": {
+        "position": [ 0, 10.0, 0 ],
+        "rotation": [ 180, 0, 0 ],
+        "scale": [ 100.0, 1.0, 100.0 ]
+      }
+    },
 
     {
       "name": "ParticleSpawner.json",
@@ -42,6 +50,6 @@
         "rotation": [ 40, 20, 30 ],
         "scale": [ 3, 3, 3 ]
       }
-    }  
+    }
   ]
 }

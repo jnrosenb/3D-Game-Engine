@@ -235,7 +235,7 @@ namespace AuxMath
 			//Get c-th column into array
 			int const colLen = dimH;
 			for (int i = 0; i < colLen; ++i)
-				tempCol[i] = C(c, i);
+				tempCol[i] = C(i, c);
 				//tempCol[i] = C(dimW * i + c);************************
 			std::complex<float> *col = colSolver(&tempCol[0]);
 
