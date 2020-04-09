@@ -1,7 +1,7 @@
 {
   "Skydome": {
-    "Texture": "Factory_Catwalk_2k.hdr",
-    "Irradiance": "Factory_Catwalk_Env.hdr"
+    "Texture": "Arches_E_PineTree_3k.hdr",
+    "Irradiance": "Arches_E_PineTree_3k.irr.hdr"
   },
   "Lights": [
     {
@@ -21,19 +21,29 @@
     {
       "name": "Floor01.json",
       "transform": {
-        "position": [ 0, -3.5, 0 ],
+        "position": [ 0, -50, 0 ],
         "rotation": [ -90.0, 0, 0 ],
-        "scale": [ 150, 150.0, 10.0 ]
+        "scale": [ 150, 150.0, 100.0 ]
       }
     },
     {
       "name": "Grid01.json",
       "transform": {
-        "position": [ 0, 10.0, 0 ],
+        "position": [ 0, -3.0, 0 ],
         "rotation": [ 180, 0, 0 ],
-        "scale": [ 100.0, 1.0, 100.0 ]
+        "scale": [ 1500.0, 1.0, 1500.0 ]
       }
     },
+    {
+      "name": "Terrain01.json",
+      "transform": {
+        "position": [ 0, -4, 0 ],
+        "rotation": [ 0.0, 0, 0 ],
+        "scale": [ 2000, 1500.0, 2000.0 ]
+      }
+    },
+
+
 
     {
       "name": "ParticleSpawner.json",

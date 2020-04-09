@@ -307,8 +307,12 @@ namespace AuxMath
 		glm::vec4& outPoint, FeatureBase *outFeat)
 	{
 		outPoint = points[0];
-		outFeat->type = POINT;
-		outFeat->pA = outPoint;
+		
+		if (outFeat) 
+		{
+			outFeat->type = POINT;
+			outFeat->pA = outPoint;
+		}
 
 		//If point is origin, return true
 		if (std::abs(outPoint.x) <= EPSILON && std::abs(outPoint.y) <= EPSILON && std::abs(outPoint.z) <= EPSILON)
@@ -326,10 +330,14 @@ namespace AuxMath
 		outPoint = A + d * glm::dot(-A, d);
 
 		//Set feature as edge
-		outFeat->type = LINE;
-		outFeat->pA = A;
-		outFeat->pB = B;
-		outFeat->alpha = 1.0f - glm::length(outPoint-A) / glm::length(B-A); //CHECK THIS///////////////////////****************************************************
+
+		if (outFeat)
+		{
+			outFeat->type = LINE;
+			outFeat->pA = A;
+			outFeat->pB = B;
+			outFeat->alpha = 1.0f - glm::length(outPoint - A) / glm::length(B - A); //CHECK THIS///////////////////////****************************************************
+		}
 
 		//If point in edge is the origin, return true (INTERSECTION)
 		if (std::abs(outPoint.x) <= EPSILON && std::abs(outPoint.y) <= EPSILON && std::abs(outPoint.z) <= EPSILON)
@@ -368,12 +376,15 @@ namespace AuxMath
 		float a = 1.0f - b - g;
 
 		//Test triangle if none of the previous
-		outFeat->type = TRIANGLE;
-		outFeat->pA = A;
-		outFeat->pB = B;
-		outFeat->pC = C;
-		outFeat->alpha = a;
-		outFeat->beta = b;
+		if (outFeat)
+		{
+			outFeat->type = TRIANGLE;
+			outFeat->pA = A;
+			outFeat->pB = B;
+			outFeat->pC = C;
+			outFeat->alpha = a;
+			outFeat->beta = b;
+		}
 
 		//Find closest point in face voronoi (triangle)
 		outPoint = A*a + B*b + C*g;

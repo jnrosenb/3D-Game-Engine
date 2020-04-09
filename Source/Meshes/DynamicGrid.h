@@ -72,8 +72,10 @@ public:
 
 	virtual void Draw() const override
 	{
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		int faceCount = this->GetFaceCount();
-		glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, (void*)0);
+		glDrawElements(GL_TRIANGLES, faceCount * 3, GL_UNSIGNED_INT, (void*)0); 
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
 
 	virtual void DrawInstanced(int count) const override

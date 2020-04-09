@@ -180,7 +180,7 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 	glm::vec4 restitutionForce(0);
 
 
-#if USE_GJK
+	#if USE_GJK
 	//WITH GJK
 	std::vector<glm::vec4> simplex;
 	bool intersects = AuxMath::GJKSolver::GJK_Intersects(A_OBB, B_OBB, simplex);
@@ -189,7 +189,7 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 		///Call EPA, giving the simplex we got from the 
 		///intersection and the manifold to fill
 		AuxMath::GJK_Manifold_V1 manifoldInfo = {};
-		AuxMath::GJKSolver::EPA(simplex, manifoldInfo);
+		AuxMath::GJKSolver::EPA(A_OBB, B_OBB, simplex, manifoldInfo);
 
 		///Push contact pair from EPA into list
 		CollisionContact contact = {};
@@ -200,9 +200,6 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 
 		///For now, for debug draw purposes
 		m_gjk_manifolds.push_back(manifoldInfo);
-
-		//std::cout << ">> INTERSECTION! - Simplex size: " << 
-		//simplex.size() << ", >> " << rand() << std::endl;
 	}
 	else 
 	{
@@ -213,7 +210,7 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 		m_gjk_manifolds.push_back(manifoldInfo);
 	}
 
-#else
+	#else
 	//SAT METHOD
 	bool intersects = AuxMath::TestOBB_OBB(A_OBB, B_OBB, restitutionForce);
 	
@@ -243,7 +240,7 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 		//Impulse code (for now, just apply a force)
 		///B->ApplyForce(restitutionForce * -1.0f, { 0, 0, 0 });
 	}
-#endif
+	#endif
 
 	return intersects;
 }

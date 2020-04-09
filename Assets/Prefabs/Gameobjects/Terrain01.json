@@ -8,24 +8,20 @@
       "scale": [ 300, 300, 1.0 ]
     },
     {
-      "id": "rigidbody",
-      "mass": 1.0,
-      "interact_with_particles": true,
-      "particle_collider": "sphere"
-    },
-    {
       "id": "render",
       "diffuse": [ 1.0, 1.0, 1.0, 1.0 ],
       "specular": [ 1.0, 1.0, 1.0, 1.0 ],
       "vertex_id": 0,
       "load_model": true,
-      "roughness": 0.001,
-      "metallic": 0.5,
+      "cast_shadow": false,
+      "roughness": 0.8,
+      "metallic": 0.0,
       "primitive": "cube",
-      "model_name": "Cube.fbx",
+      "model_name": "terrain.fbx",
 
-      "diffuse_texture": "Bricks_diff.jpg",
-      "normal_map": "Bricks_nml.jpg",
+      "diffuse_texture": "Ground_Dirt_007_basecolor.jpg",
+      "normal_map": "Ground_Dirt_007_normal.jpg",
+      "roughness_map": "Ground_Dirt_007_roughness.jpg",
 
       "x_tiling": 30,
       "y_tiling": 30

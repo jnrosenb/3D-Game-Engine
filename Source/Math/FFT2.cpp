@@ -9,7 +9,7 @@
 #include "FFT2.h"
 
 //TEMPORARY
-#include "Stat.h"
+#include <cmath>
 
 
 namespace AuxMath 
@@ -26,8 +26,8 @@ namespace AuxMath
 		int gridH = grid.getHeight();
 		float vFreq = (row <= gridH / 2) ? row / physHeight : (-gridH + row) / physHeight;
 		
-		//return {hFreq, vFreq }; //0.25-0.35
-		return {0.35f, 0.13f}; //0.25-0.35
+		return {hFreq * 6.3f, vFreq * 6.3f };
+		//return {0.25f, 0.0f}; //0.25-0.35
 	}
 }
 

@@ -114,12 +114,12 @@ void GridWaveComponent::UpdateBuffers()
 			// When condition is false, corner vertices are been given a wrong default value (unless zero works?)
 			//Cache the vertices
 			glm::vec3 ctr = vertices[gridWidth*i + j];
-			glm::vec3 t_r = (i < (gridHeight - 1) && j < (gridWidth - 1)) ? vertices[gridWidth*(i + 1) + (j + 1)] : glm::vec3(0, 0, 0);
-			glm::vec3 t_m = (j < gridWidth - 1) ? vertices[gridWidth*(i)+(j + 1)] : glm::vec3(0, 0, 0);
-			glm::vec3 b_m = (j > 0) ? vertices[gridWidth*(i)+(j - 1)] : glm::vec3(0, 0, 0);
-			glm::vec3 b_l = (i > 0 && j > 0) ? vertices[gridWidth*(i - 1) + (j - 1)] : glm::vec3(0, 0, 0);
-			glm::vec3 m_r = (i < (gridHeight + 1)) ? vertices[gridWidth*(i + 1) + (j)] : glm::vec3(0, 0, 0);
-			glm::vec3 m_l = (i > 0) ? vertices[gridWidth*(i - 1) + (j)] : glm::vec3(0, 0, 0);
+			glm::vec3 t_r = (i < (gridHeight - 1) && j < (gridWidth - 1)) ? vertices[gridWidth*(i + 1) + (j + 1)] : ctr;// glm::vec3(0, 0, 0);
+			glm::vec3 t_m = (j < gridWidth - 1) ? vertices[gridWidth*(i)+(j + 1)] : ctr;//glm::vec3(0, 0, 0);
+			glm::vec3 b_m = (j > 0) ? vertices[gridWidth*(i)+(j - 1)] : ctr;//glm::vec3(0, 0, 0);
+			glm::vec3 b_l = (i > 0 && j > 0) ? vertices[gridWidth*(i - 1) + (j - 1)] : ctr;//glm::vec3(0, 0, 0);
+			glm::vec3 m_r = (i < (gridHeight + 1)) ? vertices[gridWidth*(i + 1) + (j)] : ctr;//glm::vec3(0, 0, 0);
+			glm::vec3 m_l = (i > 0) ? vertices[gridWidth*(i - 1) + (j)] : ctr;//glm::vec3(0, 0, 0);
 
 			//Calculate the normal for each of the adjacent 6 faces
 			glm::vec3 normal(0);
@@ -230,8 +230,9 @@ std::complex<float> GridWaveComponent::PowerSpectrum(glm::vec2 const& k)
 	float L = std::pow(windSpeed, 2) / G;
 	float e = std::exp(1.0f / (kmgt*kmgt*L*L));
 	std::complex<float> denom = pow6 * e;
-	
-	return num / denom;
+
+	std::complex<float> result = (num / denom);// *exp(-kmgt * kmgt * L * L);
+	return result;
 }
 
 

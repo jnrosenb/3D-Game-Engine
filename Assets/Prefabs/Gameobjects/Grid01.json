@@ -9,21 +9,23 @@
     },
     {
       "id": "gridWave",
-      "width": 32,
-      "height": 32,
+      "width": 64,
+      "height": 64,
       "world_height": 256.0,
       "world_width": 256.0,
 
-      "amplitude": 1.0,
-      "g": 3.0,
-      "wind":[40.0, 0.0]
+      "amplitude": 10000.0,
+      "g": 1.0,
+      "wind":[1.0, 0.0]
     },
     {
       "id": "render",
-      "diffuse": [ 0.0, 0.0, 0.6, 0.5 ],
+      "diffuse": [ 0.0, 0.6, 0.6, 0.5 ],
       "specular": [ 1.0, 1.0, 1.0, 1.0 ],
       "vertex_id": 0,
       "primitive": "dynamic_plane",
+      "roughness": 0.1,
+      "metallic": 0.01,
       "x_tiling": 10,
       "y_tiling": 10,
       "use_alpha": true,
