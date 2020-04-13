@@ -288,29 +288,30 @@ public:
 		return;
 		//STRESS TEST***********************************
 		//CREATE MANY RIGIDBODIES***********************
-		int range = 6; //13 for near 2000
+		int range = 2; //13 for near 2000
 		for (int i = -(range / 2); i < (range / 2); ++i)
 		{
 			for (int j = -(range / 2); j < (range / 2); ++j)
 			{
 				for (int k = -(range / 2); k < (range / 2); ++k)
 				{
-					float separation = 5.0f;
+					float separation = 10.0f;
 					GameObject *go = new GameObject();
 					//Transform
 					Transform *transform = go->AddComponent<Transform>();
-					transform->m_position = glm::vec4(separation * i, separation * k, separation * j, 1);
-					transform->m_scale = glm::vec4(2, 2, 2, 1);
+					transform->m_position = glm::vec4(separation * i, separation * k + 30.0f, separation * j, 1);
+					transform->m_scale = glm::vec4(5, 5, 5, 1);
 					transform->DeserializeInit();
 					//Renderer
 					Render *render = go->AddComponent<Render>();
 					render->primitive = "cube";
-					render->xTiling = 5;
-					render->yTiling = 5;
+					render->xTiling = 1;
+					render->yTiling = 1;
 					SDL_Surface *surf = resMgr->loadSurface("crate.png");
 					renderer->generateTextureFromSurface(surf, "crate.png", 5);
 					render->diffuseTexture = "crate.png";
 					render->useDiffuseTexture = true;
+					render->useAlpha = false;
 					render->diffuseColor = glm::vec4(static_cast<float>(rand()) / RAND_MAX,
 						static_cast<float>(rand()) / RAND_MAX, static_cast<float>(rand()) / RAND_MAX, 1);
 					render->DeserializeInit();
@@ -568,6 +569,17 @@ public:
 				else 
 				{
 					rgbdy->hasParticleInteraction = false;
+				}
+
+				if (attribute.HasMember("affected_by_gravity"))
+				{
+					const Value& ac4 = attribute["affected_by_gravity"];
+					assert(ac4.IsBool());
+					rgbdy->affectedByGravity = ac4.GetBool();
+				}
+				else
+				{
+					rgbdy->affectedByGravity = false;
 				}
 
 				if (attribute.HasMember("shape"))

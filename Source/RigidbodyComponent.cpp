@@ -90,6 +90,8 @@ void RigidbodyComponent::Begin()
 	dParams[2] = glm::vec4(0);
 	dParams[3] = glm::vec4(0);
 
+	//Starts at zero
+	prevVel = glm::vec4(0);
 
 	//Setup OBB stuff
 	ColliderSetup();
@@ -201,33 +203,6 @@ glm::vec3 RigidbodyComponent::GetAABBRadiusFromOBB()
 
 void RigidbodyComponent::DebugDrawSetup(AABB const& aabb)
 {
-	//USING OUTLINE
-	/*
-	std::vector<glm::vec4> points;
-	points.push_back(glm::vec4(aabb.max.x, aabb.max.y, aabb.max.z, 1.0f)); // n_topRight
-	points.push_back(glm::vec4(aabb.min.x, aabb.max.y, aabb.max.z, 1.0f)); // n_topLeft    
-	points.push_back(glm::vec4(aabb.min.x, aabb.min.y, aabb.max.z, 1.0f)); // n_bottomLeft 
-	points.push_back(glm::vec4(aabb.max.x, aabb.min.y, aabb.max.z, 1.0f)); // n_bottomRight
-	points.push_back(glm::vec4(aabb.max.x, aabb.max.y, aabb.max.z, 1.0f)); // n_topRight   
-	points.push_back(glm::vec4(aabb.max.x, aabb.max.y, aabb.min.z, 1.0f)); // f_topRight   
-	points.push_back(glm::vec4(aabb.min.x, aabb.max.y, aabb.min.z, 1.0f)); // f_topLeft    
-	points.push_back(glm::vec4(aabb.min.x, aabb.max.y, aabb.max.z, 1.0f)); // n_topLeft    
-	points.push_back(glm::vec4(aabb.min.x, aabb.max.y, aabb.min.z, 1.0f)); // f_topLeft    
-	points.push_back(glm::vec4(aabb.min.x, aabb.min.y, aabb.min.z, 1.0f)); // f_bottomLeft 
-	points.push_back(glm::vec4(aabb.min.x, aabb.min.y, aabb.max.z, 1.0f)); // n_bottomLeft 
-	points.push_back(glm::vec4(aabb.min.x, aabb.min.y, aabb.min.z, 1.0f)); // f_bottomLeft 
-	points.push_back(glm::vec4(aabb.max.x, aabb.min.y, aabb.min.z, 1.0f)); // f_bottomRight
-	points.push_back(glm::vec4(aabb.max.x, aabb.min.y, aabb.max.z, 1.0f)); // n_bottomRight
-	points.push_back(glm::vec4(aabb.max.x, aabb.min.y, aabb.min.z, 1.0f)); // f_bottomRight
-	points.push_back(glm::vec4(aabb.max.x, aabb.max.y, aabb.min.z, 1.0f)); // f_topRight
-	
-	//Create new mesh with these points
-	this->debugMesh = new DebugBox(points);
-
-	this->debugShader = new Shader("Line.vert", "Line.frag");
-	this->debugShader->BindUniformBlock("test_gUBlock", 1);
-	//*/
-
 	//USING SEMI TRANSPARENT BLOCK
 	glm::vec3 size = 2.0f * aabb.radius;//{aabb.max - aabb.min};
 	size = glm::vec3(std::fabs(size.x), std::fabs(size.y), std::fabs(size.z));
@@ -247,6 +222,10 @@ void RigidbodyComponent::DebugDrawSetup(AABB const& aabb)
 
 void RigidbodyComponent::Update(float dt)
 {
+	//Gravity fake
+	if (affectedByGravity)
+		this->ApplyForce({ 0, -(1.0f * mass), 0 }, glm::vec3(0));
+
 	handleInput(dt);
 }
 
@@ -275,9 +254,10 @@ void RigidbodyComponent::PhysicsUpdate(float dt)
 
 		//Integrate for position
 		glm::vec4& position = Params[0];
-		position = position + linearVel * dt;
+		position = position + linearVel*dt;
 
-		T->translate(linearVel * dt);
+		T->translate((0.5f*dt)*(linearVel+prevVel));
+		prevVel = linearVel;
 	}
 
 	/////////////////////////////////
@@ -350,6 +330,7 @@ void RigidbodyComponent::Draw()
 	Transform *T = this->m_owner->GetComponent<Transform>();
 
 	////////////////////////////////////////////////
+	return;
 	////////////////////////////////////////////////
 
 	//ARROWS
@@ -480,7 +461,7 @@ void RigidbodyComponent::handleInput(float dt)
 		return;
 
 	Transform *T = this->m_owner->GetComponent<Transform>();
-	float moveSpeed = 2000.0f * dt;
+	float moveSpeed = 1400.0f * dt;
 	DeferredRenderer *deferred = static_cast<DeferredRenderer*>(renderer);
 	glm::vec3 fwd = deferred->GetCurrentCamera()->getLook();
 	fwd.y = 0.0f;
@@ -488,31 +469,41 @@ void RigidbodyComponent::handleInput(float dt)
 	glm::vec3 right = glm::cross(fwd, rup);
 
 	
-	///Camera
-	//deferred->GetCurrentCamera()->setEye(glm::vec3(T->GetPosition()) + glm::vec3(0.0f, 25.0f, 50.0f));
+	///Camera follow player
+	//deferred->GetCurrentCamera()->setEye(glm::vec3(T->GetPosition()) + glm::vec3(0.0f, 50.0f, 85.0f));
+
 
 	if (inputMgr->getKeyPress(SDL_SCANCODE_RIGHT))
 	{
-		ApplyForce(moveSpeed * right, { 0,0.25f,0 });
+		ApplyForce(moveSpeed * right, { 0 ,0.0f, 0 });
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_LEFT))
 	{
-		ApplyForce( -moveSpeed * right, { 0,0.25f,0 });
+		ApplyForce( -moveSpeed * right, { 0, 0.0f, 0 });
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_UP))
 	{
-		ApplyForce( moveSpeed * fwd, { 0,0.25f,0 });
+		ApplyForce( moveSpeed * fwd, { 0, 0.0f, 0 });
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_DOWN))
 	{
-		ApplyForce( -moveSpeed * fwd, { 0,0.25f,0 });
+		ApplyForce( -moveSpeed * fwd, { 0, 0.0f, 0 });
+	}
+	if (inputMgr->getKeyPress(SDL_SCANCODE_PAGEUP))
+	{
+		ApplyForce(moveSpeed * rup, { 0, 0.0f, 0 });
+	}
+	if (inputMgr->getKeyPress(SDL_SCANCODE_PAGEDOWN))
+	{
+		ApplyForce(-moveSpeed * rup, { 0, 0.0f, 0 });
 	}
 
 
 	//TOGGLE TREE
 	if (inputMgr->getKeyTrigger(SDL_SCANCODE_SPACE))
 	{
- 		physicsMgr->publicToggleVBH();
+		ApplyForce(rup * (moveSpeed * 10.0f), { 0, 0.0f, 0 });
+ 		//physicsMgr->publicToggleVBH();
 	}
 }
 

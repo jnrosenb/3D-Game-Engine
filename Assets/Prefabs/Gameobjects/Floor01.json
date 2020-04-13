@@ -9,7 +9,7 @@
     },
     {
       "id": "rigidbody",
-      "mass": 1.0,
+      "mass": 0.0,
       "interact_with_particles": true,
       "particle_collider": "sphere"
     },
@@ -26,6 +26,8 @@
 
       "diffuse_texture": "Bricks_diff.jpg",
       "normal_map": "Bricks_nml.jpg",
+
+      "use_alpha": true,
 
       "x_tiling": 30,
       "y_tiling": 30

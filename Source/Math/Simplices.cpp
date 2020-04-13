@@ -466,7 +466,7 @@ namespace AuxMath
 		glm::vec4 n = glm::normalize(vec4Cross(B - A, C - A));
 		float dot = glm::dot(support - A, n);
 
-		if (std::abs(dot) < 0.75f)//0.001f //With 1.0, the error is minimized
+		if (std::abs(dot) < 0.00001f)//0.75f)//0.001f //With 1.0, the error is minimized
 			return true;
 		return false;
 	}

@@ -8,6 +8,9 @@
 #include <vector>
 #include "Physics/GJK.h"
 
+#include <unordered_map>
+#include <string>
+
 class RigidbodyComponent;
 class AABBTree;
 class AABBNode;
@@ -21,8 +24,6 @@ struct CollisionContact
 {
 	RigidbodyComponent *rbdyA;
 	RigidbodyComponent *rbdyB;
-	glm::vec3 p0;
-	//More stuff
 	AuxMath::GJK_Manifold_V1 manifold;
 };
 
@@ -46,16 +47,24 @@ public:
 
 private:
 	bool CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B);
+	void CollisionResolutionTest(CollisionContact const& contact);
 	void RecursiveTreeCheck(AABBNode *current, AABBNode *starting);
+
+	//Contact related methods
+	glm::vec4 BodyToWorldContact(glm::vec4 const& body, RigidbodyComponent *rgbdy);
+	void CheckContactValidity(CollisionContact const& contact);
 
 private:
 	//VBH structure
 	AABBTree *vbh;
 
-	//For testing manifold
+
+	//For testing manifold---------------------------------
 	std::vector<AuxMath::GJK_Manifold_V1> m_gjk_manifolds;
 	Mesh *debugPointMesh;
 	Shader *debugShader;
+	//For testing manifold---------------------------------
+
 
 	//FOR TESTING PURPOSES
 	bool USEBVH = false, onEndOfFrameToggleVBH = false;
@@ -66,8 +75,11 @@ private:
 	}
 	//FOR TESTING PURPOSES
 	
+
 	std::vector<RigidbodyComponent*> m_rigidbodies;
 	float timeAccumulator;
 
+	//Attempts at building persistent manifolds (first is the usual vector)
 	std::vector<CollisionContact> m_contacts;
+	std::unordered_map<std::string, CollisionContact> m_persistentContacts;
 };

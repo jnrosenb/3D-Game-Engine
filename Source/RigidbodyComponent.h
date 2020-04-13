@@ -98,6 +98,7 @@ private:
 	glm::vec4 Torque;
 	glm::vec4 prevAngAccel;
 	glm::vec4 L;
+	glm::vec4 prevVel;
 
 	//Vector of diferentiated params
 	std::vector<glm::vec4> Params;  // x(t) - q       - P - L
@@ -105,6 +106,9 @@ private:
 
 	//TEMPORARY (ofr allowing controlling)
 	bool isPlayer;
+
+	//Gravity
+	bool affectedByGravity;
 
 	//Rigidbody usual stuff
 	float mass, invMass;

@@ -370,6 +370,43 @@ void DeferredRenderer::GeometryPass()
 	}
 	geometryPassShader->UnbindShader();
 
+	//Draw debug shapes
+	if (DrawDebugPass)
+	{
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE);
+		for (int i = 0; i < debugQueue.size(); ++i)
+		{
+			//Get the current drawNode
+			DrawDebugData &data = debugQueue[i];
+			data.shader->UseShader();
+
+			//Later for having animated OBB
+			if (data.BoneTransformations)
+				geometryPassShader->setMat4fArray("BoneTransf", 100, (*(data.BoneTransformations))[0]);
+
+			//Later we could have each mesh have their own OBB. For now, one per rigidbody
+			///for (int j = 0; j < data.meshes->size(); ++j)
+			{
+				//BINDING
+				///(*data.meshes)[j]->BindForDraw();
+				data.mesh->BindVAO();
+
+				//UNIFORM BINDING
+				data.shader->setMat4f("model", data.model);
+				data.shader->setVec4f("diffuseColor", data.diffuseColor.r,
+					data.diffuseColor.g, data.diffuseColor.b, data.diffuseColor.a);
+
+				//DRAW and unbind
+				data.mesh->Draw();
+				data.mesh->UnbindVAO();
+				///(*data.meshes)[j]->Draw();
+				///(*data.meshes)[j]->UnbindVAO();
+			}
+			data.shader->UnbindShader();
+		}
+	}
+
 	//Transparent objects
 	geometryPassShader->UseShader();
 	glEnable(GL_BLEND); 
@@ -454,43 +491,6 @@ void DeferredRenderer::GeometryPass()
 		}
 	}
 	geometryInstancedShader->UnbindShader();
-
-	//Draw debug shapes
-	if (DrawDebugPass) 
-	{
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_ONE, GL_ONE);
-		for (int i = 0; i < debugQueue.size(); ++i)
-		{
-			//Get the current drawNode
-			DrawDebugData &data = debugQueue[i];
-			data.shader->UseShader();
-
-			//Later for having animated OBB
-			if (data.BoneTransformations)
-				geometryPassShader->setMat4fArray("BoneTransf", 100, (*(data.BoneTransformations))[0]);
-
-			//Later we could have each mesh have their own OBB. For now, one per rigidbody
-			///for (int j = 0; j < data.meshes->size(); ++j)
-			{
-				//BINDING
-				///(*data.meshes)[j]->BindForDraw();
-				data.mesh->BindVAO();
-
-				//UNIFORM BINDING
-				data.shader->setMat4f("model", data.model);
-				data.shader->setVec4f("diffuseColor", data.diffuseColor.r,
-					data.diffuseColor.g, data.diffuseColor.b, data.diffuseColor.a);
-
-				//DRAW and unbind
-				data.mesh->Draw();
-				data.mesh->UnbindVAO();
-				///(*data.meshes)[j]->Draw();
-				///(*data.meshes)[j]->UnbindVAO();
-			}
-			data.shader->UnbindShader();
-		}
-	}
 }
 
 

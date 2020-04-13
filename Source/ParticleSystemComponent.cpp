@@ -28,6 +28,8 @@ extern PhysicsManager *physicsMgr;
 
 //Temporary (while no world exists)
 #include "Renderer.h"
+#include "DeferredRenderer.h"
+#include "Camera.h"
 extern Renderer *renderer;
 
 
@@ -435,32 +437,42 @@ void ParticleSystemComponent::handleInput(float dt)
 	if (!interactive)
 		return;
 
+	/////////////////////////////////////////////////CONTROLLER//////////////
+	return;
+
 	Transform *T = this->m_owner->GetComponent<Transform>();
+	float moveSpeed = 30.0f * dt;
+	DeferredRenderer *deferred = static_cast<DeferredRenderer*>(renderer);
+	glm::vec3 fwd = deferred->GetCurrentCamera()->getLook();
+	fwd.y = 0.0f;
+	glm::vec3 rup = { 0, 1, 0 };
+	glm::vec3 right = glm::cross(fwd, rup);
+
 	target = T->GetPosition();
-	float speed = 0.25f;
+
 	if (inputMgr->getKeyPress(SDL_SCANCODE_LEFT))
 	{
-		target = target - glm::vec3(speed, 0, 0);
+		target = target - (right * moveSpeed);
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_RIGHT))
 	{
-		target = target + glm::vec3(speed, 0, 0);
+		target = target + (right * moveSpeed);
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_UP))
 	{
-		target = target + glm::vec3(0, speed, 0);
+		target = target + (fwd * moveSpeed);
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_DOWN))
 	{
-		target = target - glm::vec3(0, speed, 0);
+		target = target - (fwd * moveSpeed);
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_PAGEUP))
 	{
-		target = target + glm::vec3(0, 0, speed);
+		target = target + (rup * moveSpeed);
 	}
 	if (inputMgr->getKeyPress(SDL_SCANCODE_PAGEDOWN))
 	{
-		target = target - glm::vec3(0, 0, speed);
+		target = target - (rup * moveSpeed);
 	}
 	T->SetPosition(target);
 }

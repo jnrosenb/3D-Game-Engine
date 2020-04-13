@@ -8,7 +8,7 @@
       "Type": "Directional",
       "Position": [ 0, 105, -100 ],
       "Color": [ 0.15, 0.15, 0.15 ],
-      "Look": [ 1, -1, 1 ],
+      "Look": [ 0.3, -1, 0.3 ],
       "Near": 0.1,
       "far": 100.0,
       "Width": 10,
@@ -23,7 +23,7 @@
       "transform": {
         "position": [ 0, -50, 0 ],
         "rotation": [ -90.0, 0, 0 ],
-        "scale": [ 150, 150.0, 100.0 ]
+        "scale": [ 80, 80.0, 100.0 ]
       }
     },
     {
@@ -46,19 +46,19 @@
 
 
     {
-      "name": "ParticleSpawner.json",
+      "name": "PhysicObj01.json",
       "transform": {
-        "position": [ -10, 6, 0 ],
-        "rotation": [ 90, 180, 70 ],
-        "scale": [ 4, 4, 4 ]
+        "position": [ -20, 26, 0 ],
+        "rotation": [ 0, 40, 0 ],
+        "scale": [ 8, 24, 8 ]
       }
     },
     {
       "name": "FlockingSpawn.json",
       "transform": {
-        "position": [ 3, 27, 0 ],
-        "rotation": [ 40, 20, 30 ],
-        "scale": [ 3, 3, 3 ]
+        "position": [ 20, 26, 0 ],
+        "rotation": [ 0, 30, 0 ],
+        "scale": [ 15, 15, 15 ]
       }
     }
   ]

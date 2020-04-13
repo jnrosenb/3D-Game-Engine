@@ -8,53 +8,106 @@
 //Experiment, to use closest point functions
 #include "../Math/Simplices.h"
 
+#define	MAX_ITER		25	//Maximum number of EPA iterations
+
 
 namespace AuxMath
 {
 	//EPA
-	void GJKSolver::EPA(OBB const& aOBB, OBB const& bOBB,
-		std::vector<glm::vec4> const& simplex,
+	void GJKSolver::EPA(std::vector<GJK_MinkowskiMap>& md_list,
+		OBB const& aOBB, OBB const& bOBB,
+		std::vector<glm::vec4>& simplex,
 		AuxMath::GJK_Manifold_V1& manifold) 
 	{
 		//We need this to access support points on MD
-		std::vector<glm::vec4> AVertices(0);
-		std::vector<glm::vec4> BVertices(0);
-		AuxMath::VerticesFromOBB(aOBB, AVertices);
-		AuxMath::VerticesFromOBB(bOBB, BVertices);
+		std::vector<BodyWorldPair> AVertices(0);
+		std::vector<BodyWorldPair> BVertices(0);
+		AuxMath::ObjWorldPairsFromOBB(aOBB, AVertices);
+		AuxMath::ObjWorldPairsFromOBB(bOBB, BVertices);
 		
 		//Used for exiting the loop
 		glm::vec4 previousClosest(0);
 
-		///Deal with cases in which simplex has less than 4 points
-		if (simplex.size() < 4) 
-		{
-			//For now, I dont wanna mess with this case, so crash
-			assert(false);
-		}
-
-		///Main scenario
 		//I'm going to need a hash structure to easily find my features
 		std::priority_queue<ClosestPack, std::vector<ClosestPack>, GlmIsLessThan> queue;
-		
 		std::vector<PolyBase*> features;
 		features.reserve(128);
-		
-		//Before starting iteration, I need to transform the simplex
-		//information (4 pts) into polytopes features info
-		GeneratePolytopeInfoFromSimplex(simplex, queue, features);
+
+		///Deal with cases in which simplex has less than 4 points
+		if (simplex.size() == 1)
+		{
+			//If simplex is point, then return that as the closest feature
+			glm::vec4 p01 = simplex[0];
+			for (auto map : md_list)
+			{
+				if (map.MDiff == p01)
+				{
+					//Out info----------------------
+					manifold.ptsA.push_back(map.ptA);
+					manifold.ptsB.push_back(map.ptB);
+					return;
+				}
+			}
+		}
+		else if (simplex.size() == 2) 
+		{
+			float sqrLen0 = glm::dot(simplex[0], simplex[0]);
+			float sqrLen1 = glm::dot(simplex[1], simplex[1]);
+			glm::vec4 pclosest = simplex[0];
+			if (sqrLen1 < sqrLen0)
+				pclosest = simplex[1];
+
+			for (auto map : md_list)
+			{
+				if (map.MDiff == pclosest)
+				{
+					//Out info----------------------
+					manifold.ptsA.push_back(map.ptA);
+					manifold.ptsB.push_back(map.ptB);
+					return;
+				}
+			}
+		}
+		else if (simplex.size() == 3) 
+		{
+			//Gotta create a double tetrahedron and initialize it
+			glm::vec3 AB = static_cast<glm::vec3>(simplex[1] - simplex[0]);
+			glm::vec3 AC = static_cast<glm::vec3>(simplex[2] - simplex[0]);
+			glm::vec3 n = glm::cross(AB, AC);
+
+			//Find support on MinkowskiDiff using that point (as in GJK)
+			BodyWorldPair supportA = GJKSolver::SupportMap(AVertices, n);
+			BodyWorldPair supportB = GJKSolver::SupportMap(BVertices, -n);
+			BodyWorldPair support = supportA - supportB;
+			support.world.w = 1.0f;
+			//We need to register this new point for later potential use
+			RegisterMinkowskiMapping(md_list, supportA, supportB, support);
+			simplex.push_back(support.world);
+
+			supportA = GJKSolver::SupportMap(AVertices, -n);
+			supportB = GJKSolver::SupportMap(BVertices, n);
+			support = supportA - supportB; 
+			support.world.w = 1.0f;
+			//We need to register this new point for later potential use
+			RegisterMinkowskiMapping(md_list, supportA, supportB, support);
+			simplex.push_back(support.world);
+
+			GeneratePolytopeInfoFrom3Simplex(simplex, queue, features);
+		}
+		else 
+			GeneratePolytopeInfoFrom4Simplex(simplex, queue, features);
+
 
 		//MAIN LOOP
-		int iTest = 0;
+		int iterations = 0;
 		while (true)
 		{
-			std::cout << "Nums of iterations: " << iTest++ << std::endl;
+			//std::cout << "Nums of iterations: " << iterations++ << std::endl;
 
 			///Get closest item from queue (only valid ones)
 			ClosestPack closest = queue.top();
 			queue.pop();
-			
-			//This would be a way of forcing the algorithm to always pick a face as a closest feature
-			bool invalid = closest.feature->markedRemove 
+			bool invalid = closest.feature->markedRemove
 				|| closest.feature->type != 2;
 			while (invalid)
 			{
@@ -66,17 +119,15 @@ namespace AuxMath
 				invalid = closest.feature->markedRemove;
 			}
 
+
 			//Support finding
-			glm::vec4 support(0);
-			bool isSupportCoplanar = FindSupportForEPA(AVertices, BVertices, closest, support);
+			BodyWorldPair support = {};
+			bool isSupportCoplanar = FindSupportForEPA(md_list, AVertices, BVertices, closest, support);
 			if (isSupportCoplanar) 
 			{
-				//Printing
-				std::cout << "COPLANAR-SHIT-------------" << std::endl;
-				std::cout << "Closest feature distance  : " << closest.closest.x << ", " << closest.closest.y << ", " << closest.closest.z << std::endl;
-				std::cout << "Previous feature distance : " << previousClosest.x << ", " << previousClosest.y << ", " << previousClosest.z << std::endl;
-				std::cout << "Nums of iterations: " << iTest++ << std::endl;
-				std::cout << "--------------------------" << std::endl;
+				//Support point found is not further from origin than current feature (is coplanar)
+				AuxMath::GJKSolver::EPATerminationRoutine(md_list, closest, 
+					iterations, manifold);///////////////////////////////////*************
 				break;
 			}
 
@@ -89,159 +140,262 @@ namespace AuxMath
 				if (base->type == 0) 
 				{
 					PolyVertex *vtx = static_cast<PolyVertex*>(base);
-					if (std::abs(vtx->point.x - support.x) < epsilon &&
-						std::abs(vtx->point.y - support.y) < epsilon &&
-						std::abs(vtx->point.z - support.z) < epsilon)
+					if ((std::abs(vtx->point.x - support.world.x) < epsilon &&
+						std::abs(vtx->point.y - support.world.y) < epsilon &&
+						std::abs(vtx->point.z - support.world.z) < epsilon) &&
+						vtx->markedRemove == false)
 					{
-						//Printing
-						std::cout << "ALREADY-SUPPORT-IN-SIMPLEX" << std::endl;
-						std::cout << "Closest feature distance  : " << closest.closest.x << ", " << closest.closest.y << ", " << closest.closest.z << std::endl;
-						std::cout << "Previous feature distance : " << previousClosest.x << ", " << previousClosest.y << ", " << previousClosest.z << std::endl;
-						std::cout << "Nums of iterations: " << iTest++ << std::endl;
-						std::cout << "--------------------------" << std::endl;
-
+						//Support point found is already added to the polytope
+						AuxMath::GJKSolver::EPATerminationRoutine(md_list, closest, 
+							iterations, manifold);///////////////////////////////////*************
 						break;
 					}
 				}
 			}
 
-
-			//DEBUGGING
-			for (PolyBase* base : features)
-			{
-				if (base->type == 0)
-				{
-					PolyVertex *vtx = static_cast<PolyVertex*>(base);
-
-					if (vtx->markedRemove == false && vtx->GetFaceCount() == 0)
-						std::cout << "";
-				}
-			}
+			//DEBUGGING (vertex not deleted)
+			/// for (PolyBase* base : features)
+			/// {
+			/// 	if (base->type == 0)
+			/// 	{
+			/// 		PolyVertex *vtx = static_cast<PolyVertex*>(base);
+			/// 
+			/// 		if (vtx->markedRemove == false && vtx->GetFaceCount() == 0)
+			/// 			std::cout << "";
+			/// 	}
+			/// }
 
 			///Now we have the support, we need to do the following steps
 			//1- Algorithm to start eliminating features (faces, edges, and at the end, points)
 			std::vector<PolyEdge*> OuterEdges;
-			AuxMath::GJKSolver::EPA_MarkFeaturesForRemoval(support, closest, OuterEdges);
+			AuxMath::GJKSolver::EPA_MarkFeaturesForRemoval(support.world, closest, OuterEdges);
 
 
+			//DEBUGGING (vertex not deleted)
+			/// for (PolyBase* base : features) 
+			/// {
+			/// 	if (base->type == 0) 
+			/// 	{
+			/// 		PolyVertex *vtx = static_cast<PolyVertex*>(base);
+			/// 
+			/// 		if (vtx->markedRemove == false && vtx->GetFaceCount() == 0) 
+			/// 			std::cout << "";
+			/// 	}
+			/// }
 
-			//DEBUGGING
-			for (PolyBase* base : features) 
-			{
-				if (base->type == 0) 
-				{
-					PolyVertex *vtx = static_cast<PolyVertex*>(base);
-
-					if (vtx->markedRemove == false && vtx->GetFaceCount() == 0) 
-						std::cout << "";
-				}
-			}
 
 			//CHECK IF THE VERTICES ARE BEING DELETED PROPERLY
 			//Be careful that any feature marked for deletion is erased from feature list and queue
 			RemoveFeatures(features, queue); /// IN PROGRESS
 
 
-			//DEBUGGING
-			for (PolyBase* base : features)
-			{
-				if (base->type == 0)
-				{
-					PolyVertex *vtx = static_cast<PolyVertex*>(base);
-
-					if (vtx->markedRemove == false && vtx->GetFaceCount() == 0)
-						std::cout << "";
-				}
-			}
+			//DEBUGGING (vertex not deleted)
+			/// for (PolyBase* base : features)
+			/// {
+			/// 	if (base->type == 0)
+			/// 	{
+			/// 		PolyVertex *vtx = static_cast<PolyVertex*>(base);
+			/// 
+			/// 		if (vtx->markedRemove == false && vtx->GetFaceCount() == 0)
+			/// 			std::cout << "";
+			/// 	}
+			/// }
 
 
 			//Create the new features in between, which will be one vertex, and many faces/edges. 
 			//When creating, they have to be added to the queue
-			GenerateNewFeatures(OuterEdges, support, features, queue); /// NOT FINISHED YET
+			GenerateNewFeatures(OuterEdges, support.world, features, queue); /// NOT FINISHED YET
 
 
-			//DEBUGGING
-			for (PolyBase* base : features)
-			{
-				if (base->type == 0)
-				{
-					PolyVertex *vtx = static_cast<PolyVertex*>(base);
+			//DEBUGGING (vertex not deleted)
+			/// for (PolyBase* base : features)
+			/// {
+			/// 	if (base->type == 0)
+			/// 	{
+			/// 		PolyVertex *vtx = static_cast<PolyVertex*>(base);
+			/// 
+			/// 		if (vtx->markedRemove == false && vtx->GetFaceCount() == 0)
+			/// 			std::cout << "";
+			/// 	}
+			/// }
 
-					if (vtx->markedRemove == false && vtx->GetFaceCount() == 0)
-						std::cout << "";
-				}
-			}
 
 			//End condition check - Filling out manifold information
 			float diff = std::abs(glm::length(closest.closest) - glm::length(previousClosest));
-			if (diff < 0.01f)
+			if (diff < 0.01f || iterations > MAX_ITER)
 			{
-				//Gather manifold info
-				//TODO
-
-				//Printing
-				std::cout << "GOOD-BREAK-..-------------" << std::endl;
-				std::cout << "Closest feature distance  : " << closest.closest.x << ", " << closest.closest.y << ", " << closest.closest.z << std::endl;
-				std::cout << "Previous feature distance : " << previousClosest.x << ", " << previousClosest.y << ", " << previousClosest.z << std::endl;
-				std::cout << "Nums of iterations: " << iTest++ << std::endl;
-				std::cout << "Diff: " << diff << std::endl;
-				std::cout << "--------------------------" << std::endl;
-
-				break;
-			}
-			//ITeration cap
-			else if (iTest > 25) 
-			{
-				//Gather manifold info
-				//TODO
-
-				//Printing
-				std::cout << "ITERATION-CAP-------------" << std::endl;
-				std::cout << "Closest feature distance  : " << closest.closest.x << ", " << closest.closest.y << ", " << closest.closest.z << std::endl;
-				std::cout << "Previous feature distance : " << previousClosest.x << ", " << previousClosest.y << ", " << previousClosest.z << std::endl;
-				std::cout << "Nums of iterations: " << iTest++ << std::endl;
-				std::cout << "Diff: " << diff << std::endl;
-				std::cout << "--------------------------" << std::endl;
-
+				AuxMath::GJKSolver::EPATerminationRoutine(md_list, closest, 
+					iterations, manifold); ///////////////////////////////////*************
 				break;
 			}
 			previousClosest = closest.closest;
-
-
-			//Potential issues
-			//	1- Winding order!!
-			//	2- Dangling pointers
 		}
 
-		//Clean up all the information (for now) INEFICIENT (Need not to be using new and delete here)
+		//Clean up all the information (for now) 
+		//INEFICIENT (Need not to be using new and delete here)
 		for (AuxMath::PolyBase *node : features)
 			delete node;
 	}
 
 
+
+	//////////////////////////////////////////////////////////////////////////////////////////*************
+	void GJKSolver::EPATerminationRoutine(std::vector<GJK_MinkowskiMap> const& md_list, 
+		ClosestPack const& closest, int iterations,
+		AuxMath::GJK_Manifold_V1& manifold)
+	{
+		//Printing
+		///std::cout << "Closest feature distance  : " << closest.closest.x << ", " << closest.closest.y << ", " << closest.closest.z << std::endl;
+		///std::cout << "Nums of iterations: " << iterations++ << std::endl;
+		///std::cout << "--------------------------" << std::endl;
+
+		//For now, I'm only allowing closest feat to be a face
+		//This will be changed in a bit**********************
+		if (closest.feature->type == 0) 
+		{
+			PolyVertex *outFeat = static_cast<PolyVertex*>(closest.feature);
+			glm::vec4 pA = glm::vec4(outFeat->point.x, outFeat->point.y, outFeat->point.z, 1.0f);
+			for (auto map : md_list)
+			{
+				if (map.MDiff == pA)
+				{
+					//Out info-------------
+					manifold.ptsA.push_back(map.ptA);
+					manifold.ptsB.push_back(map.ptB);
+					return;
+				}
+			}
+		}
+		else if (closest.feature->type == 1)
+		{
+			PolyEdge *outFeat = static_cast<PolyEdge*>(closest.feature);
+			glm::vec4 pA = glm::vec4(outFeat->vertices[0]->point.x, outFeat->vertices[0]->point.y, outFeat->vertices[0]->point.z, 1.0f);
+			glm::vec4 pB = glm::vec4(outFeat->vertices[1]->point.x, outFeat->vertices[1]->point.y, outFeat->vertices[1]->point.z, 1.0f);
+
+			GJK_MinkowskiMap map1 = {};
+			GJK_MinkowskiMap map2 = {};
+			unsigned found1 = 0;
+			unsigned found2 = 0;
+
+			//Find the correct minkowski map for both vertices on the line segment
+			//This is so we can access the points on the original bodies, not in the MD
+			for (auto map : md_list)
+			{
+				if (map.MDiff == pA)
+				{
+					map1 = map;
+					found1 = 1;
+				}
+				else if (map.MDiff == pB)
+				{
+					map2 = map;
+					found2 = 1;
+				}
+
+				if (found1 && found2)
+					break;
+			}
+
+			//Use barycentrics to get the resulting point on each body
+			glm::vec4 d = glm::normalize(pB - pA);
+			glm::vec4 outPoint = pA + d * glm::dot(-pA, d);
+			float alpha = 1.0f - glm::length(outPoint - pA) / glm::length(pB - pA);
+			float beta = 1.0f - alpha;
+
+			//Out info----------------------
+			manifold.ptsA.push_back((map1.ptA * alpha) + (map2.ptA * beta));
+			manifold.ptsB.push_back((map1.ptB * alpha) + (map2.ptB * beta));
+		}
+		else 
+		{
+			PolyFace *outFeat = static_cast<PolyFace*>(closest.feature);
+			glm::vec4 A = glm::vec4(outFeat->vertices[0]->point.x, outFeat->vertices[0]->point.y, outFeat->vertices[0]->point.z, 1.0f);
+			glm::vec4 B = glm::vec4(outFeat->vertices[1]->point.x, outFeat->vertices[1]->point.y, outFeat->vertices[1]->point.z, 1.0f);
+			glm::vec4 C = glm::vec4(outFeat->vertices[2]->point.x, outFeat->vertices[2]->point.y, outFeat->vertices[2]->point.z, 1.0f);
+
+			GJK_MinkowskiMap map1 = {};
+			GJK_MinkowskiMap map2 = {};
+			GJK_MinkowskiMap map3 = {};
+			unsigned found1 = 0;
+			unsigned found2 = 0;
+			unsigned found3 = 0;
+
+			//Find the correct minkowski map for both vertices on the line segment
+			//This is so we can access the points on the original bodies, not in the MD
+			for (auto map : md_list)
+			{
+				if (map.MDiff == A)
+				{
+					map1 = map;
+					found1 = 1;
+				}
+				else if (map.MDiff == B)
+				{
+					map2 = map;
+					found2 = 1;
+				}
+				else if (map.MDiff == C)
+				{
+					map3 = map;
+					found3 = 1;
+				}
+
+				if (found1 && found2 && found3)
+					break;
+			}
+
+			//Barycentric areas (SHOULD BE CACHED)***************************(above comment)
+			glm::vec4 n = AuxMath::Simplex::vec4Cross(B-A, C-A);
+			glm::vec4 P(0);
+			glm::vec4 R = P - n * glm::dot( (P-A), n );
+			R.w = 1.0f;
+			float Area_AB = glm::dot(n, AuxMath::Simplex::vec4Cross(R - B, A - B));
+			float Area_BC = glm::dot(n, AuxMath::Simplex::vec4Cross(R - C, B - C));
+			float Area_AC = glm::dot(n, AuxMath::Simplex::vec4Cross(R - A, C - A));
+			float totalArea = Area_AB + Area_AC + Area_BC;
+			float gamma = Area_AB / totalArea;
+			float beta = Area_AC / totalArea;
+			float alpha = 1.0f - gamma - beta;
+
+			//Out info----------------------
+			manifold.ptsA.push_back( (map1.ptA * alpha) + (map2.ptA * beta) + (map3.ptA * gamma));
+			manifold.ptsB.push_back( (map1.ptB * alpha) + (map2.ptB * beta) + (map3.ptB * gamma));
+		}
+	}
+	//////////////////////////////////////////////////////////////////////////////////////////*************
+
+
+
+
 	//Finds support point on a given direction. Also, returns boolean showing if
 	//support found is coplanar or not
-	bool GJKSolver::FindSupportForEPA(std::vector<glm::vec4> const& AVertices, 
-		std::vector<glm::vec4> const& BVertices, ClosestPack const& closest, 
-		glm::vec4& support)
+	bool GJKSolver::FindSupportForEPA(std::vector<GJK_MinkowskiMap>& md_list,
+		std::vector<BodyWorldPair> const& AVertices,
+		std::vector<BodyWorldPair> const& BVertices, ClosestPack const& closest, 
+		BodyWorldPair& support)
 	{
 		//Find support on MinkowskiDiff using that point (as in GJK)
 		glm::vec4 outPoint = closest.closest;
 		glm::vec3 d(outPoint.x, outPoint.y, outPoint.z);
-		glm::vec4 supportA = GJKSolver::SupportMap(AVertices, d);
-		glm::vec4 supportB = GJKSolver::SupportMap(BVertices, -d);
-		support = supportA - supportB;
-		support.w = 1.0f;
+		BodyWorldPair supportA = GJKSolver::SupportMap(AVertices, d);
+		BodyWorldPair supportB = GJKSolver::SupportMap(BVertices, -d);
+		support = supportA - supportB; 
+		support.world.w = 1.0f;
+
+		//We need to register this new point for later potential use
+		RegisterMinkowskiMapping(md_list, supportA, supportB, support);
 
 		//Check if support is coplanar to current closest feature
 		bool isCoplanar = false;
 		if (closest.feature->type == 0) 
 		{
+			//SHOULD NEVER ENTER HERE
 			PolyVertex *vtx = static_cast<PolyVertex*>(closest.feature);
 			//TODO
 		}
 		else if(closest.feature->type == 1)
 		{
+			//SHOULD NEVER ENTER HERE
 			PolyEdge *edge = static_cast<PolyEdge*>(closest.feature);
 			//TODO
 		}
@@ -253,7 +407,7 @@ namespace AuxMath
 			vec.push_back({ face->vertices[0]->point.x, face->vertices[0]->point.y, face->vertices[0]->point.z, 1.0f });
 			vec.push_back({ face->vertices[1]->point.x, face->vertices[1]->point.y, face->vertices[1]->point.z, 1.0f });
 			vec.push_back({ face->vertices[2]->point.x, face->vertices[2]->point.y, face->vertices[2]->point.z, 1.0f });
-			isCoplanar = AuxMath::Simplex::IsSupportCoplanar(vec, support);
+			isCoplanar = AuxMath::Simplex::IsSupportCoplanar(vec, support.world);
 		}
 
 		return isCoplanar;
@@ -454,8 +608,6 @@ namespace AuxMath
 	}
 
 
-
-
 	void GJKSolver::GenerateNewFeatures(std::vector<PolyEdge*> const& OuterEdges, glm::vec4 const& support,
 		std::vector<PolyBase*>& feats,
 		std::priority_queue<ClosestPack, std::vector<ClosestPack>, GlmIsLessThan>& queue) 
@@ -629,16 +781,16 @@ namespace AuxMath
 		// -For now, I'll assume this is not necessary
 
 		//DEBUGGING - EDGES WITH REMOVED FACES
-		for (PolyBase* base : feats)
-		{
-			if (base->type == 1)
-			{
-				PolyEdge *edge = static_cast<PolyEdge*>(base);
-				for (PolyFace *f : edge->adjacentFaces)
-					if (f->markedRemove && f->removed)
-						assert(false);
-			}
-		}
+		/// for (PolyBase* base : feats)
+		/// {
+		/// 	if (base->type == 1)
+		/// 	{
+		/// 		PolyEdge *edge = static_cast<PolyEdge*>(base);
+		/// 		for (PolyFace *f : edge->adjacentFaces)
+		/// 			if (f->markedRemove && f->removed)
+		/// 				assert(false);
+		/// 	}
+		/// }
 
 		///Iterate through the feats and delete the ones that are marked for removal
 		std::vector<int> removalIndices(0);
@@ -722,45 +874,46 @@ namespace AuxMath
 
 
 		//DEBUGGING - EDGES WITH REMOVED FACES
-		for (PolyBase* base : feats)
-		{
-			if (base->type == 1)
-			{
-				PolyEdge *edge = static_cast<PolyEdge*>(base);
-				for (PolyFace *f : edge->adjacentFaces)
-					if (f->markedRemove && f->removed)
-						assert(false);
-			}
-		}
+		/// for (PolyBase* base : feats)
+		/// {
+		/// 	if (base->type == 1)
+		/// 	{
+		/// 		PolyEdge *edge = static_cast<PolyEdge*>(base);
+		/// 		for (PolyFace *f : edge->adjacentFaces)
+		/// 			if (f->markedRemove && f->removed)
+		/// 				assert(false);
+		/// 	}
+		/// }
 	}
 
 
 
-
-	//GJK intersection
-	bool GJKSolver::GJK_Intersects(OBB const& aOBB, OBB const& bOBB,
+	///////////////////////////////////////////////////
+	////////       GJK intersection             ///////
+ 	///////////////////////////////////////////////////
+	bool GJKSolver::GJK_Intersects(std::vector<GJK_MinkowskiMap>& md_list,
+		OBB const& aOBB, OBB const& bOBB,
 		std::vector<glm::vec4>& outInfo)
 	{
 		//We need to create a list of vertices which will be used for the GJK routine
 		//Both in world space, otherwise it doesnt work
-		std::vector<GJK_MinkowskiMap> md_list(0);
-		std::vector<glm::vec4> AVertices(0);
-		std::vector<glm::vec4> BVertices(0);
-		AuxMath::VerticesFromOBB(aOBB, AVertices);
-		AuxMath::VerticesFromOBB(bOBB, BVertices);
+		std::vector<BodyWorldPair> AVertices(0);
+		std::vector<BodyWorldPair> BVertices(0);
+		AuxMath::ObjWorldPairsFromOBB(aOBB, AVertices);
+		AuxMath::ObjWorldPairsFromOBB(bOBB, BVertices);
 
 		//Simplex convex hull, stores the vertices of simplex
 		std::vector<glm::vec4> simplexCH;
 
 		//Pick random sample from Minkowski diff
-		glm::vec4 smp = (AVertices[0] - BVertices[0]);
+		glm::vec4 smp = (AVertices[0].world - BVertices[0].world);
 		glm::vec3 dir(-smp.x, -smp.y, -smp.z);
-		glm::vec4 supportA0 = GJKSolver::SupportMap(AVertices, dir);
-		glm::vec4 supportB0 = GJKSolver::SupportMap(BVertices, -dir);
-		glm::vec4 first = supportA0 - supportB0;
-		first.w = 1.0f;
+		BodyWorldPair supportA0 = GJKSolver::SupportMap(AVertices, dir);
+		BodyWorldPair supportB0 = GJKSolver::SupportMap(BVertices, -dir);
+		BodyWorldPair first = supportA0 - supportB0;
+		///first.w = 1.0f;
 		RegisterMinkowskiMapping(md_list, supportA0, supportB0, first);
-		simplexCH.push_back(first);
+		simplexCH.push_back(first.world);
 		
 		//Now we have a starting simplex, begin iterative algorithm
 		while (1)
@@ -788,17 +941,23 @@ namespace AuxMath
 				//Now, use support mapping on minkowski diff samples 
 				//to find next point to expand convex hull
 				glm::vec3 d(-outPoint.x, -outPoint.y, -outPoint.z);
-				glm::vec4 supportA = GJKSolver::SupportMap(AVertices, d);
-				glm::vec4 supportB = GJKSolver::SupportMap(BVertices, -d);
-				glm::vec4 support = supportA - supportB;
-				support.w = 1.0f;
+				BodyWorldPair supportA = GJKSolver::SupportMap(AVertices, d);
+				BodyWorldPair supportB = GJKSolver::SupportMap(BVertices, -d);
+				BodyWorldPair support = supportA - supportB;
+				support.world.w = 1.0f;
 				RegisterMinkowskiMapping(md_list, supportA, supportB, support);
+
+				//Fast exit TEST------------------------
+				float doppo = glm::dot(-d, glm::vec3(support.world.x, support.world.y, support.world.z));
+				if (doppo >= -0.01f)//0.0f)//0.001f)
+					return false;
+				//Fast exit TEST------------------------
 
 				//NON INTERSECTION (CLOSES DISTANCE)
 				//Check if support point is already in convexHull (termination) or
 				//Check if new support point is further than current closest
-				if (AuxMath::Simplex::Contains(simplexCH, support) || 
-					AuxMath::Simplex::IsSupportCoplanar(simplexCH, support) )/// ||
+				if (AuxMath::Simplex::Contains(simplexCH, support.world) || 
+					AuxMath::Simplex::IsSupportCoplanar(simplexCH, support.world) )/// ||
 					///!AuxMath::Simplex::DoesPointProjectInsideSimplex(simplexCH, support) )
 				{
 					FindClosestPoints(md_list, &outFeat, outInfo);
@@ -806,7 +965,7 @@ namespace AuxMath
 				}
 
 				//If not closest point, add support to simplex convex hull
-				AuxMath::Simplex::ExpandConvexHull(simplexCH, support);
+				AuxMath::Simplex::ExpandConvexHull(simplexCH, support.world);
 			}
 			else 
 			{
@@ -820,19 +979,20 @@ namespace AuxMath
 
 
 	//INEFFICIENT***
-	glm::vec4 GJKSolver::SupportMap(std::vector<glm::vec4> const& set,
+	BodyWorldPair GJKSolver::SupportMap(std::vector<BodyWorldPair> const& set,
 		glm::vec3 const& d)
 	{
-		glm::vec4 support(0);
+		BodyWorldPair support = {};
 		float maxDot = std::numeric_limits<float>::lowest();
 		for (int i = 0; i < set.size(); ++i)
 		{
-			glm::vec3 sample = static_cast<glm::vec3>(set[i]);
+			//Comparison against d is done in world, so get world and cast it to vec3
+			glm::vec3 sample = static_cast<glm::vec3>(set[i].world);
 			float dot = glm::dot(d, sample);
 			if (dot > maxDot)
 			{
 				maxDot = dot;
-				support = glm::vec4(sample.x, sample.y, sample.z, 1.0f);
+				support = set[i];
 			}
 		}
 		return support;
@@ -848,8 +1008,8 @@ namespace AuxMath
 			{
 				if (map.MDiff == outFeat->pA) 
 				{
-					outInfo.push_back(map.ptA);
-					outInfo.push_back(map.ptB);
+					outInfo.push_back(map.ptA.world);
+					outInfo.push_back(map.ptB.world);
 					return;
 				}
 			}
@@ -883,8 +1043,8 @@ namespace AuxMath
 			//Use barycentrics to get the resulting point on each body
 			float alpha = outFeat->alpha;
 			float beta = 1.0f - alpha;
-			outInfo.push_back((map1.ptA * alpha) + (map2.ptA * beta));
-			outInfo.push_back((map1.ptB * alpha) + (map2.ptB * beta));
+			outInfo.push_back(((map1.ptA * alpha) + (map2.ptA * beta)).world);
+			outInfo.push_back(((map1.ptB * alpha) + (map2.ptB * beta)).world);
 		}
 		else if (outFeat->type == TRIANGLE)
 		{
@@ -923,19 +1083,19 @@ namespace AuxMath
 			float alpha = outFeat->alpha;
 			float beta = outFeat->beta;
 			float gamma = 1.0f - alpha - beta;
-			outInfo.push_back( (map1.ptA * alpha) + (map2.ptA * beta) + (map3.ptA * gamma));
-			outInfo.push_back( (map1.ptB * alpha) + (map2.ptB * beta) + (map3.ptB * gamma));
+			outInfo.push_back( ((map1.ptA * alpha) + (map2.ptA * beta) + (map3.ptA * gamma)).world);
+			outInfo.push_back( ((map1.ptB * alpha) + (map2.ptB * beta) + (map3.ptB * gamma)).world);
 		}
 	}
 
 	
 	void GJKSolver::RegisterMinkowskiMapping(std::vector<GJK_MinkowskiMap>& minkowskiList,
-		glm::vec4 const& A, glm::vec4 const& B, glm::vec4 const& support)
+		BodyWorldPair const& A, BodyWorldPair const& B, BodyWorldPair const& support)
 	{
 		AuxMath::GJK_MinkowskiMap map = {};
 		map.ptA = A;
 		map.ptB = B;
-		map.MDiff = support;
+		map.MDiff = support.world;
 		minkowskiList.push_back(map);
 	}
 
@@ -944,7 +1104,7 @@ namespace AuxMath
 	////////////////////////////////////
 	//// EPA SUPPORT FUNCTIONS    //////
 	////////////////////////////////////
-	void GeneratePolytopeInfoFromSimplex(std::vector<glm::vec4> const& simplex,
+	void GeneratePolytopeInfoFrom4Simplex(std::vector<glm::vec4> const& simplex,
 		std::priority_queue<ClosestPack, std::vector<ClosestPack>, GlmIsLessThan>& queue,
 		std::vector<PolyBase*>& features)
 	{
@@ -986,6 +1146,50 @@ namespace AuxMath
 			AddPolytopeFeature(features, queue, v1, v2, v3);
 			AddPolytopeFeature(features, queue, v0, v3, v2);
 		}
+	}
+
+
+	void GeneratePolytopeInfoFrom3Simplex(std::vector<glm::vec4> const& simplex,
+		std::priority_queue<ClosestPack, std::vector<ClosestPack>, GlmIsLessThan>& queue,
+		std::vector<PolyBase*>& features)
+	{
+		//First step, create vertex information
+		AddPolytopeFeature(features, queue, simplex[0]);
+		AddPolytopeFeature(features, queue, simplex[1]);
+		AddPolytopeFeature(features, queue, simplex[2]);
+		//Two extreme points---------------
+		AddPolytopeFeature(features, queue, simplex[3]);
+		AddPolytopeFeature(features, queue, simplex[4]);
+
+		PolyVertex *v0 = static_cast<PolyVertex*>(features[0]);
+		PolyVertex *v1 = static_cast<PolyVertex*>(features[1]);
+		PolyVertex *v2 = static_cast<PolyVertex*>(features[2]);
+		//Two extreme points-----------------
+		PolyVertex *v3 = static_cast<PolyVertex*>(features[3]);
+		PolyVertex *v4 = static_cast<PolyVertex*>(features[4]);
+
+		//Second step, create edge information
+		AddPolytopeFeature(features, queue, v0, v1);
+		AddPolytopeFeature(features, queue, v1, v2);
+		AddPolytopeFeature(features, queue, v0, v2);
+		//To one extreme--------------
+		AddPolytopeFeature(features, queue, v0, v3);
+		AddPolytopeFeature(features, queue, v1, v3);
+		AddPolytopeFeature(features, queue, v2, v3);
+		//To other extreme--------------
+		AddPolytopeFeature(features, queue, v0, v4);
+		AddPolytopeFeature(features, queue, v1, v4);
+		AddPolytopeFeature(features, queue, v2, v4);
+
+		//This part not sure how to make it***********
+		//Towards extreme vertex 1 (normal pointing)
+		AddPolytopeFeature(features, queue, v0, v1, v3);
+		AddPolytopeFeature(features, queue, v1, v2, v3);
+		AddPolytopeFeature(features, queue, v0, v3, v2);
+		//Towards extreme vertex 2
+		AddPolytopeFeature(features, queue, v0, v4, v1);
+		AddPolytopeFeature(features, queue, v1, v4, v2);
+		AddPolytopeFeature(features, queue, v0, v2, v4);
 	}
 
 
@@ -1099,5 +1303,69 @@ namespace AuxMath
 					std::cout << "";
 			}
 		}
+	}
+
+
+	//Method to, from OBB info, get a set of both OBB in world 
+	//space and OBB in object space (which is an AABB really)
+	void ObjWorldPairsFromOBB(OBB const& obb,
+		std::vector<BodyWorldPair>& vertices)
+	{
+		//Get relevant OBB info (world space)
+		glm::vec4 pos(obb.position.x, obb.position.y, obb.position.z, 1.0f);
+		glm::vec4 rad(obb.radius.x, obb.radius.y, obb.radius.z, 1.0f);
+		glm::vec4 axis[3] = {
+			glm::vec4(obb.axis[0].x, obb.axis[0].y, obb.axis[0].z, 0.0f),
+			glm::vec4(obb.axis[1].x, obb.axis[1].y, obb.axis[1].z, 0.0f),
+			glm::vec4(obb.axis[2].x, obb.axis[2].y, obb.axis[2].z, 0.0f)
+		};
+
+		//Build the contacts, with both body and world components
+		BodyWorldPair p = {};
+		glm::vec4 worldX = { 1, 0, 0, 0 };
+		glm::vec4 worldY = { 0, 1, 0, 0 };
+		glm::vec4 worldZ = { 0, 0, 1, 0 };
+
+		p.world = pos + (axis[0] * rad.x) + (axis[1] * rad.y) + (axis[2] * rad.z);
+		p.body = +(worldX) + (worldY) + (worldZ);
+		vertices.push_back(p);
+
+		p.world = pos + (axis[0] * rad.x) + (axis[1] * rad.y) - (axis[2] * rad.z);
+		p.body = +(worldX) + (worldY) - (worldZ);
+		vertices.push_back(p);
+
+		p.world = pos + (axis[0] * rad.x) - (axis[1] * rad.y) + (axis[2] * rad.z);
+		p.body = +(worldX) - (worldY) + (worldZ);
+		vertices.push_back(p);
+
+		p.world = pos + (axis[0] * rad.x) - (axis[1] * rad.y) - (axis[2] * rad.z);
+		p.body = +(worldX) - (worldY) - (worldZ);
+		vertices.push_back(p);
+
+		p.world = pos - (axis[0] * rad.x) + (axis[1] * rad.y) + (axis[2] * rad.z);
+		p.body = -(worldX) + (worldY) + (worldZ);
+		vertices.push_back(p);
+
+		p.world = pos - (axis[0] * rad.x) + (axis[1] * rad.y) - (axis[2] * rad.z);
+		p.body = -(worldX) + (worldY) - (worldZ);
+		vertices.push_back(p);
+
+		p.world = pos - (axis[0] * rad.x) - (axis[1] * rad.y) + (axis[2] * rad.z);
+		p.body = -(worldX) - (worldY) + (worldZ);
+		vertices.push_back(p);
+
+		p.world = pos - (axis[0] * rad.x) - (axis[1] * rad.y) - (axis[2] * rad.z);
+		p.body = -(worldX) - (worldY) - (worldZ);
+		vertices.push_back(p);
+
+		//Old way, only had for world space
+		/// vertices.push_back(pos + (axis[0] * rad.x) + (axis[1] * rad.y) + (axis[2] * rad.z));
+		/// vertices.push_back(pos + (axis[0] * rad.x) + (axis[1] * rad.y) - (axis[2] * rad.z));
+		/// vertices.push_back(pos + (axis[0] * rad.x) - (axis[1] * rad.y) + (axis[2] * rad.z));
+		/// vertices.push_back(pos + (axis[0] * rad.x) - (axis[1] * rad.y) - (axis[2] * rad.z));
+		/// vertices.push_back(pos - (axis[0] * rad.x) + (axis[1] * rad.y) + (axis[2] * rad.z));
+		/// vertices.push_back(pos - (axis[0] * rad.x) + (axis[1] * rad.y) - (axis[2] * rad.z));
+		/// vertices.push_back(pos - (axis[0] * rad.x) - (axis[1] * rad.y) + (axis[2] * rad.z));
+		/// vertices.push_back(pos - (axis[0] * rad.x) - (axis[1] * rad.y) - (axis[2] * rad.z));
 	}
 }

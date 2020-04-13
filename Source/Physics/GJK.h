@@ -19,21 +19,90 @@
 
 namespace AuxMath
 {
+	//Used to store both body and world coords of a contact
+	//So later, I can easily map both together
+	struct BodyWorldPair 
+	{
+		glm::vec4 body;
+		glm::vec4 world;
+
+		BodyWorldPair() : body(glm::vec4(0,0,0,1)),
+			world(glm::vec4(0,0,0,1)), valid(true)
+		{}
+
+		BodyWorldPair(glm::vec4 const& b, 
+			glm::vec4 const& w) : body(b), 
+			world(w), valid(true)
+		{}
+
+		//FOR NOW, FORCING W COMP TO BE 1
+		BodyWorldPair operator+(BodyWorldPair const& rhs) 
+		{
+			BodyWorldPair sum = {};
+			sum.world = this->world + rhs.world;
+			sum.world.w = 1.0f;
+			sum.body = this->body + rhs.body;
+			sum.body.w = 1.0f;
+			return sum;
+		}
+
+		//FOR NOW, FORCING W COMP TO BE 1
+		BodyWorldPair operator-(BodyWorldPair const& rhs) 
+		{
+			BodyWorldPair sum = {};
+			sum.world = this->world - rhs.world;
+			sum.world.w = 1.0f;
+			sum.body = this->body - rhs.body;
+			sum.body.w = 1.0f;
+			return sum;
+		}
+
+		//FOR NOW, FORCING W COMP TO BE 1
+		BodyWorldPair operator*(float rhs) 
+		{
+			BodyWorldPair res = {};
+			res.world = this->world * rhs;
+			res.world.w = 1.0f;
+			res.body = this->body * rhs;
+			res.body.w = 1.0f;
+			return res;
+		}
+
+		void MarkAsInvalid()
+		{
+			assert(valid);
+			valid = false;
+		}
+
+		bool IsValid() 
+		{
+			return valid;
+		}
+
+	private:
+		bool valid;
+	};
+
+
 	//This will hold the manifold information. 
 	//In progress ***
 	struct GJK_Manifold_V1 
 	{
-		glm::vec4 ptA;
-		glm::vec4 ptB;
-		glm::vec3 restitution;
+		std::vector<BodyWorldPair> ptsA;
+		std::vector<BodyWorldPair> ptsB;
+		glm::vec3 restitution; //Normal, unit
 	};
+
 
 	//Used to being able to, from a minkowski difference 
 	//vertex, get the underlying A and B vertices
+	//(Maps minkowski to A and B points)
 	struct GJK_MinkowskiMap 
 	{
-		glm::vec4 ptA;
-		glm::vec4 ptB;
+		//The minkowski corresponds to the world 
+		//sustraction of ptA and ptB
+		BodyWorldPair ptA;
+		BodyWorldPair ptB;
 		glm::vec4 MDiff;
 	};
 
@@ -180,7 +249,6 @@ namespace AuxMath
 		bool validFlag;
 	};
 
-
 	//Priority functor
 	class GlmIsLessThan
 	{
@@ -193,9 +261,14 @@ namespace AuxMath
 	};
 
 
+
 	//First attempt at method to generate all features 
 	//and conections starting from a 4simplex
-	void GeneratePolytopeInfoFromSimplex(std::vector<glm::vec4> const& simplex,
+	void GeneratePolytopeInfoFrom4Simplex(std::vector<glm::vec4> const& simplex,
+		std::priority_queue<ClosestPack, std::vector<ClosestPack>, GlmIsLessThan>& queue,
+		std::vector<PolyBase*>& features);
+
+	void GeneratePolytopeInfoFrom3Simplex(std::vector<glm::vec4> const& simplex,
 		std::priority_queue<ClosestPack, std::vector<ClosestPack>, GlmIsLessThan>& queue,
 		std::vector<PolyBase*>& features);
 
@@ -219,21 +292,23 @@ namespace AuxMath
 	struct GJKSolver
 	{
 		//GJK------------------
-		static bool GJK_Intersects(OBB const& aOBB, OBB const& bOBB,
+		static bool GJK_Intersects(std::vector<GJK_MinkowskiMap>& md_list,
+			OBB const& aOBB, OBB const& bOBB,
 			std::vector<glm::vec4>& outInfo);
 
-		static glm::vec4 SupportMap(std::vector<glm::vec4> const& set,
+		static BodyWorldPair SupportMap(std::vector<BodyWorldPair> const& set,
 			glm::vec3 const& d);
 
 		static void FindClosestPoints(std::vector<GJK_MinkowskiMap> const& md_list,
 			AuxMath::FeatureBase *outFeat, std::vector<glm::vec4>& outInfo);
 
 		static void RegisterMinkowskiMapping(std::vector<GJK_MinkowskiMap>& minkowskiList,
-			glm::vec4 const& A, glm::vec4 const& B, glm::vec4 const& support);
+			BodyWorldPair const& A, BodyWorldPair const& B, BodyWorldPair const& support);
 
 		//EPA-------------------
-		static void EPA(OBB const& aOBB, OBB const& bOBB,
-			std::vector<glm::vec4> const& simplex,
+		static void EPA(std::vector<GJK_MinkowskiMap>& md_list,
+			OBB const& aOBB, OBB const& bOBB,
+			std::vector<glm::vec4>& simplex,
 			AuxMath::GJK_Manifold_V1& manifold);
 
 		static void EPA_MarkFeaturesForRemoval(glm::vec4 const& support,
@@ -250,8 +325,19 @@ namespace AuxMath
 		static void RemoveFeatures(std::vector<PolyBase*>& feats,
 			std::priority_queue<ClosestPack, std::vector<ClosestPack>, GlmIsLessThan>& queue);
 		
-		static bool FindSupportForEPA(std::vector<glm::vec4> const& AVertices,
-			std::vector<glm::vec4> const& BVertices, ClosestPack const& closest,
-			glm::vec4& support);
+		static bool FindSupportForEPA(std::vector<GJK_MinkowskiMap>& md_list, 
+			std::vector<BodyWorldPair> const& AVertices,
+			std::vector<BodyWorldPair> const& BVertices, ClosestPack const& closest,
+			BodyWorldPair& support);
+
+		static void EPATerminationRoutine(std::vector<GJK_MinkowskiMap> const& md_list,
+			ClosestPack const& closest, int iterations,
+			AuxMath::GJK_Manifold_V1& manifold);
 	};
+
+
+	//Method to, from OBB info, get a set of both OBB in world 
+	//space and OBB in object space (which is an AABB really)
+	void ObjWorldPairsFromOBB(OBB const& obb,
+		std::vector<BodyWorldPair>& vertices);
 }

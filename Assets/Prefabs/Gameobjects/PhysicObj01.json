@@ -10,8 +10,9 @@
 
     {
       "id": "rigidbody",
-      "mass": 5.0,
-      "player": true,
+      "mass": 50.0,
+      "player": false,
+      "affected_by_gravity": false,
 
       "interact_with_particles": true,
       "particle_collider": "sphere"
@@ -22,6 +23,7 @@
       "diffuse_texture": "brick.jpg",
       "vertex_id": 0,
       "load_model": false,
+      "use_alpha": true,
       "model_name": "Cube.fbx",
       "primitive": "cube"
     }
