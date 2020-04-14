@@ -161,10 +161,9 @@ void PhysicsManager::DebugDraw(Renderer *renderer)
 			data2.shader = debugShader;
 
 			assert(manifold.ptsA[i].IsValid());
+			assert(manifold.ptsA[i].world.w == 1);
 			
 			model[3] = manifold.ptsA[i].world;
-			if (manifold.ptsA[i].world.w != 1)
-				assert(false);
 			data2.model = model;
 			renderer->QueueForDebugDraw(data2);
 		}
@@ -179,10 +178,9 @@ void PhysicsManager::DebugDraw(Renderer *renderer)
 			data2.shader = debugShader;
 
 			assert(manifold.ptsB[i].IsValid());
+			assert(manifold.ptsB[i].world.w == 1);
 
 			model[3] = manifold.ptsB[i].world;
-			if (manifold.ptsB[i].world.w != 1)
-				assert(false);
 			data2.model = model;
 			renderer->QueueForDebugDraw(data2);
 		}
@@ -279,20 +277,10 @@ void PhysicsManager::CollisionResolutionTest(CollisionContact& contact)
 	RigidbodyComponent *B = contact.rbdyB;
 	AuxMath::GJK_Manifold_V1 manifoldInfo = contact.manifold;
 	float mgtd = 0.05f;
-	
-	//This will only hold the valid pair of points from ptsA and ptsB
-	//So at the end of the frame, this list of valid points is that gets added to persistent manifold
-	AuxMath::GJK_Manifold_V1 newManifold = {};
 
 	//Resolution for first body
 	for (int i = 0; i < manifoldInfo.ptsA.size(); ++i)
 	{
-		//Skip if contact is not valid
-		if (manifoldInfo.ptsA[i].IsValid() == false)
-			continue;
-		else
-			newManifold.ptsA.push_back(manifoldInfo.ptsA[i]);
-
 		//Get the points for the first contact
 		glm::vec4 pointA_i = manifoldInfo.ptsA[i].world;
 		glm::vec3 restitutionForce = static_cast<glm::vec3>(manifoldInfo.restitution);
@@ -307,12 +295,6 @@ void PhysicsManager::CollisionResolutionTest(CollisionContact& contact)
 	//Resolution for second body
 	for (int i = 0; i < manifoldInfo.ptsB.size(); ++i)
 	{
-		//Skip if contact is not valid
-		if (manifoldInfo.ptsB[i].IsValid() == false)
-			continue;
-		else
-			newManifold.ptsB.push_back(manifoldInfo.ptsB[i]);
-
 		//Get the points for the first contact
 		glm::vec4 pointB_i = manifoldInfo.ptsB[i].world;
 		glm::vec3 restitutionForce = static_cast<glm::vec3>(-manifoldInfo.restitution);
@@ -328,12 +310,6 @@ void PhysicsManager::CollisionResolutionTest(CollisionContact& contact)
 	std::ostringstream stringStream;
 	stringStream << contact.rbdyA->GetOwner()->GetId() << contact.rbdyB->GetOwner()->GetId();
 	std::string key = stringStream.str();
-
-	//This could instead be a weighted avg or something
-	assert(newManifold.ptsA.size() == newManifold.ptsB.size());
-	newManifold.restitution = contact.manifold.restitution;
-	
-	contact.manifold = newManifold;
 	m_persistentContacts[key] = contact;
 }
 
@@ -341,12 +317,11 @@ void PhysicsManager::CollisionResolutionTest(CollisionContact& contact)
 //First collision response, just random impulse being applied
 void PhysicsManager::CheckContactValidity(CollisionContact& contact)
 {	
-
 	std::cout << "---Contact-Validation----------------" << std::endl;
 	std::cout << "\t>> Size of contact: " << contact.manifold.ptsA.size() << std::endl;
 
 	//If the dot product abs is less than this, contact is valid
-	float AcceptableThresshold = 1.5f; // -> 0.1f for 2 contacts - 0.75f for 3 contacts - 1.5f for 4?
+	float AcceptableThresshold = 10.15f; // -> 0.1f for 2 contacts - 0.75f for 3 contacts - 1.5f for 4?
 
 	//Get auxiliar info
 	RigidbodyComponent *A = contact.rbdyA;
@@ -384,6 +359,24 @@ void PhysicsManager::CheckContactValidity(CollisionContact& contact)
 			
 			std::cout << "\t>> INVALIDATED CONTACT" << rand() << std::endl;
 		}
+	}
+
+	//This is so no invalid contact is left on the vector
+	CollisionContact validContacts = {};
+	for (int i = 0; i < contact.manifold.ptsA.size(); ++i)
+	{
+		if (contact.manifold.ptsA[i].IsValid() && contact.manifold.ptsB[i].IsValid())
+		{
+			validContacts.manifold.ptsA.push_back(contact.manifold.ptsA[i]);
+			validContacts.manifold.ptsB.push_back(contact.manifold.ptsB[i]);
+		}
+	}
+	contact.manifold.ptsA.clear();
+	contact.manifold.ptsB.clear();
+	for (int i = 0; i < validContacts.manifold.ptsA.size(); ++i)
+	{
+		contact.manifold.ptsA.push_back(validContacts.manifold.ptsA[i]);
+		contact.manifold.ptsB.push_back(validContacts.manifold.ptsB[i]);
 	}
 
 	std::cout << "\t>> Size of contact: " << contact.manifold.ptsA.size() << std::endl;
@@ -569,10 +562,8 @@ void PhysicsManager::AddPersistentContactToManifold(RigidbodyComponent *A,
 	std::string key1 = stringStream.str();
 	auto iter = m_persistentContacts.find(key1);
 
-
 	assert(contact.manifold.ptsA[0].IsValid() && contact.manifold.ptsA[0].IsValid());
 	assert(contact.manifold.ptsA.size() == 1);
-
 
 	//Add persistentInfo into current contact (since persistent info will be cleared afterwards)
 	if (iter != m_persistentContacts.end())
@@ -581,34 +572,20 @@ void PhysicsManager::AddPersistentContactToManifold(RigidbodyComponent *A,
 		auto& node = *iter;
 		CollisionContact& persistentCt = node.second;
 
-		//This is so no invalid
-		CollisionContact validContactsToAdd = {};
-		validContactsToAdd.rbdyA = persistentCt.rbdyA;
-		validContactsToAdd.rbdyB = persistentCt.rbdyB;
-		validContactsToAdd.manifold.restitution = persistentCt.manifold.restitution;
-		for (int i = 0; i < persistentCt.manifold.ptsA.size(); ++i)
-		{
-			if (persistentCt.manifold.ptsA[i].IsValid() && persistentCt.manifold.ptsB[i].IsValid())
-			{
-				validContactsToAdd.manifold.ptsA.push_back(persistentCt.manifold.ptsA[i]);
-				validContactsToAdd.manifold.ptsB.push_back(persistentCt.manifold.ptsB[i]);
-			}
-		}
-
 		//DEBUG ---------------------
-		assert(validContactsToAdd.manifold.ptsA.size() == validContactsToAdd.manifold.ptsB.size());
+		assert(persistentCt.manifold.ptsA.size() == persistentCt.manifold.ptsB.size());
 		assert(contact.manifold.ptsA.size() == contact.manifold.ptsB.size());
 
 		/////////////////////////////////////////////
 		//////   MANAGING CLOSE CONTACTS       //////
 		/////////////////////////////////////////////
-		float thressholdSQR = 0.1f;
+		float thressholdSQR = 10.0f;
 		bool isAlreadyPresent = false;
-		int persistentSize = validContactsToAdd.manifold.ptsA.size();
+		int persistentSize = persistentCt.manifold.ptsA.size();
 		for (int i = 0; i < persistentSize; ++i)
 		{
-			AuxMath::BodyWorldPair const& ptA = validContactsToAdd.manifold.ptsA[i];
-			AuxMath::BodyWorldPair const& ptB = validContactsToAdd.manifold.ptsB[i];
+			AuxMath::BodyWorldPair const& ptA = persistentCt.manifold.ptsA[i];
+			AuxMath::BodyWorldPair const& ptB = persistentCt.manifold.ptsB[i];
 
 			float distanceSQR_A = glm::dot(ptA.world - contact.manifold.ptsA[0].world,
 				ptA.world - contact.manifold.ptsA[0].world);
@@ -626,28 +603,25 @@ void PhysicsManager::AddPersistentContactToManifold(RigidbodyComponent *A,
 		//		-  Adding all points in persistentManifold to contact 
 		//		-  Replacing contact by persistent manifold
 		if (isAlreadyPresent == true)
-			contact.manifold = validContactsToAdd.manifold;
+			contact.manifold = persistentCt.manifold;
 		else
 		{
 			//If persistent already has 4 points, then choose the 4 with biggest area
 			if (persistentSize >= CONTACT_NUM)
 			{
-				ChooseFourContacts(validContactsToAdd, contact);
+				ChooseFourContacts(persistentCt, contact);
 			}
 			else
 			{
 				for (int i = 0; i < persistentSize; ++i)
 				{
-					AuxMath::BodyWorldPair& point_a = validContactsToAdd.manifold.ptsA[i];
-					AuxMath::BodyWorldPair& point_b = validContactsToAdd.manifold.ptsB[i];
+					AuxMath::BodyWorldPair& point_a = persistentCt.manifold.ptsA[i];
+					AuxMath::BodyWorldPair& point_b = persistentCt.manifold.ptsB[i];
 
-					assert(point_a.IsValid() == point_b.IsValid());
+					assert(point_a.IsValid() && point_b.IsValid());
 
-					if (point_a.IsValid() && point_b.IsValid()) 
-					{
-						contact.manifold.ptsA.push_back(point_a);
-						contact.manifold.ptsB.push_back(point_b);
-					}
+					contact.manifold.ptsA.push_back(point_a);
+					contact.manifold.ptsB.push_back(point_b);
 				}
 			}
 		}

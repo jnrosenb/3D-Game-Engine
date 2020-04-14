@@ -23,7 +23,7 @@
       "diffuse_texture": "brick.jpg",
       "vertex_id": 0,
       "load_model": false,
-      "use_alpha": true,
+      "use_alpha": false,
       "model_name": "Cube.fbx",
       "primitive": "cube"
     }

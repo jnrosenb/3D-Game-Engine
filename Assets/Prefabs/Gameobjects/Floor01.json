@@ -27,7 +27,7 @@
       "diffuse_texture": "Bricks_diff.jpg",
       "normal_map": "Bricks_nml.jpg",
 
-      "use_alpha": true,
+      "use_alpha": false,
 
       "x_tiling": 30,
       "y_tiling": 30
