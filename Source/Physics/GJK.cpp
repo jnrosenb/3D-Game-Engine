@@ -949,7 +949,7 @@ namespace AuxMath
 
 				//Fast exit TEST------------------------
 				float doppo = glm::dot(-d, glm::vec3(support.world.x, support.world.y, support.world.z));
-				if (doppo >= -0.01f)//0.0f)//0.001f)
+				if (doppo >= -0.1f)//0.0f)//0.001f)
 					return false;
 				//Fast exit TEST------------------------
 

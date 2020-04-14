@@ -261,7 +261,7 @@ void Camera::UpdateOrthographic(float dt)
 #define ROT_SPEED	0.075f
 void Camera::handleInput(float dt)
 {
-	float moveSpeed = 100.0f * dt;
+	float moveSpeed = 100.0f * 0.016f;
 
 	glm::vec4 right = glm::normalize(AuxMath::cross(m_look, glm::vec4(0, 1, 0, 0)));
 	if (/*inputMgr->getKeyPress(SDL_SCANCODE_RIGHT) ||  */inputMgr->getKeyPress(SDL_SCANCODE_D))

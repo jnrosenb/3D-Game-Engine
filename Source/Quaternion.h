@@ -396,6 +396,9 @@ namespace AuxMath
 
 		static void QuaternionToEuler(Quaternion const& q, glm::vec3& euler) 
 		{
+			assert(q.x == q.x && q.y == q.y && q.z == q.z);
+			assert(euler.x == euler.x && euler.y == euler.y && euler.z == euler.z);
+
 			float yaw, pitch, roll;
 			
 			// pitch (x-axis rotation)

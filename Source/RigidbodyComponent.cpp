@@ -105,6 +105,9 @@ void RigidbodyComponent::Begin()
 void RigidbodyComponent::ApplyForce(glm::vec3 const& F, 
 	glm::vec3 const& offset)
 {
+	assert(offset.x == offset.x && offset.y == offset.y && offset.z == offset.z);
+	assert(F.x == F.x && F.y == F.y && F.z == F.z);
+
 	this->Force += glm::vec4(F.x, F.y, F.z, 0);
 
 	//For now, leave torque alone
@@ -277,8 +280,15 @@ void RigidbodyComponent::PhysicsUpdate(float dt)
 		//AuxMath::Quaternion w(Params[3]);
 		
 		///--Param[3] as L--
+		assert(Torque.x == Torque.x && Torque.y == Torque.y && Torque.z == Torque.z);
 		L = L + Torque * dt;
 		Params[3] = Iinv * L;
+
+		/// assert(Params[0].x == Params[0].x && Params[0].y == Params[0].y && Params[0].z == Params[0].z);
+		/// assert(Params[1].x == Params[1].x && Params[1].y == Params[1].y && Params[1].z == Params[1].z);
+		/// assert(Params[2].x == Params[2].x && Params[2].y == Params[2].y && Params[2].z == Params[2].z);
+		/// assert(Params[3].x == Params[3].x && Params[3].y == Params[3].y && Params[3].z == Params[3].z);
+
 		AuxMath::Quaternion w(Params[3]);
 		DampVelocity(L, 0.1f);
 

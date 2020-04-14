@@ -21,7 +21,7 @@
     {
       "name": "Floor01.json",
       "transform": {
-        "position": [ 0, -50, 0 ],
+        "position": [ 0, -70, 0 ],
         "rotation": [ -90.0, 0, 0 ],
         "scale": [ 80, 80.0, 100.0 ]
       }
@@ -29,7 +29,7 @@
     {
       "name": "Grid01.json",
       "transform": {
-        "position": [ 0, -3.0, 0 ],
+        "position": [ 0, -50.0, 0 ],
         "rotation": [ 180, 0, 0 ],
         "scale": [ 1500.0, 1.0, 1500.0 ]
       }
@@ -48,7 +48,7 @@
     {
       "name": "PhysicObj01.json",
       "transform": {
-        "position": [ -20, 26, 0 ],
+        "position": [ -30, 26, 0 ],
         "rotation": [ 0, 40, 0 ],
         "scale": [ 8, 24, 8 ]
       }
@@ -56,7 +56,7 @@
     {
       "name": "FlockingSpawn.json",
       "transform": {
-        "position": [ 20, 26, 0 ],
+        "position": [ 30, 26, 0 ],
         "rotation": [ 0, 30, 0 ],
         "scale": [ 15, 15, 15 ]
       }

@@ -311,13 +311,15 @@ public:
 					renderer->generateTextureFromSurface(surf, "crate.png", 5);
 					render->diffuseTexture = "crate.png";
 					render->useDiffuseTexture = true;
+					render->use_loaded_mesh = false;
 					render->useAlpha = false;
 					render->diffuseColor = glm::vec4(static_cast<float>(rand()) / RAND_MAX,
 						static_cast<float>(rand()) / RAND_MAX, static_cast<float>(rand()) / RAND_MAX, 1);
 					render->DeserializeInit();
 					//Rigidbody
 					RigidbodyComponent *rgbdy = go->AddComponent<RigidbodyComponent>();
-					rgbdy->mass = 10.0f;
+					rgbdy->mass = 0.1f;
+					rgbdy->affectedByGravity = true;
 					rgbdy->hasParticleInteraction = false;
 					rgbdy->isPlayer = false;
 					rgbdy->DeserializeInit();

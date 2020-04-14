@@ -47,12 +47,16 @@ public:
 
 private:
 	bool CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B);
-	void CollisionResolutionTest(CollisionContact const& contact);
+	void CollisionResolutionTest(CollisionContact& contact);
 	void RecursiveTreeCheck(AABBNode *current, AABBNode *starting);
 
 	//Contact related methods
 	glm::vec4 BodyToWorldContact(glm::vec4 const& body, RigidbodyComponent *rgbdy);
-	void CheckContactValidity(CollisionContact const& contact);
+	void CheckContactValidity(CollisionContact& contact);
+	void AddPersistentContactToManifold(RigidbodyComponent *A, RigidbodyComponent *B, 
+		CollisionContact& contact);
+	void ChooseFourContacts(CollisionContact const& persistentCt,
+		CollisionContact& contact);
 
 private:
 	//VBH structure

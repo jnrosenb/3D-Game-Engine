@@ -38,7 +38,7 @@
       "particle_collider": "sphere",
 
       "player": true,
-      "affected_by_gravity": true
+      "affected_by_gravity": false
     },
     {
       "id": "render",
