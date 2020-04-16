@@ -508,12 +508,15 @@ void RigidbodyComponent::handleInput(float dt)
 		ApplyForce(-moveSpeed * rup, { 0, 0.0f, 0 });
 	}
 
+	/// if (inputMgr->getKeyTrigger(SDL_SCANCODE_SPACE))
+	/// {
+	/// 	ApplyForce(rup * (moveSpeed * 10.0f), { 0, 0.0f, 0 });
+	/// }
 
 	//TOGGLE TREE
 	if (inputMgr->getKeyTrigger(SDL_SCANCODE_SPACE))
 	{
-		ApplyForce(rup * (moveSpeed * 10.0f), { 0, 0.0f, 0 });
- 		//physicsMgr->publicToggleVBH();
+		physicsMgr->publicToggleVBH();
 	}
 }
 

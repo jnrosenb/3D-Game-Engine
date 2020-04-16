@@ -57,6 +57,7 @@ void PhysicsManager::PhysicsUpdate(float dt)
 	//For now, update all rigidbodies using fixed timestep
 	float fixedDT = 0.01666666666f;
 
+
 	//Update VBH
 	for (RigidbodyComponent *body : m_rigidbodies)
 		vbh->Update(body);
@@ -68,7 +69,7 @@ void PhysicsManager::PhysicsUpdate(float dt)
 
 
 	//BROADPHASE using VBH
-	if (USEBVH) 
+	if (USEBVH)
 	{
 		for (int i = 0; i < m_rigidbodies.size(); ++i)
 		{
@@ -80,13 +81,13 @@ void PhysicsManager::PhysicsUpdate(float dt)
 	//BROADPHASE O(N^2)
 	else if (!USEBVH)
 	{
-		for (int i = 0; i < m_rigidbodies.size(); ++i) 
+		for (int i = 0; i < m_rigidbodies.size(); ++i)
 		{
 			RigidbodyComponent *rbA = m_rigidbodies[i];
 			for (int j = i + 1; j < m_rigidbodies.size(); ++j)
 			{
 				RigidbodyComponent *rbB = m_rigidbodies[j];
-		
+
 				//CHECK IF rbA collides against rbB. If so, store in contact
 				bool intersects = CheckCollision(rbA, rbB);
 			}
@@ -94,20 +95,9 @@ void PhysicsManager::PhysicsUpdate(float dt)
 	}
 
 
-	//Clear the contact dictionary (so that later, only         //////////////********
-	//contacts that happened this iteration will be reinserted)	//////////////********
+	//Clear the contact dictionary (so that later, only        
+	//contacts that happened this iteration will be reinserted)
 	m_persistentContacts.clear();
-
-
-	//OLD LOCATION----------------------------------
-	//Check if contacts are valid. Discard otherwise
-	/// for (CollisionContact& contact : m_contacts)
-	/// 	CheckContactValidity(contact);
-
-
-	//Collision resolution
-	for (CollisionContact& contact : m_contacts) 
-		CollisionResolutionTest(contact);
 
 
 	//JUST TEMPORARILY PUTTING IT HERE TO SEE CONTACT FORCES
@@ -122,10 +112,22 @@ void PhysicsManager::PhysicsUpdate(float dt)
 	}
 
 
-	//Empty contact list									   //////////////*********
-	//By this point, all information about persistent contacts //////////////*********
-	//is already safely stored back in the dictionary		   //////////////*********
-	m_contacts.clear();
+	//Collision resolution
+	SequentialImpulseRoutine(m_contacts);
+	/// for (CollisionContact& contact : m_contacts) 
+	/// 	CollisionResolutionTest(contact);
+
+
+	//Re insert CONTACT info into dictionary (for persistence)
+	//Then empty the frame's contact list
+	for (CollisionContact& contact : m_contacts)
+	{		
+		std::ostringstream stringStream;
+		stringStream << contact.rbdyA->GetOwner()->GetId() << contact.rbdyB->GetOwner()->GetId();
+		std::string key = stringStream.str();
+		m_persistentContacts[key] = contact;
+	}
+	m_contacts.clear();		  
 
 
 	//TESTING PURPOSES (To being able to toggle the BVH, but 
@@ -231,21 +233,24 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 		AuxMath::GJK_Manifold_V1 manifoldInfo = {};
 		AuxMath::GJKSolver::EPA(md_list, A_OBB, B_OBB, simplex, manifoldInfo);
 
+		assert(manifoldInfo.ptsA.size() == 1);
+
 		//REMOVE-LATER///////////////////////////////////////////////////////////
 		//Experiment with SAT - Wanna compare what I get from EPA with SAT	 ////
-		glm::vec4 restitution_SAT;											 ////
-		AuxMath::TestOBB_OBB(A_OBB, B_OBB, restitution_SAT);				 ////
-		restitution_SAT = glm::normalize(restitution_SAT);					 ////
+		///glm::vec4 restitution_SAT;											 ////
+		///AuxMath::TestOBB_OBB(A_OBB, B_OBB, restitution_SAT);				 ////
+		///restitution_SAT = glm::normalize(restitution_SAT);					 ////
 		/////////////////////////////////////////////////////////////////////////
+
 
 		///Set the restitution
 		manifoldInfo.restitution = glm::normalize(manifoldInfo.ptsB[0].world - manifoldInfo.ptsA[0].world);
 		//manifoldInfo.restitution = restitution_SAT;
-		///glm::vec3 test = manifoldInfo.restitution - static_cast<glm::vec3>(restitution_SAT);
-		///std::cout << "DIFFERENCE BETWEEN EPA AND SAT: " 
-		///		<< test.x << ", " << test.y << ", " << test.z << std::endl;
-		///std::cout << "LEN: " << glm::length(test) << std::endl;
-		///std::cout << "----------------------------" << std::endl;
+		/// glm::vec3 test = manifoldInfo.restitution - static_cast<glm::vec3>(restitution_SAT);
+		/// std::cout << "DIFFERENCE BETWEEN EPA AND SAT: " 
+		/// 		<< test.x << ", " << test.y << ", " << test.z << std::endl;
+		/// std::cout << "LEN: " << glm::length(test) << std::endl;
+		/// std::cout << "----------------------------" << std::endl;
 
 		///Push contact pair from EPA into list
 		CollisionContact contact = {};
@@ -253,7 +258,6 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 		contact.rbdyB = B;
 		assert(A != nullptr && B != nullptr);
 		contact.manifold = manifoldInfo;
-
 
 		//Persistent contact------------------------***
 		//CHANGE NAME TO BETTER REFLECT WHAT IT DOES***
@@ -269,49 +273,6 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 	return intersects;
 }
 
-
-//First collision response, just random impulse being applied
-void PhysicsManager::CollisionResolutionTest(CollisionContact& contact)
-{	
-	RigidbodyComponent *A = contact.rbdyA;
-	RigidbodyComponent *B = contact.rbdyB;
-	AuxMath::GJK_Manifold_V1 manifoldInfo = contact.manifold;
-	float mgtd = 0.05f;
-
-	//Resolution for first body
-	for (int i = 0; i < manifoldInfo.ptsA.size(); ++i)
-	{
-		//Get the points for the first contact
-		glm::vec4 pointA_i = manifoldInfo.ptsA[i].world;
-		glm::vec3 restitutionForce = static_cast<glm::vec3>(manifoldInfo.restitution);
-		//glm::vec3 restitutionForce = glm::normalize(static_cast<glm::vec3>(manifoldInfo.ptsB[i].world - manifoldInfo.ptsA[i].world));
-
-		assert(restitutionForce.x == restitutionForce.x && restitutionForce.y == restitutionForce.y && 
-			restitutionForce.z == restitutionForce.z);
-		if (A->GetMass() > 0.0f)
-			A->ApplyForce(restitutionForce * (mgtd), static_cast<glm::vec3>(pointA_i) - A->GetPositionEstimate());
-	}
-
-	//Resolution for second body
-	for (int i = 0; i < manifoldInfo.ptsB.size(); ++i)
-	{
-		//Get the points for the first contact
-		glm::vec4 pointB_i = manifoldInfo.ptsB[i].world;
-		glm::vec3 restitutionForce = static_cast<glm::vec3>(-manifoldInfo.restitution);
-		//glm::vec3 restitutionForce = glm::normalize(static_cast<glm::vec3>(-manifoldInfo.ptsB[i].world + manifoldInfo.ptsA[i].world));
-
-		assert(restitutionForce.x == restitutionForce.x && restitutionForce.y == restitutionForce.y && 
-			restitutionForce.z == restitutionForce.z);
-		if (B->GetMass() > 0.0f)
-			B->ApplyForce(restitutionForce * (mgtd), static_cast<glm::vec3>(pointB_i) - B->GetPositionEstimate());
-	}
-
-	//Re insert CONTACT into dictionary
-	std::ostringstream stringStream;
-	stringStream << contact.rbdyA->GetOwner()->GetId() << contact.rbdyB->GetOwner()->GetId();
-	std::string key = stringStream.str();
-	m_persistentContacts[key] = contact;
-}
 
 
 //First collision response, just random impulse being applied
@@ -385,6 +346,7 @@ void PhysicsManager::CheckContactValidity(CollisionContact& contact)
 
 
 
+//For a contact pair, gives you the world position based on the body position (of the collider)
 glm::vec4 PhysicsManager::BodyToWorldContact(glm::vec4 const& body, RigidbodyComponent *rgbdy) 
 {
 	//Get auxiliar data
@@ -401,6 +363,87 @@ glm::vec4 PhysicsManager::BodyToWorldContact(glm::vec4 const& body, RigidbodyCom
 
 
 
+//Adds a new contact to the contact list
+void PhysicsManager::AddPersistentContactToManifold(RigidbodyComponent *A,
+	RigidbodyComponent *B, CollisionContact& contact)
+{
+	//Find key to access the contact from the hash
+	std::ostringstream stringStream;
+	stringStream << A->GetOwner()->GetId() << B->GetOwner()->GetId();
+	std::string key1 = stringStream.str();
+	auto iter = m_persistentContacts.find(key1);
+
+	assert(contact.manifold.ptsA[0].IsValid() && contact.manifold.ptsA[0].IsValid());
+	assert(contact.manifold.ptsA.size() == 1);
+
+	//Add persistentInfo into current contact (since persistent info will be cleared afterwards)
+	if (iter != m_persistentContacts.end())
+	{
+		//It does exist, so we need to update it
+		auto& node = *iter;
+		CollisionContact& persistentCt = node.second;
+
+		//DEBUG ---------------------
+		assert(persistentCt.manifold.ptsA.size() == persistentCt.manifold.ptsB.size());
+		assert(contact.manifold.ptsA.size() == contact.manifold.ptsB.size());
+
+		/////////////////////////////////////////////
+		//////   MANAGING CLOSE CONTACTS       //////
+		/////////////////////////////////////////////
+		float thressholdSQR = 10.0f;
+		bool isAlreadyPresent = false;
+		int persistentSize = persistentCt.manifold.ptsA.size();
+		for (int i = 0; i < persistentSize; ++i)
+		{
+			AuxMath::BodyWorldPair const& ptA = persistentCt.manifold.ptsA[i];
+			AuxMath::BodyWorldPair const& ptB = persistentCt.manifold.ptsB[i];
+
+			float distanceSQR_A = glm::dot(ptA.world - contact.manifold.ptsA[0].world,
+				ptA.world - contact.manifold.ptsA[0].world);
+			float distanceSQR_B = glm::dot(ptB.world - contact.manifold.ptsB[0].world,
+				ptB.world - contact.manifold.ptsB[0].world);
+
+			if (distanceSQR_A < thressholdSQR || distanceSQR_B < thressholdSQR)
+			{
+				isAlreadyPresent = true;
+				break;
+			}
+		}
+
+		//Here we choose between: 
+		//		-  Adding all points in persistentManifold to contact 
+		//		-  Replacing contact by persistent manifold
+		if (isAlreadyPresent == true)
+			contact.manifold = persistentCt.manifold;
+		else
+		{
+			//If persistent already has 4 points, then choose the 4 with biggest area
+			if (persistentSize >= CONTACT_NUM)
+			{
+				ChooseFourContacts(persistentCt, contact);
+			}
+			else
+			{
+				for (int i = 0; i < persistentSize; ++i)
+				{
+					AuxMath::BodyWorldPair& point_a = persistentCt.manifold.ptsA[i];
+					AuxMath::BodyWorldPair& point_b = persistentCt.manifold.ptsB[i];
+
+					assert(point_a.IsValid() && point_b.IsValid());
+
+					contact.manifold.ptsA.push_back(point_a);
+					contact.manifold.ptsB.push_back(point_b);
+				}
+			}
+		}
+	}
+
+	assert(contact.manifold.ptsA.size() == contact.manifold.ptsB.size());
+}
+
+
+
+//Desc
 void PhysicsManager::ChooseFourContacts(CollisionContact const& persistentCt, 
 	CollisionContact& contact)
 {
@@ -544,97 +587,29 @@ void PhysicsManager::ChooseFourContacts(CollisionContact const& persistentCt,
 	contact.manifold.ptsB.push_back(secondB);
 	contact.manifold.ptsA.push_back(thirdA);
 	contact.manifold.ptsB.push_back(thirdB);
-	if (found4A && found4B)
+	if (found4A && found4B) // ||
 	{
 		contact.manifold.ptsA.push_back(fourthA);
 		contact.manifold.ptsB.push_back(fourthB);
 	}
-}
 
-
-
-void PhysicsManager::AddPersistentContactToManifold(RigidbodyComponent *A, 
-	RigidbodyComponent *B, CollisionContact& contact) 
-{
-	//Find key to access the contact from the hash
-	std::ostringstream stringStream;
-	stringStream << A->GetOwner()->GetId() << B->GetOwner()->GetId();
-	std::string key1 = stringStream.str();
-	auto iter = m_persistentContacts.find(key1);
-
-	assert(contact.manifold.ptsA[0].IsValid() && contact.manifold.ptsA[0].IsValid());
-	assert(contact.manifold.ptsA.size() == 1);
-
-	//Add persistentInfo into current contact (since persistent info will be cleared afterwards)
-	if (iter != m_persistentContacts.end())
-	{
-		//It does exist, so we need to update it
-		auto& node = *iter;
-		CollisionContact& persistentCt = node.second;
-
-		//DEBUG ---------------------
-		assert(persistentCt.manifold.ptsA.size() == persistentCt.manifold.ptsB.size());
-		assert(contact.manifold.ptsA.size() == contact.manifold.ptsB.size());
-
-		/////////////////////////////////////////////
-		//////   MANAGING CLOSE CONTACTS       //////
-		/////////////////////////////////////////////
-		float thressholdSQR = 10.0f;
-		bool isAlreadyPresent = false;
-		int persistentSize = persistentCt.manifold.ptsA.size();
-		for (int i = 0; i < persistentSize; ++i)
-		{
-			AuxMath::BodyWorldPair const& ptA = persistentCt.manifold.ptsA[i];
-			AuxMath::BodyWorldPair const& ptB = persistentCt.manifold.ptsB[i];
-
-			float distanceSQR_A = glm::dot(ptA.world - contact.manifold.ptsA[0].world,
-				ptA.world - contact.manifold.ptsA[0].world);
-			float distanceSQR_B = glm::dot(ptB.world - contact.manifold.ptsB[0].world,
-				ptB.world - contact.manifold.ptsB[0].world);
-
-			if (distanceSQR_A < thressholdSQR || distanceSQR_B < thressholdSQR)
-			{
-				isAlreadyPresent = true;
-				break;
-			}
-		}
-
-		//Here we choose between: 
-		//		-  Adding all points in persistentManifold to contact 
-		//		-  Replacing contact by persistent manifold
-		if (isAlreadyPresent == true)
-			contact.manifold = persistentCt.manifold;
-		else
-		{
-			//If persistent already has 4 points, then choose the 4 with biggest area
-			if (persistentSize >= CONTACT_NUM)
-			{
-				ChooseFourContacts(persistentCt, contact);
-			}
-			else
-			{
-				for (int i = 0; i < persistentSize; ++i)
-				{
-					AuxMath::BodyWorldPair& point_a = persistentCt.manifold.ptsA[i];
-					AuxMath::BodyWorldPair& point_b = persistentCt.manifold.ptsB[i];
-
-					assert(point_a.IsValid() && point_b.IsValid());
-
-					contact.manifold.ptsA.push_back(point_a);
-					contact.manifold.ptsB.push_back(point_b);
-				}
-			}
-		}
-	}
-
-	//DEBUGGING
+	//After this, contact needs to have the max num of contacts, no more and no less
 	assert(contact.manifold.ptsA.size() == contact.manifold.ptsB.size());
-	/// for (int i = 0; i < contact.manifold.ptsA.size(); ++i)
-	/// 	assert(contact.manifold.ptsA[i].IsValid() == contact.manifold.ptsB[i].IsValid());
+	
+	/// //For now, weird experiment with normals
+	/// if (contact.manifold.ptsA.size() == 3) 
+	/// {
+	/// 
+	/// }
+	/// else if (contact.manifold.ptsA.size() == 4)
+	/// {
+	/// 
+	/// }
 }
 
 
 
+//desc
 void PhysicsManager::RecursiveTreeCheck(AABBNode *current, AABBNode *starting)
 {
 	//Compare this rigidbody against the different levels of the tree.
@@ -647,9 +622,20 @@ void PhysicsManager::RecursiveTreeCheck(AABBNode *current, AABBNode *starting)
 		RigidbodyComponent *rbA = current->body;
 
 		//Make sure two same objects are not being intersected twice
-		//TODO++++++++++++++++++++++++++++++
-
-		bool intersects = CheckCollision(rbA, rbB);
+		//CHEAP WAY (true way is to change traversal down)
+		if (rbB == rbA)
+			return;
+		std::ostringstream stringStream;
+		stringStream << rbA->GetOwner()->GetId() << rbB->GetOwner()->GetId();
+		std::string key1 = stringStream.str();
+		std::ostringstream stringStream2;
+		stringStream2 << rbB->GetOwner()->GetId() << rbA->GetOwner()->GetId();
+		std::string key2 = stringStream2.str();
+		auto iter1 = m_persistentContacts.find(key1);
+		auto iter2 = m_persistentContacts.find(key2);
+		
+		if (iter1 == m_persistentContacts.end() && iter2 == iter1)
+			bool intersects = CheckCollision(rbA, rbB);
 
 		return;
 	}
@@ -661,5 +647,79 @@ void PhysicsManager::RecursiveTreeCheck(AABBNode *current, AABBNode *starting)
 			RecursiveTreeCheck(current, starting->left);
 		if (collidesRight)
 			RecursiveTreeCheck(current, starting->right);
+	}
+}
+
+
+
+/////////////////////////////////
+////   COLISION RESOLUTION   ////
+/////////////////////////////////
+//Desc
+void PhysicsManager::CollisionResolutionTest(CollisionContact& contact)
+{
+	RigidbodyComponent *A = contact.rbdyA;
+	RigidbodyComponent *B = contact.rbdyB;
+	AuxMath::GJK_Manifold_V1 manifoldInfo = contact.manifold;
+	float mgtd = 0.1f;
+
+	//Resolution for first body
+	for (int i = 0; i < manifoldInfo.ptsA.size(); ++i)
+	{
+		//Get the points for the first contact
+		glm::vec4 pointA_i = manifoldInfo.ptsA[i].world;
+		glm::vec3 restitutionForce = static_cast<glm::vec3>(manifoldInfo.restitution);
+		//glm::vec3 restitutionForce = (static_cast<glm::vec3>(manifoldInfo.ptsB[i].world - manifoldInfo.ptsA[i].world));
+
+		assert(restitutionForce.x == restitutionForce.x && restitutionForce.y == restitutionForce.y 
+			&& restitutionForce.z == restitutionForce.z);
+		
+		if (A->GetMass() > 0.0f)
+			A->ApplyForce(restitutionForce * (mgtd), static_cast<glm::vec3>(pointA_i) - A->GetPositionEstimate());
+	}
+
+	//Resolution for second body
+	for (int i = 0; i < manifoldInfo.ptsB.size(); ++i)
+	{
+		//Get the points for the first contact
+		glm::vec4 pointB_i = manifoldInfo.ptsB[i].world;
+		glm::vec3 restitutionForce = static_cast<glm::vec3>(-manifoldInfo.restitution);
+		//glm::vec3 restitutionForce = (static_cast<glm::vec3>(-manifoldInfo.ptsB[i].world + manifoldInfo.ptsA[i].world));
+
+		assert(restitutionForce.x == restitutionForce.x && restitutionForce.y == restitutionForce.y &&
+			restitutionForce.z == restitutionForce.z);
+		if (B->GetMass() > 0.0f)
+			B->ApplyForce(restitutionForce * (mgtd), static_cast<glm::vec3>(pointB_i) - B->GetPositionEstimate());
+	}
+}
+
+
+
+//Desc
+void PhysicsManager::SequentialImpulseRoutine(std::vector<CollisionContact> const& contacts) 
+{
+	//Loop through all contact manifolds 
+	for (int index = 0; index < contacts.size(); ++index)
+	{
+		CollisionContact const& ct = contacts[index];
+
+		assert(ct.manifold.ptsA.size() == ct.manifold.ptsB.size());
+
+		//A constraint is going to be a pair of contacts
+		for (int i = 0; i < ct.manifold.ptsA.size(); ++i)
+		{
+			RigidbodyComponent *rbA = ct.rbdyA;
+			RigidbodyComponent *rbB = ct.rbdyB;
+
+			glm::vec4 const& ptA = ct.manifold.ptsA[i].world;
+			glm::vec4 const& ptB = ct.manifold.ptsB[i].world;
+			glm::vec4 n = ptB - ptA;
+
+			float mgtd = 0.01f;
+			if (rbA->GetMass() > 0.0f)
+				rbA->ApplyForce(n * (mgtd), static_cast<glm::vec3>(ptA) - rbA->GetPositionEstimate());
+			if (rbB->GetMass() > 0.0f)
+				rbB->ApplyForce(-n * (mgtd), static_cast<glm::vec3>(ptB) - rbB->GetPositionEstimate());
+		}
 	}
 }

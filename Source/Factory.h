@@ -318,7 +318,7 @@ public:
 					render->DeserializeInit();
 					//Rigidbody
 					RigidbodyComponent *rgbdy = go->AddComponent<RigidbodyComponent>();
-					rgbdy->mass = 0.1f;
+					rgbdy->mass = 20.0f;
 					rgbdy->affectedByGravity = true;
 					rgbdy->hasParticleInteraction = false;
 					rgbdy->isPlayer = false;

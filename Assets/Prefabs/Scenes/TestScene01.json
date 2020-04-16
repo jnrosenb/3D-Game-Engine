@@ -48,7 +48,7 @@
     {
       "name": "PhysicObj01.json",
       "transform": {
-        "position": [ -30, 26, 0 ],
+        "position": [ -40, 26, 0 ],
         "rotation": [ 0, 40, 0 ],
         "scale": [ 8, 24, 8 ]
       }

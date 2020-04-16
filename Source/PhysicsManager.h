@@ -47,8 +47,11 @@ public:
 
 private:
 	bool CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B);
-	void CollisionResolutionTest(CollisionContact& contact);
 	void RecursiveTreeCheck(AABBNode *current, AABBNode *starting);
+
+	//Collision resolution
+	void CollisionResolutionTest(CollisionContact& contact);
+	void SequentialImpulseRoutine(std::vector<CollisionContact> const& contacts);
 
 	//Contact related methods
 	glm::vec4 BodyToWorldContact(glm::vec4 const& body, RigidbodyComponent *rgbdy);

@@ -19,6 +19,8 @@ namespace AuxMath
 		std::vector<glm::vec4>& simplex,
 		AuxMath::GJK_Manifold_V1& manifold) 
 	{
+		assert(manifold.ptsA.size() == 0);
+
 		//We need this to access support points on MD
 		std::vector<BodyWorldPair> AVertices(0);
 		std::vector<BodyWorldPair> BVertices(0);
@@ -42,9 +44,19 @@ namespace AuxMath
 			{
 				if (map.MDiff == p01)
 				{
+					assert(manifold.ptsA.size() == 0);
+
 					//Out info----------------------
 					manifold.ptsA.push_back(map.ptA);
 					manifold.ptsB.push_back(map.ptB);
+
+					assert(manifold.ptsA.size() == 1);
+
+					assert(manifold.ptsA[0].world.x == manifold.ptsA[0].world.x && manifold.ptsA[0].world.y == manifold.ptsA[0].world.y
+						&& manifold.ptsA[0].world.z == manifold.ptsA[0].world.z);
+					assert(manifold.ptsB[0].world.x == manifold.ptsB[0].world.x && manifold.ptsB[0].world.y == manifold.ptsB[0].world.y
+						&& manifold.ptsB[0].world.z == manifold.ptsB[0].world.z);
+
 					return;
 				}
 			}
@@ -61,9 +73,19 @@ namespace AuxMath
 			{
 				if (map.MDiff == pclosest)
 				{
+					assert(manifold.ptsA.size() == 0);
+
 					//Out info----------------------
 					manifold.ptsA.push_back(map.ptA);
 					manifold.ptsB.push_back(map.ptB);
+
+					assert(manifold.ptsA.size() == 1);
+
+					assert(manifold.ptsA[0].world.x == manifold.ptsA[0].world.x && manifold.ptsA[0].world.y == manifold.ptsA[0].world.y
+						&& manifold.ptsA[0].world.z == manifold.ptsA[0].world.z);
+					assert(manifold.ptsB[0].world.x == manifold.ptsB[0].world.x && manifold.ptsB[0].world.y == manifold.ptsB[0].world.y
+						&& manifold.ptsB[0].world.z == manifold.ptsB[0].world.z);
+
 					return;
 				}
 			}
@@ -99,6 +121,7 @@ namespace AuxMath
 
 
 		//MAIN LOOP
+		bool earlyOut = false;
 		int iterations = 0;
 		while (true)
 		{
@@ -124,19 +147,13 @@ namespace AuxMath
 			BodyWorldPair support = {};
 			bool isSupportCoplanar = FindSupportForEPA(md_list, AVertices, BVertices, closest, support);
 			if (isSupportCoplanar) 
-			{
-				//Support point found is not further from origin than current feature (is coplanar)
-				AuxMath::GJKSolver::EPATerminationRoutine(md_list, closest, 
-					iterations, manifold);///////////////////////////////////*************
-				break;
-			}
+				earlyOut = true;
 
 
 			//Gotta check if support is already in polytope. If it is, we dont need to keep going
 			for (PolyBase *base : features) 
 			{
 				float epsilon = 0.0001f;
-
 				if (base->type == 0) 
 				{
 					PolyVertex *vtx = static_cast<PolyVertex*>(base);
@@ -145,25 +162,22 @@ namespace AuxMath
 						std::abs(vtx->point.z - support.world.z) < epsilon) &&
 						vtx->markedRemove == false)
 					{
-						//Support point found is already added to the polytope
-						AuxMath::GJKSolver::EPATerminationRoutine(md_list, closest, 
-							iterations, manifold);///////////////////////////////////*************
+						earlyOut = true;
 						break;
 					}
 				}
 			}
 
-			//DEBUGGING (vertex not deleted)
-			/// for (PolyBase* base : features)
-			/// {
-			/// 	if (base->type == 0)
-			/// 	{
-			/// 		PolyVertex *vtx = static_cast<PolyVertex*>(base);
-			/// 
-			/// 		if (vtx->markedRemove == false && vtx->GetFaceCount() == 0)
-			/// 			std::cout << "";
-			/// 	}
-			/// }
+
+			//Early out
+			if (earlyOut) 
+			{
+				//Support point found is already added to the polytope
+				AuxMath::GJKSolver::EPATerminationRoutine(md_list, closest,
+					iterations, manifold);
+				break;
+			}
+
 
 			///Now we have the support, we need to do the following steps
 			//1- Algorithm to start eliminating features (faces, edges, and at the end, points)
@@ -171,53 +185,14 @@ namespace AuxMath
 			AuxMath::GJKSolver::EPA_MarkFeaturesForRemoval(support.world, closest, OuterEdges);
 
 
-			//DEBUGGING (vertex not deleted)
-			/// for (PolyBase* base : features) 
-			/// {
-			/// 	if (base->type == 0) 
-			/// 	{
-			/// 		PolyVertex *vtx = static_cast<PolyVertex*>(base);
-			/// 
-			/// 		if (vtx->markedRemove == false && vtx->GetFaceCount() == 0) 
-			/// 			std::cout << "";
-			/// 	}
-			/// }
-
-
 			//CHECK IF THE VERTICES ARE BEING DELETED PROPERLY
 			//Be careful that any feature marked for deletion is erased from feature list and queue
 			RemoveFeatures(features, queue); /// IN PROGRESS
 
 
-			//DEBUGGING (vertex not deleted)
-			/// for (PolyBase* base : features)
-			/// {
-			/// 	if (base->type == 0)
-			/// 	{
-			/// 		PolyVertex *vtx = static_cast<PolyVertex*>(base);
-			/// 
-			/// 		if (vtx->markedRemove == false && vtx->GetFaceCount() == 0)
-			/// 			std::cout << "";
-			/// 	}
-			/// }
-
-
 			//Create the new features in between, which will be one vertex, and many faces/edges. 
 			//When creating, they have to be added to the queue
 			GenerateNewFeatures(OuterEdges, support.world, features, queue); /// NOT FINISHED YET
-
-
-			//DEBUGGING (vertex not deleted)
-			/// for (PolyBase* base : features)
-			/// {
-			/// 	if (base->type == 0)
-			/// 	{
-			/// 		PolyVertex *vtx = static_cast<PolyVertex*>(base);
-			/// 
-			/// 		if (vtx->markedRemove == false && vtx->GetFaceCount() == 0)
-			/// 			std::cout << "";
-			/// 	}
-			/// }
 
 
 			//End condition check - Filling out manifold information
@@ -244,13 +219,7 @@ namespace AuxMath
 		ClosestPack const& closest, int iterations,
 		AuxMath::GJK_Manifold_V1& manifold)
 	{
-		//Printing
-		///std::cout << "Closest feature distance  : " << closest.closest.x << ", " << closest.closest.y << ", " << closest.closest.z << std::endl;
-		///std::cout << "Nums of iterations: " << iterations++ << std::endl;
-		///std::cout << "--------------------------" << std::endl;
-
-		//For now, I'm only allowing closest feat to be a face
-		//This will be changed in a bit**********************
+		assert(manifold.ptsA.size() == 0);
 		if (closest.feature->type == 0) 
 		{
 			PolyVertex *outFeat = static_cast<PolyVertex*>(closest.feature);
@@ -262,6 +231,14 @@ namespace AuxMath
 					//Out info-------------
 					manifold.ptsA.push_back(map.ptA);
 					manifold.ptsB.push_back(map.ptB);
+
+					assert(manifold.ptsA.size() == 1);
+
+					assert(manifold.ptsA[0].world.x == manifold.ptsA[0].world.x && manifold.ptsA[0].world.y == manifold.ptsA[0].world.y
+						&& manifold.ptsA[0].world.z == manifold.ptsA[0].world.z);
+					assert(manifold.ptsB[0].world.x == manifold.ptsB[0].world.x && manifold.ptsB[0].world.y == manifold.ptsB[0].world.y
+						&& manifold.ptsB[0].world.z == manifold.ptsB[0].world.z);
+
 					return;
 				}
 			}
@@ -305,6 +282,13 @@ namespace AuxMath
 			//Out info----------------------
 			manifold.ptsA.push_back((map1.ptA * alpha) + (map2.ptA * beta));
 			manifold.ptsB.push_back((map1.ptB * alpha) + (map2.ptB * beta));
+
+			assert(manifold.ptsA.size() == 1);
+
+			assert(manifold.ptsA[0].world.x == manifold.ptsA[0].world.x && manifold.ptsA[0].world.y == manifold.ptsA[0].world.y
+				&& manifold.ptsA[0].world.z == manifold.ptsA[0].world.z);
+			assert(manifold.ptsB[0].world.x == manifold.ptsB[0].world.x && manifold.ptsB[0].world.y == manifold.ptsB[0].world.y
+				&& manifold.ptsB[0].world.z == manifold.ptsB[0].world.z);
 		}
 		else 
 		{
@@ -345,7 +329,7 @@ namespace AuxMath
 			}
 
 			//Barycentric areas (SHOULD BE CACHED)***************************(above comment)
-			glm::vec4 n = AuxMath::Simplex::vec4Cross(B-A, C-A);
+			glm::vec4 n = glm::normalize(AuxMath::Simplex::vec4Cross(B-A, C-A));
 			glm::vec4 P(0);
 			glm::vec4 R = P - n * glm::dot( (P-A), n );
 			R.w = 1.0f;
@@ -360,6 +344,13 @@ namespace AuxMath
 			//Out info----------------------
 			manifold.ptsA.push_back( (map1.ptA * alpha) + (map2.ptA * beta) + (map3.ptA * gamma));
 			manifold.ptsB.push_back( (map1.ptB * alpha) + (map2.ptB * beta) + (map3.ptB * gamma));
+
+			assert(manifold.ptsA.size() == 1);
+
+			assert(manifold.ptsA[0].world.x == manifold.ptsA[0].world.x && manifold.ptsA[0].world.y == manifold.ptsA[0].world.y
+				&& manifold.ptsA[0].world.z == manifold.ptsA[0].world.z);
+			assert(manifold.ptsB[0].world.x == manifold.ptsB[0].world.x && manifold.ptsB[0].world.y == manifold.ptsB[0].world.y
+				&& manifold.ptsB[0].world.z == manifold.ptsB[0].world.z);
 		}
 	}
 	//////////////////////////////////////////////////////////////////////////////////////////*************
