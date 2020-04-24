@@ -35,6 +35,10 @@ public:
 	//For now, contact will be on center of mass
 	void ApplyForce(glm::vec3 const& F, 
 		glm::vec3 const& offset);
+	void ApplyForce(glm::vec3 const& F);
+	void ApplyTorque(glm::vec3 const& T);
+	void ApplyImpulse(float dt, glm::vec4 const& Linear, 
+		glm::vec4 const& Angular);
 
 	//These should be private
 	virtual void DeserializeInit() override;
@@ -55,11 +59,26 @@ public:
 	glm::vec3 GetPositionEstimate() const;
 	glm::vec3 GetAABBRadiusFromOBB();
 
+
+	//For a contact pair, gives you the world position based on the body position (of the collider)
+	glm::vec4 BodyToWorldContact(glm::vec4 const& bodyCoord);
+
+
+	//For constraint solver
+	glm::vec4 const& GetVelocity() const;
+	glm::vec4 const& GetAngularVelocity() const;
+	float getMassInv() const;
+	glm::mat4 GetInertiaTensorWorldInv() const;
+
+	//FOR NOW PUBLIC
+	glm::vec4 Force;
+	glm::vec4 Torque;
+	void ResetForces();
+
 private:
 	void ColliderSetup();
 	void DebugDrawSetup(AABB const& aabb);
 	void handleInput(float dt);
-	void ResetForces();
 
 	//TEMPORARY while no friction
 	void DampVelocity(glm::vec4& vel, float damping = 0.03f);
@@ -94,8 +113,6 @@ private:
 	glm::vec4 DebugForce;
 
 	//Integration parameters
-	glm::vec4 Force;
-	glm::vec4 Torque;
 	glm::vec4 prevAngAccel;
 	glm::vec4 L;
 	glm::vec4 prevVel;

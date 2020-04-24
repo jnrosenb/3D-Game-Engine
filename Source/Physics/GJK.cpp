@@ -150,6 +150,17 @@ namespace AuxMath
 				earlyOut = true;
 
 
+			//DEBUGGING - Check vertices have no less than three faces
+			for (PolyBase *base : features) 
+			{
+				if (base->type == 0 && base->markedRemove == false && base->removed == false) 
+				{
+					PolyVertex *vertex = static_cast<PolyVertex*>(base);
+					assert(vertex->faces.size() >= 3);
+				}
+			}
+
+
 			//Gotta check if support is already in polytope. If it is, we dont need to keep going
 			for (PolyBase *base : features) 
 			{

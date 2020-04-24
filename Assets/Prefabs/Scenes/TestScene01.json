@@ -21,9 +21,9 @@
     {
       "name": "Floor01.json",
       "transform": {
-        "position": [ 0, -70, 0 ],
+        "position": [ 0, -50, 0 ],
         "rotation": [ -90.0, 0, 0 ],
-        "scale": [ 80, 80.0, 100.0 ]
+        "scale": [ 280, 280.0, 100.0 ]
       }
     },
     {

@@ -28,6 +28,45 @@ struct CollisionContact
 };
 
 
+//This will hold two vec3
+//So one of this correspond to six elements
+//Being used on constraint solver, for holding a vec6 per body
+struct LinearAngularPair
+{
+	glm::vec4 linear;
+	glm::vec4 angular;
+
+	LinearAngularPair operator+(LinearAngularPair const& rhs) const
+	{
+		LinearAngularPair result = {};
+		result.linear = this->linear + rhs.linear;
+		result.angular = this->angular + rhs.angular;
+		return result;
+	}
+
+	LinearAngularPair& operator+=(LinearAngularPair const& rhs)
+	{
+		this->linear += rhs.linear;
+		this->angular += rhs.angular;
+		return *this;
+	}
+
+	float operator*(LinearAngularPair const& rhs) const
+	{
+		return glm::dot(linear, rhs.linear) +
+			glm::dot(angular, rhs.angular);
+	}
+
+	LinearAngularPair operator*(float rhs) const
+	{
+		LinearAngularPair result = {};
+		result.linear = this->linear * rhs;
+		result.angular = this->angular * rhs;
+		return result;
+	}
+};
+
+
 
 class PhysicsManager 
 {
@@ -51,10 +90,11 @@ private:
 
 	//Collision resolution
 	void CollisionResolutionTest(CollisionContact& contact);
-	void SequentialImpulseRoutine(std::vector<CollisionContact> const& contacts);
+	void SequentialImpulseRoutine(float dt,
+		std::vector<CollisionContact> const& contacts);
 
 	//Contact related methods
-	glm::vec4 BodyToWorldContact(glm::vec4 const& body, RigidbodyComponent *rgbdy);
+	///glm::vec4 BodyToWorldContact(glm::vec4 const& body, RigidbodyComponent *rgbdy);
 	void CheckContactValidity(CollisionContact& contact);
 	void AddPersistentContactToManifold(RigidbodyComponent *A, RigidbodyComponent *B, 
 		CollisionContact& contact);

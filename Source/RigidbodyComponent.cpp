@@ -115,6 +115,21 @@ void RigidbodyComponent::ApplyForce(glm::vec3 const& F,
 	this->Torque += glm::vec4(t.x, t.y, t.z, 0.0f);
 }
 
+//Offset is already ContactWorldPos - COMWorldPos
+void RigidbodyComponent::ApplyForce(glm::vec3 const& F)
+{
+	assert(F.x == F.x && F.y == F.y && F.z == F.z);
+	this->Force += glm::vec4(F.x, F.y, F.z, 0);
+}
+
+
+//Offset is already ContactWorldPos - COMWorldPos
+void RigidbodyComponent::ApplyTorque(glm::vec3 const& T)
+{
+	assert(T.x == T.x && T.y == T.y && T.z == T.z);
+	this->Torque += glm::vec4(T.x, T.y, T.z, 0.0f);
+}
+
 
 void RigidbodyComponent::ColliderSetup()
 {
@@ -134,7 +149,7 @@ void RigidbodyComponent::ColliderSetup()
 		I[0][0] = (1 / 12.0f) * mass * (halfheight*halfheight + halfdepth*halfdepth);
 		I[1][1] = (1 / 12.0f) * mass * (halfwidth*halfwidth + halfdepth*halfdepth);
 		I[2][2] = (1 / 12.0f) * mass * (halfheight*halfheight + halfwidth*halfwidth);
-		IbodyInv = glm::inverse(I);
+		IbodyInv = (mass == 0) ? glm::mat4(0) : glm::inverse(I);
 
 
 		//FOR NOW, FIXED SCALE!!!!------------------------------------------------------
@@ -227,9 +242,75 @@ void RigidbodyComponent::Update(float dt)
 {
 	//Gravity fake
 	if (affectedByGravity)
-		this->ApplyForce({ 0, -(1.0f * mass), 0 }, glm::vec3(0));
+		this->ApplyForce({ 0, -(10.0f * mass), 0 }, glm::vec3(0));
 
 	handleInput(dt);
+}
+
+//CHECK THIS***************************
+glm::vec4 const& RigidbodyComponent::GetVelocity() const 
+{
+	return dParams[0];
+}
+
+//CHECK THIS***************************
+glm::vec4 const& RigidbodyComponent::GetAngularVelocity() const
+{
+	return Params[3];
+}
+
+//CHECK THIS***************************
+float RigidbodyComponent::getMassInv() const
+{
+	return invMass;
+}
+
+//CHECK THIS***************************
+glm::mat4 RigidbodyComponent::GetInertiaTensorWorldInv() const
+{
+	Transform *T = this->m_owner->GetComponent<Transform>();
+	glm::mat4 const& R = T->GetRotationMatrix();
+	return R * IbodyInv * glm::transpose(R);
+}
+
+
+//EXPERIMENT*****************************
+void RigidbodyComponent::ApplyImpulse(float dt, glm::vec4 const& Linear,
+	glm::vec4 const& Angular)
+{
+	//Initial stuff we need
+	Transform *T = this->m_owner->GetComponent<Transform>();
+
+	/// LINEAR STUFF ------------------------------
+	glm::vec4 dv = Linear * invMass;
+	glm::vec4& linearVel = dParams[0];
+	linearVel =dv;
+
+	//Integrate for position
+	glm::vec4& position = Params[0];
+	position = position + linearVel * dt;
+
+	T->translate((dt)*(linearVel + prevVel));
+	prevVel = linearVel;
+
+
+	/// ANGULAR STUFF ------------------------------
+	glm::mat4 const& R = T->GetRotationMatrix();
+	AuxMath::Quaternion const& q0 = T->GetRotationQuaternion();
+	glm::mat4 Iinv = R * IbodyInv * glm::transpose(R);
+
+	//--Param[3] as w--
+	L = Angular;
+	Params[3] = Iinv * L;
+	AuxMath::Quaternion w(Params[3]);
+
+	//Get quaternion velocity (slope vector), then integrate
+	AuxMath::Quaternion qvel = 0.5f * (q0 * w);
+	AuxMath::Quaternion q = q0 + (dt * qvel);
+	q = q0.Conjugate() * q;
+	q = q.Normalize();
+
+	T->rotate(q);
 }
 
 
@@ -283,12 +364,6 @@ void RigidbodyComponent::PhysicsUpdate(float dt)
 		assert(Torque.x == Torque.x && Torque.y == Torque.y && Torque.z == Torque.z);
 		L = L + Torque * dt;
 		Params[3] = Iinv * L;
-
-		/// assert(Params[0].x == Params[0].x && Params[0].y == Params[0].y && Params[0].z == Params[0].z);
-		/// assert(Params[1].x == Params[1].x && Params[1].y == Params[1].y && Params[1].z == Params[1].z);
-		/// assert(Params[2].x == Params[2].x && Params[2].y == Params[2].y && Params[2].z == Params[2].z);
-		/// assert(Params[3].x == Params[3].x && Params[3].y == Params[3].y && Params[3].z == Params[3].z);
-
 		AuxMath::Quaternion w(Params[3]);
 		DampVelocity(L, 0.1f);
 
@@ -306,11 +381,6 @@ void RigidbodyComponent::PhysicsUpdate(float dt)
 	{
 		prevAngAccel = glm::vec4(0);
 	}
-
-	/////////////////////////////////
-	////  AT THE END OF ALL      ////
-	/////////////////////////////////
-	ResetForces();
 }
 
 
@@ -471,7 +541,7 @@ void RigidbodyComponent::handleInput(float dt)
 		return;
 
 	Transform *T = this->m_owner->GetComponent<Transform>();
-	float moveSpeed = 1400.0f * dt;
+	float moveSpeed = 250000.0f * dt;
 	DeferredRenderer *deferred = static_cast<DeferredRenderer*>(renderer);
 	glm::vec3 fwd = deferred->GetCurrentCamera()->getLook();
 	fwd.y = 0.0f;
@@ -507,11 +577,6 @@ void RigidbodyComponent::handleInput(float dt)
 	{
 		ApplyForce(-moveSpeed * rup, { 0, 0.0f, 0 });
 	}
-
-	/// if (inputMgr->getKeyTrigger(SDL_SCANCODE_SPACE))
-	/// {
-	/// 	ApplyForce(rup * (moveSpeed * 10.0f), { 0, 0.0f, 0 });
-	/// }
 
 	//TOGGLE TREE
 	if (inputMgr->getKeyTrigger(SDL_SCANCODE_SPACE))
@@ -564,4 +629,22 @@ void RigidbodyComponent::DrawMeshWithOrientation(Mesh *mesh, Shader *shader,
 	data.mesh = mesh;
 	data.shader = shader;
 	renderer->QueueForDebugDraw(data);
+}
+
+
+
+//---------------------------------------------------------------------------------------------
+//For a contact pair, gives you the world position based on the body position (of the collider)
+glm::vec4 RigidbodyComponent::BodyToWorldContact(glm::vec4 const& body)
+{
+	//Get auxiliar data
+	Transform *T = GetOwner()->GetComponent<Transform>();
+	glm::mat4 const& R = T->GetRotationMatrix();
+	glm::vec3 const& radius = GetOBBRadiusVector();
+
+	//This should be center of mass, not position!!! - Wont work with objects whose COM differs from pivot
+	glm::vec4 const& COM = T->GetPosition();
+
+	return COM + (R[0] * body.x * radius.x) + (R[1] * body.y * radius.y) +
+		(R[2] * body.z * radius.z);
 }

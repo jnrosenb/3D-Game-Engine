@@ -33,12 +33,12 @@
     },
     {
       "id": "rigidbody",
-      "mass": 1.0,
+      "mass": 100.0,
       "interact_with_particles": true,
       "particle_collider": "sphere",
 
       "player": true,
-      "affected_by_gravity": false
+      "affected_by_gravity": true
     },
     {
       "id": "render",
@@ -46,7 +46,7 @@
       "load_model": false,
       "model_name": "WalkingBot.fbx",
       "primitive": "cube",
-      "use_alpha": true,
+      "use_alpha": false,
       "x_tiling": 4,
       "y_tiling": 4
     }

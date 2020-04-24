@@ -3,8 +3,9 @@
 //SEE IF THIS IS TOO MUCH
 
 
-#define USE_GJK		1	//If this is zero, we use a OBB SAT for very simple test narrow phase
-#define CONTACT_NUM 4
+#define USE_GJK						1	//If this is zero, we use a OBB SAT for very simple test narrow phase
+#define CONTACT_NUM					4
+#define SEQ_IMP_MAX_ITERATIONS		15
 
 
 #include "Renderer.h"
@@ -26,6 +27,8 @@
 #include "Meshes/DebugSphere.h"
 #include "Shader.h"
 //Manifold test
+
+#include "Physics/ConstraintBased.h"
 
 
 PhysicsManager::PhysicsManager() : timeAccumulator(0.0f)
@@ -100,9 +103,10 @@ void PhysicsManager::PhysicsUpdate(float dt)
 	m_persistentContacts.clear();
 
 
-	//JUST TEMPORARILY PUTTING IT HERE TO SEE CONTACT FORCES
+	//PHYSICS UPDATE
 	for (RigidbodyComponent *rgbdy : m_rigidbodies)
 	{
+		//Fixed timestep
 		timeAccumulator += dt;
 		if (timeAccumulator >= fixedDT)
 		{
@@ -113,10 +117,8 @@ void PhysicsManager::PhysicsUpdate(float dt)
 
 
 	//Collision resolution
-	SequentialImpulseRoutine(m_contacts);
-	/// for (CollisionContact& contact : m_contacts) 
-	/// 	CollisionResolutionTest(contact);
-
+	if (m_contacts.size() > 0)
+		SequentialImpulseRoutine(dt, m_contacts);
 
 	//Re insert CONTACT info into dictionary (for persistence)
 	//Then empty the frame's contact list
@@ -128,6 +130,10 @@ void PhysicsManager::PhysicsUpdate(float dt)
 		m_persistentContacts[key] = contact;
 	}
 	m_contacts.clear();		  
+
+
+	for (RigidbodyComponent *body : m_rigidbodies)
+		body->ResetForces();
 
 
 	//TESTING PURPOSES (To being able to toggle the BVH, but 
@@ -237,9 +243,9 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 
 		//REMOVE-LATER///////////////////////////////////////////////////////////
 		//Experiment with SAT - Wanna compare what I get from EPA with SAT	 ////
-		///glm::vec4 restitution_SAT;											 ////
+		///glm::vec4 restitution_SAT;										 ////
 		///AuxMath::TestOBB_OBB(A_OBB, B_OBB, restitution_SAT);				 ////
-		///restitution_SAT = glm::normalize(restitution_SAT);					 ////
+		///restitution_SAT = glm::normalize(restitution_SAT);				 ////
 		/////////////////////////////////////////////////////////////////////////
 
 
@@ -250,6 +256,7 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 		/// std::cout << "DIFFERENCE BETWEEN EPA AND SAT: " 
 		/// 		<< test.x << ", " << test.y << ", " << test.z << std::endl;
 		/// std::cout << "LEN: " << glm::length(test) << std::endl;
+		/// assert(glm::length(test) < 0.1f);
 		/// std::cout << "----------------------------" << std::endl;
 
 		///Push contact pair from EPA into list
@@ -278,8 +285,8 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 //First collision response, just random impulse being applied
 void PhysicsManager::CheckContactValidity(CollisionContact& contact)
 {	
-	std::cout << "---Contact-Validation----------------" << std::endl;
-	std::cout << "\t>> Size of contact: " << contact.manifold.ptsA.size() << std::endl;
+	///std::cout << "---Contact-Validation----------------" << std::endl;
+	///std::cout << "\t>> Size of contact: " << contact.manifold.ptsA.size() << std::endl;
 
 	//If the dot product abs is less than this, contact is valid
 	float AcceptableThresshold = 10.15f; // -> 0.1f for 2 contacts - 0.75f for 3 contacts - 1.5f for 4?
@@ -301,13 +308,13 @@ void PhysicsManager::CheckContactValidity(CollisionContact& contact)
 		//Get the points for the first contact
 		glm::vec4 nonValidated_World_A = contact.manifold.ptsA[i].world;
 		glm::vec4 bodyPoint_A = contact.manifold.ptsA[i].body;
-		glm::vec4 validated_world_A = BodyToWorldContact(bodyPoint_A, A);
+		glm::vec4 validated_world_A = A->BodyToWorldContact(bodyPoint_A);
 		float lenSqrA = glm::dot(validated_world_A- nonValidated_World_A, validated_world_A - nonValidated_World_A);
 
 		//Get the points for the second contact
 		glm::vec4 nonValidated_World_B = contact.manifold.ptsB[i].world;
 		glm::vec4 bodyPoint_B = contact.manifold.ptsB[i].body;
-		glm::vec4 validated_world_B = BodyToWorldContact(bodyPoint_B, B);
+		glm::vec4 validated_world_B = B->BodyToWorldContact(bodyPoint_B);
 		float lenSqrB = glm::dot(validated_world_B - nonValidated_World_B, validated_world_B - nonValidated_World_B);
 
 		//If this dot product is greater than thresshold, we delete the contacts
@@ -318,7 +325,7 @@ void PhysicsManager::CheckContactValidity(CollisionContact& contact)
 			contact.manifold.ptsA[i].MarkAsInvalid();
 			contact.manifold.ptsB[i].MarkAsInvalid();
 			
-			std::cout << "\t>> INVALIDATED CONTACT" << rand() << std::endl;
+			///std::cout << "\t>> INVALIDATED CONTACT" << rand() << std::endl;
 		}
 	}
 
@@ -340,26 +347,26 @@ void PhysicsManager::CheckContactValidity(CollisionContact& contact)
 		contact.manifold.ptsB.push_back(validContacts.manifold.ptsB[i]);
 	}
 
-	std::cout << "\t>> Size of contact: " << contact.manifold.ptsA.size() << std::endl;
-	std::cout << "------------------------------------------------------" << std::endl;
+	///std::cout << "\t>> Size of contact: " << contact.manifold.ptsA.size() << std::endl;
+	///std::cout << "------------------------------------------------------" << std::endl;
 }
 
 
 
 //For a contact pair, gives you the world position based on the body position (of the collider)
-glm::vec4 PhysicsManager::BodyToWorldContact(glm::vec4 const& body, RigidbodyComponent *rgbdy) 
-{
-	//Get auxiliar data
-	Transform *T = rgbdy->GetOwner()->GetComponent<Transform>();
-	glm::mat4 const& R = T->GetRotationMatrix();
-	glm::vec3 const& radius = rgbdy->GetOBBRadiusVector();
-
-	//This should be center of mass, not position!!! - Wont work with objects whose COM differs from pivot
-	glm::vec4 const& COM = T->GetPosition();
-
-	return COM + (R[0] * body.x * radius.x) + (R[1] * body.y * radius.y) + 
-		(R[2] * body.z * radius.z);
-}
+/// glm::vec4 PhysicsManager::BodyToWorldContact(glm::vec4 const& body, RigidbodyComponent *rgbdy)
+/// {
+/// 	//Get auxiliar data
+/// 	Transform *T = rgbdy->GetOwner()->GetComponent<Transform>();
+/// 	glm::mat4 const& R = T->GetRotationMatrix();
+/// 	glm::vec3 const& radius = rgbdy->GetOBBRadiusVector();
+/// 
+/// 	//This should be center of mass, not position!!! - Wont work with objects whose COM differs from pivot
+/// 	glm::vec4 const& COM = T->GetPosition();
+/// 
+/// 	return COM + (R[0] * body.x * radius.x) + (R[1] * body.y * radius.y) +
+/// 		(R[2] * body.z * radius.z);
+/// }
 
 
 
@@ -655,71 +662,110 @@ void PhysicsManager::RecursiveTreeCheck(AABBNode *current, AABBNode *starting)
 /////////////////////////////////
 ////   COLISION RESOLUTION   ////
 /////////////////////////////////
-//Desc
-void PhysicsManager::CollisionResolutionTest(CollisionContact& contact)
+void PhysicsManager::SequentialImpulseRoutine(float dt,
+	std::vector<CollisionContact> const& contacts) 
 {
-	RigidbodyComponent *A = contact.rbdyA;
-	RigidbodyComponent *B = contact.rbdyB;
-	AuxMath::GJK_Manifold_V1 manifoldInfo = contact.manifold;
-	float mgtd = 0.1f;
+	//Declare the structures
+	std::vector<std::vector<LinearAngularPair>> Jsp;
+	std::vector<std::vector<unsigned>> Jmap;
+	std::vector<LinearAngularPair> Vprev;
+	std::vector<LinearAngularPair> Vcurr;
+	
+	//Fill the jacobian information //////////////////***********CHECK IF USING VALID CONTACT INFO
+	AuxMath::JacobianSetup(contacts, Jsp, Jmap);
+	Jmap.resize(Jsp.size());
+	for (int i = 0; i < Jmap.size(); ++i)
+		Jmap[i].resize(2);
 
-	//Resolution for first body
-	for (int i = 0; i < manifoldInfo.ptsA.size(); ++i)
+	//1- Setup lambda
+	//Lambda holds S floats
+	std::vector<float> Lambda;
+	Lambda.resize(Jsp.size(), 0.0f);
+	
+	//Setup rigidbody vector and the indices on jmap
+	std::unordered_map<RigidbodyComponent*, unsigned> insertMap;
+	std::vector<RigidbodyComponent*> bodies;
+	int constraintIndex = 0, i = 0;
+	for (CollisionContact const& contact : contacts) 
 	{
-		//Get the points for the first contact
-		glm::vec4 pointA_i = manifoldInfo.ptsA[i].world;
-		glm::vec3 restitutionForce = static_cast<glm::vec3>(manifoldInfo.restitution);
-		//glm::vec3 restitutionForce = (static_cast<glm::vec3>(manifoldInfo.ptsB[i].world - manifoldInfo.ptsA[i].world));
-
-		assert(restitutionForce.x == restitutionForce.x && restitutionForce.y == restitutionForce.y 
-			&& restitutionForce.z == restitutionForce.z);
-		
-		if (A->GetMass() > 0.0f)
-			A->ApplyForce(restitutionForce * (mgtd), static_cast<glm::vec3>(pointA_i) - A->GetPositionEstimate());
-	}
-
-	//Resolution for second body
-	for (int i = 0; i < manifoldInfo.ptsB.size(); ++i)
-	{
-		//Get the points for the first contact
-		glm::vec4 pointB_i = manifoldInfo.ptsB[i].world;
-		glm::vec3 restitutionForce = static_cast<glm::vec3>(-manifoldInfo.restitution);
-		//glm::vec3 restitutionForce = (static_cast<glm::vec3>(-manifoldInfo.ptsB[i].world + manifoldInfo.ptsA[i].world));
-
-		assert(restitutionForce.x == restitutionForce.x && restitutionForce.y == restitutionForce.y &&
-			restitutionForce.z == restitutionForce.z);
-		if (B->GetMass() > 0.0f)
-			B->ApplyForce(restitutionForce * (mgtd), static_cast<glm::vec3>(pointB_i) - B->GetPositionEstimate());
-	}
-}
-
-
-
-//Desc
-void PhysicsManager::SequentialImpulseRoutine(std::vector<CollisionContact> const& contacts) 
-{
-	//Loop through all contact manifolds 
-	for (int index = 0; index < contacts.size(); ++index)
-	{
-		CollisionContact const& ct = contacts[index];
-
-		assert(ct.manifold.ptsA.size() == ct.manifold.ptsB.size());
-
-		//A constraint is going to be a pair of contacts
-		for (int i = 0; i < ct.manifold.ptsA.size(); ++i)
+		for (int j = 0; j < contact.manifold.ptsA.size(); ++j)
 		{
-			RigidbodyComponent *rbA = ct.rbdyA;
-			RigidbodyComponent *rbB = ct.rbdyB;
+			//For first contact, this is done
+			if (j == 0) 
+			{
+				auto& iter = insertMap.find(contact.rbdyA);
+				if (iter == insertMap.end())
+				{
+					insertMap[contact.rbdyA] = i++;
+					bodies.push_back(contact.rbdyA);
+				}
+				Jmap[constraintIndex + j][0] = insertMap[contact.rbdyA];
 
-			glm::vec4 const& ptA = ct.manifold.ptsA[i].world;
-			glm::vec4 const& ptB = ct.manifold.ptsB[i].world;
-			glm::vec4 n = ptB - ptA;
+				iter = insertMap.find(contact.rbdyB); 
+				if (iter == insertMap.end())
+				{
+					insertMap[contact.rbdyB] = i++;
+					bodies.push_back(contact.rbdyB);
+				}
+				Jmap[constraintIndex + j][1] = insertMap[contact.rbdyB];
+			}
+			//For else cases, only update Jmap, not the rigidbody container
+			else 
+			{
+				auto& iter = insertMap.find(contact.rbdyA);
+				assert(iter != insertMap.end());
+				Jmap[constraintIndex + j][0] = insertMap[contact.rbdyA];
 
-			float mgtd = 0.01f;
-			if (rbA->GetMass() > 0.0f)
-				rbA->ApplyForce(n * (mgtd), static_cast<glm::vec3>(ptA) - rbA->GetPositionEstimate());
-			if (rbB->GetMass() > 0.0f)
-				rbB->ApplyForce(-n * (mgtd), static_cast<glm::vec3>(ptB) - rbB->GetPositionEstimate());
+				iter = insertMap.find(contact.rbdyB);
+				assert(iter != insertMap.end());
+				Jmap[constraintIndex + j][1] = insertMap[contact.rbdyB];
+			}
+			
+			//Update contraintIndex
+			if (j == contact.manifold.ptsA.size() - 1)
+				constraintIndex += contact.manifold.ptsA.size();
 		}
 	}
+
+	//Setup the velocity vector
+	AuxMath::VelocityVectorSetup(bodies, Vprev, Vcurr);
+
+	//Start iterations
+	unsigned iters = 0;
+	while (iters++ < SEQ_IMP_MAX_ITERATIONS)
+	{
+		//3- Setup Cpos and Cvel
+		std::vector<float> Cpos;
+		std::vector<float> Cvel;
+		AuxMath::PositionConstraintSolver(Cpos, contacts);			//USING -N because of not yet having a normal for the contacts
+		AuxMath::VelocityConstraintSolver(dt, Cvel, Cpos,			//USING -N because of not yet having a normal for the contacts 
+			Vcurr, bodies, Jsp, Jmap);
+
+		//Run Gaus-Seidel to get the multipliers
+		AuxMath::LagrangeMultipliersSolver(dt, Lambda,
+			bodies, Vprev, Vcurr, Jsp, Jmap, Cpos, Cvel);
+
+		//Calculate constraint forces
+		std::vector<LinearAngularPair> Fc;
+		AuxMath::ImpulseSolver(Fc, Lambda, bodies, Jsp, Jmap);
+
+		//Calculate impulses based on forces
+		unsigned s = Jsp.size();
+		for (int i = 0; i < s; ++i)
+		{
+			unsigned b1 = Jmap[i][0];
+			unsigned b2 = Jmap[i][1];
+			RigidbodyComponent *A = bodies[b1];
+			RigidbodyComponent *B = bodies[b2];
+
+			if (A->GetMass() > 0.0f && (Fc[b1].linear != glm::vec4(0) || Fc[b1].angular != glm::vec4(0)))
+				A->ApplyImpulse(dt, Fc[b1].linear * dt, Fc[b1].angular * dt);
+			if (B->GetMass() > 0.0f && (Fc[b2].linear != glm::vec4(0) || Fc[b2].angular != glm::vec4(0)))
+				B->ApplyImpulse(dt, Fc[b2].linear * dt, Fc[b2].angular * dt);
+		}
+
+		//Update velocity vector
+		AuxMath::VelocityVectorUpdate(bodies, Vprev, Vcurr);
+	}
+	//END---------------------
 }
