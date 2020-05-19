@@ -23,7 +23,7 @@
       "transform": {
         "position": [ 0, -50, 0 ],
         "rotation": [ -90.0, 0, 0 ],
-        "scale": [ 280, 280.0, 100.0 ]
+        "scale": [ 180, 180.0, 100.0 ]
       }
     },
     {
@@ -48,17 +48,17 @@
     {
       "name": "PhysicObj01.json",
       "transform": {
-        "position": [ -40, 26, 0 ],
-        "rotation": [ 0, 40, 0 ],
-        "scale": [ 8, 24, 8 ]
+        "position": [ -45, 26, 0 ],
+        "rotation": [ 90, 0, 0 ],
+        "scale": [ 20, 60, 5 ]
       }
     },
     {
       "name": "FlockingSpawn.json",
       "transform": {
-        "position": [ 30, 26, 0 ],
+        "position": [ 45, 26, 0 ],
         "rotation": [ 0, 30, 0 ],
-        "scale": [ 15, 15, 15 ]
+        "scale": [ 8, 8, 8 ]
       }
     }
   ]

@@ -13,29 +13,26 @@
 namespace AuxMath
 {
 	//SETUP ALL THE MATRICES USED FOR THE SOLVER
-	void JacobianSetup(std::vector<CollisionContact> const& contacts,
-	std::vector<std::vector<LinearAngularPair>>& Jsp,
-		std::vector<std::vector<unsigned>>& Jmap);
+	void JacobianSetup(std::vector<ContactSet> const& contacts,
+	std::vector<std::vector<LinearAngularPair>>& Jsp);
 
 
 
 	//Setup the velocity vectors
 	void VelocityVectorSetup(std::vector<RigidbodyComponent*> const& bodies,
-		std::vector<LinearAngularPair>& Vprev,
 		std::vector<LinearAngularPair>& Vcurr);
 
 
 
 	//Setup the velocity vectors
 	void VelocityVectorUpdate(std::vector<RigidbodyComponent*> const& bodies,
-		std::vector<LinearAngularPair>& Vprev,
 		std::vector<LinearAngularPair>& Vcurr);
 
 
 
 	//Solving for position constraint
 	void PositionConstraintSolver(std::vector<float>& Cp,
-		std::vector<CollisionContact> const& contacts);
+		std::vector<ContactSet> const& contacts);
 
 
 
@@ -61,7 +58,6 @@ namespace AuxMath
 	void LagrangeMultipliersSolver(float dt,
 		std::vector<float>& Lambda,
 		std::vector <RigidbodyComponent*> const& bodies,
-		std::vector<LinearAngularPair>& Vprev,
 		std::vector<LinearAngularPair>& Vcurr,
 		std::vector<std::vector<LinearAngularPair>> const& Jsp,
 		std::vector<std::vector<unsigned>> const& Jmap,

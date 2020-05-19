@@ -10,7 +10,7 @@
 
     {
       "id": "rigidbody",
-      "mass": 50.0,
+      "mass": 1000.0,
       "player": false,
       "affected_by_gravity": false,
 

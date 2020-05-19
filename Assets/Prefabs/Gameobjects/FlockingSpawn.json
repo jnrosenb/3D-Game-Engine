@@ -8,30 +8,6 @@
       "scale": [ 5, 5, 5 ]
     },
     {
-      "id": "particleSystem",
-      "interactive": true,
-      "particleCount": 100,
-      "mass": 1.0,
-      "load_model": true,
-      "model_name": "agent.fbx",
-      "diffuse_texture": "crate.png",
-      "x_tiling": 4,
-      "y_tiling": 4,
-      "size": [ 1.0, 1.0, 1.0 ],
-      "color": [ 0.0, 1.0, 0.0 ],
-      "avoid_obstacle": true,
-      "avoidance_distance": 5.0,
-      "flocking_params": {
-        "max_acceleration": 30.0,
-        "optimal_separation": 6.0,
-        "separation_weight": 0.2,
-        "cohesion_weight": 0.3,
-        "avoidance_weight": 0.2,
-        "radius": 15.0,
-        "fov": 180.0
-      }
-    },
-    {
       "id": "rigidbody",
       "mass": 100.0,
       "interact_with_particles": true,
@@ -45,7 +21,7 @@
       "diffuse": [ 1.0, 0.7, 0.4, 1.0 ],
       "load_model": false,
       "model_name": "WalkingBot.fbx",
-      "primitive": "cube",
+      "primitive": "sphere",
       "use_alpha": false,
       "x_tiling": 4,
       "y_tiling": 4

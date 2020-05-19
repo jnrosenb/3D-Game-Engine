@@ -70,6 +70,17 @@ public:
 	float getMassInv() const;
 	glm::mat4 GetInertiaTensorWorldInv() const;
 
+	//Experiment with setters
+	void SetLinearVelocity(glm::vec4 const& v) 
+	{
+		this->V = v;
+	}
+	void SetAngularVelocity(glm::vec4 const& w)
+	{
+		this->W = w;
+	}
+	//Experiment with setters
+
 	//FOR NOW PUBLIC
 	glm::vec4 Force;
 	glm::vec4 Torque;
@@ -114,8 +125,11 @@ private:
 
 	//Integration parameters
 	glm::vec4 prevAngAccel;
-	glm::vec4 L;
 	glm::vec4 prevVel;
+	glm::vec4 L;
+	glm::vec4 W;
+	glm::vec4 P;
+	glm::vec4 V;
 
 	//Vector of diferentiated params
 	std::vector<glm::vec4> Params;  // x(t) - q       - P - L

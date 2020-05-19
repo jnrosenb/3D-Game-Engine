@@ -90,7 +90,12 @@ namespace AuxMath
 	{
 		std::vector<BodyWorldPair> ptsA;
 		std::vector<BodyWorldPair> ptsB;
+
+		//Lagrange multipliers
+		std::vector<float> Lambdas;
+
 		glm::vec3 restitution; //Normal, unit
+		float penetrationDepth;
 	};
 
 

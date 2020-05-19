@@ -5,7 +5,7 @@
 
 #define USE_GJK						1	//If this is zero, we use a OBB SAT for very simple test narrow phase
 #define CONTACT_NUM					4
-#define SEQ_IMP_MAX_ITERATIONS		15
+#define SEQ_IMP_MAX_ITERATIONS		5
 
 
 #include "Renderer.h"
@@ -66,10 +66,26 @@ void PhysicsManager::PhysicsUpdate(float dt)
 		vbh->Update(body);
 
 
+
+	//PHYSICS UPDATE - NON FIXED TIME STEP
+	for (RigidbodyComponent *rgbdy : m_rigidbodies)
+	{
+		//Fixed timestep
+		/// timeAccumulator += dt;
+		/// if (timeAccumulator >= fixedDT)
+		/// {
+		/// 	rgbdy->PhysicsUpdate(fixedDT);
+		/// 	timeAccumulator -= fixedDT;
+		/// }
+		rgbdy->PhysicsUpdate(dt);
+	}
+	//PHYSICS UPDATE - NON FIXED TIME STEP
+
+
+
 	//Check if contacts are valid. Discard otherwise
 	for (auto& node : m_persistentContacts)
 		CheckContactValidity(node.second);
-
 
 	//BROADPHASE using VBH
 	if (USEBVH)
@@ -103,26 +119,19 @@ void PhysicsManager::PhysicsUpdate(float dt)
 	m_persistentContacts.clear();
 
 
-	//PHYSICS UPDATE
-	for (RigidbodyComponent *rgbdy : m_rigidbodies)
-	{
-		//Fixed timestep
-		timeAccumulator += dt;
-		if (timeAccumulator >= fixedDT)
-		{
-			rgbdy->PhysicsUpdate(fixedDT);
-			timeAccumulator -= fixedDT;
-		}
-	}
 
 
-	//Collision resolution
-	if (m_contacts.size() > 0)
-		SequentialImpulseRoutine(dt, m_contacts);
+	//Collision resolution----------------------------------////////////////////////////////****************
+	if (m_contacts.size() > 0)								////////////////////////////////****************
+		SequentialImpulseRoutine(dt, m_contacts);			////////////////////////////////****************
+	//Collision resolution----------------------------------////////////////////////////////****************
+
+
+
 
 	//Re insert CONTACT info into dictionary (for persistence)
 	//Then empty the frame's contact list
-	for (CollisionContact& contact : m_contacts)
+	for (ContactSet& contact : m_contacts)
 	{		
 		std::ostringstream stringStream;
 		stringStream << contact.rbdyA->GetOwner()->GetId() << contact.rbdyB->GetOwner()->GetId();
@@ -132,6 +141,7 @@ void PhysicsManager::PhysicsUpdate(float dt)
 	m_contacts.clear();		  
 
 
+	//RESET FORCES
 	for (RigidbodyComponent *body : m_rigidbodies)
 		body->ResetForces();
 
@@ -260,7 +270,7 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 		/// std::cout << "----------------------------" << std::endl;
 
 		///Push contact pair from EPA into list
-		CollisionContact contact = {};
+		ContactSet contact = {};
 		contact.rbdyA = A;
 		contact.rbdyB = B;
 		assert(A != nullptr && B != nullptr);
@@ -283,13 +293,13 @@ bool PhysicsManager::CheckCollision(RigidbodyComponent *A, RigidbodyComponent *B
 
 
 //First collision response, just random impulse being applied
-void PhysicsManager::CheckContactValidity(CollisionContact& contact)
+void PhysicsManager::CheckContactValidity(ContactSet& contact)
 {	
 	///std::cout << "---Contact-Validation----------------" << std::endl;
 	///std::cout << "\t>> Size of contact: " << contact.manifold.ptsA.size() << std::endl;
 
 	//If the dot product abs is less than this, contact is valid
-	float AcceptableThresshold = 10.15f; // -> 0.1f for 2 contacts - 0.75f for 3 contacts - 1.5f for 4?
+	float AcceptableThresshold = 1.5f; // -> 0.1f for 2 contacts - 0.75f for 3 contacts - 1.5f for 4?
 
 	//Get auxiliar info
 	RigidbodyComponent *A = contact.rbdyA;
@@ -320,7 +330,8 @@ void PhysicsManager::CheckContactValidity(CollisionContact& contact)
 		//If this dot product is greater than thresshold, we delete the contacts
 		glm::vec3 CtAToCtB = static_cast<glm::vec3>(validated_world_B - validated_world_A);
 		float dot = glm::dot(CtAToCtB, nAB);
-		if (dot <= 0.0f || lenSqrA > AcceptableThresshold || lenSqrB > AcceptableThresshold)
+		//if (dot <= 0.0f || lenSqrA > AcceptableThresshold || lenSqrB > AcceptableThresshold)
+		if (lenSqrA > AcceptableThresshold || lenSqrB > AcceptableThresshold)
 		{
 			contact.manifold.ptsA[i].MarkAsInvalid();
 			contact.manifold.ptsB[i].MarkAsInvalid();
@@ -330,7 +341,7 @@ void PhysicsManager::CheckContactValidity(CollisionContact& contact)
 	}
 
 	//This is so no invalid contact is left on the vector
-	CollisionContact validContacts = {};
+	ContactSet validContacts = {};
 	for (int i = 0; i < contact.manifold.ptsA.size(); ++i)
 	{
 		if (contact.manifold.ptsA[i].IsValid() && contact.manifold.ptsB[i].IsValid())
@@ -372,7 +383,7 @@ void PhysicsManager::CheckContactValidity(CollisionContact& contact)
 
 //Adds a new contact to the contact list
 void PhysicsManager::AddPersistentContactToManifold(RigidbodyComponent *A,
-	RigidbodyComponent *B, CollisionContact& contact)
+	RigidbodyComponent *B, ContactSet& contact)
 {
 	//Find key to access the contact from the hash
 	std::ostringstream stringStream;
@@ -388,7 +399,7 @@ void PhysicsManager::AddPersistentContactToManifold(RigidbodyComponent *A,
 	{
 		//It does exist, so we need to update it
 		auto& node = *iter;
-		CollisionContact& persistentCt = node.second;
+		ContactSet& persistentCt = node.second;
 
 		//DEBUG ---------------------
 		assert(persistentCt.manifold.ptsA.size() == persistentCt.manifold.ptsB.size());
@@ -397,7 +408,7 @@ void PhysicsManager::AddPersistentContactToManifold(RigidbodyComponent *A,
 		/////////////////////////////////////////////
 		//////   MANAGING CLOSE CONTACTS       //////
 		/////////////////////////////////////////////
-		float thressholdSQR = 10.0f;
+		float thressholdSQR = 0.001f;
 		bool isAlreadyPresent = false;
 		int persistentSize = persistentCt.manifold.ptsA.size();
 		for (int i = 0; i < persistentSize; ++i)
@@ -405,10 +416,10 @@ void PhysicsManager::AddPersistentContactToManifold(RigidbodyComponent *A,
 			AuxMath::BodyWorldPair const& ptA = persistentCt.manifold.ptsA[i];
 			AuxMath::BodyWorldPair const& ptB = persistentCt.manifold.ptsB[i];
 
-			float distanceSQR_A = glm::dot(ptA.world - contact.manifold.ptsA[0].world,
-				ptA.world - contact.manifold.ptsA[0].world);
-			float distanceSQR_B = glm::dot(ptB.world - contact.manifold.ptsB[0].world,
-				ptB.world - contact.manifold.ptsB[0].world);
+			float distanceSQR_A = glm::dot(ptA.body - contact.manifold.ptsA[0].body,
+				ptA.body - contact.manifold.ptsA[0].body);
+			float distanceSQR_B = glm::dot(ptB.body - contact.manifold.ptsB[0].body,
+				ptB.body - contact.manifold.ptsB[0].body);
 
 			if (distanceSQR_A < thressholdSQR || distanceSQR_B < thressholdSQR)
 			{
@@ -416,6 +427,8 @@ void PhysicsManager::AddPersistentContactToManifold(RigidbodyComponent *A,
 				break;
 			}
 		}
+
+		//If we have three points and are adding a fourth, dont unless its outside of the triangle formed by the other 2
 
 		//Here we choose between: 
 		//		-  Adding all points in persistentManifold to contact 
@@ -431,16 +444,97 @@ void PhysicsManager::AddPersistentContactToManifold(RigidbodyComponent *A,
 			}
 			else
 			{
-				for (int i = 0; i < persistentSize; ++i)
+				/*If it has three, check its not inside the triangle
+				if (persistentSize == 3) 
 				{
-					AuxMath::BodyWorldPair& point_a = persistentCt.manifold.ptsA[i];
-					AuxMath::BodyWorldPair& point_b = persistentCt.manifold.ptsB[i];
-
-					assert(point_a.IsValid() && point_b.IsValid());
-
-					contact.manifold.ptsA.push_back(point_a);
-					contact.manifold.ptsB.push_back(point_b);
+					AuxMath::BodyWorldPair const& P = contact.manifold.ptsA[0];
+				
+					AuxMath::BodyWorldPair const& firstA = persistentCt.manifold.ptsA[0];
+					AuxMath::BodyWorldPair const& secondA = persistentCt.manifold.ptsA[1];
+					AuxMath::BodyWorldPair const& thirdA = persistentCt.manifold.ptsA[2];
+						
+					glm::vec4 NmlA = AuxMath::Simplex::vec4Cross(
+						secondA.world - firstA.world, thirdA.world - firstA.world);
+				
+					glm::vec4 R = P.world - NmlA * glm::dot((P.world - firstA.world), NmlA);
+					R.w = 1.0f;
+					float Area_AB = glm::dot(NmlA, AuxMath::Simplex::vec4Cross(R - secondA.world, firstA.world - secondA.world));
+					float Area_BC = glm::dot(NmlA, AuxMath::Simplex::vec4Cross(R - thirdA.world, secondA.world - thirdA.world));
+					float Area_AC = glm::dot(NmlA, AuxMath::Simplex::vec4Cross(R - firstA.world, thirdA.world - firstA.world));
+					float totalArea = Area_AB + Area_AC + Area_BC;
+					float gamma = Area_AB / totalArea;
+					float beta = Area_AC / totalArea;
+					float alpha = 1.0f - gamma - beta;
+				
+					if (alpha > 1.0f || beta > 1.0f || gamma > 1.0f)
+				    {
+				    	//What we did originally 
+				    	//(later make code concise and eliminate repeated code)
+				    	for (int i = 0; i < persistentSize; ++i)
+				    	{
+				    		AuxMath::BodyWorldPair& point_a = persistentCt.manifold.ptsA[i];
+				    		AuxMath::BodyWorldPair& point_b = persistentCt.manifold.ptsB[i];
+				    
+				    		assert(point_a.IsValid() && point_b.IsValid());
+				    
+				    		contact.manifold.ptsA.push_back(point_a);
+				    		contact.manifold.ptsB.push_back(point_b);
+				    	}
+				    }
+					else
+						contact.manifold = persistentCt.manifold;
 				}
+				//*/
+
+				/*If it has two, it should check it is not colinear 
+				else if (persistentSize == 2) 
+				{
+					AuxMath::BodyWorldPair const& P = contact.manifold.ptsA[0];
+					AuxMath::BodyWorldPair const& firstA = persistentCt.manifold.ptsA[0];
+					AuxMath::BodyWorldPair const& secondA = persistentCt.manifold.ptsA[1];
+
+					glm::vec4 test = AuxMath::Simplex::vec4Cross(
+						P.world - firstA.world, secondA.world - firstA.world);
+
+					//If cross is not zero, add
+					float epsilonTest = 1.1f;
+					float val = glm::length(test);
+					if (val >= epsilonTest)
+					{
+						AuxMath::BodyWorldPair& point_a0 = persistentCt.manifold.ptsA[0];
+						AuxMath::BodyWorldPair& point_a1 = persistentCt.manifold.ptsA[1];
+						AuxMath::BodyWorldPair& point_b0 = persistentCt.manifold.ptsB[0];
+						AuxMath::BodyWorldPair& point_b1 = persistentCt.manifold.ptsB[1];
+
+						assert(point_a0.IsValid() && point_b0.IsValid() && 
+							point_a1.IsValid() && point_b1.IsValid());
+
+						contact.manifold.ptsA.push_back(point_a0);
+						contact.manifold.ptsA.push_back(point_a1);
+						contact.manifold.ptsB.push_back(point_b0);
+						contact.manifold.ptsB.push_back(point_b1);
+					}
+					else //If its colinear, add two 
+					{
+						contact.manifold = persistentCt.manifold;
+					}
+				}
+				//*/
+
+				//If it has one, just add the second
+				///else 
+				///{
+					for (int i = 0; i < persistentSize; ++i)
+					{
+						AuxMath::BodyWorldPair& point_a = persistentCt.manifold.ptsA[i];
+						AuxMath::BodyWorldPair& point_b = persistentCt.manifold.ptsB[i];
+
+						assert(point_a.IsValid() && point_b.IsValid());
+
+						contact.manifold.ptsA.push_back(point_a);
+						contact.manifold.ptsB.push_back(point_b);
+					}
+				///}
 			}
 		}
 	}
@@ -451,8 +545,8 @@ void PhysicsManager::AddPersistentContactToManifold(RigidbodyComponent *A,
 
 
 //Desc
-void PhysicsManager::ChooseFourContacts(CollisionContact const& persistentCt, 
-	CollisionContact& contact)
+void PhysicsManager::ChooseFourContacts(ContactSet const& persistentCt, 
+	ContactSet& contact)
 {
 	//Check if this doesnt happen, and why
 	assert(contact.manifold.ptsA.size() == 1);
@@ -460,7 +554,7 @@ void PhysicsManager::ChooseFourContacts(CollisionContact const& persistentCt,
 
 	//For easy of handling, mix all in a single 
 	//contact, and iterate through that one
-	CollisionContact auxCt = {};
+	ContactSet auxCt = {};
 	auxCt.manifold = persistentCt.manifold;
 	auxCt.manifold.ptsA.push_back(contact.manifold.ptsA[0]);
 	auxCt.manifold.ptsB.push_back(contact.manifold.ptsB[0]);
@@ -663,30 +757,26 @@ void PhysicsManager::RecursiveTreeCheck(AABBNode *current, AABBNode *starting)
 ////   COLISION RESOLUTION   ////
 /////////////////////////////////
 void PhysicsManager::SequentialImpulseRoutine(float dt,
-	std::vector<CollisionContact> const& contacts) 
+	std::vector<ContactSet>& contacts) 
 {
+	float correctedDt = dt / (SEQ_IMP_MAX_ITERATIONS);
+
 	//Declare the structures
 	std::vector<std::vector<LinearAngularPair>> Jsp;
 	std::vector<std::vector<unsigned>> Jmap;
-	std::vector<LinearAngularPair> Vprev;
 	std::vector<LinearAngularPair> Vcurr;
 	
 	//Fill the jacobian information //////////////////***********CHECK IF USING VALID CONTACT INFO
-	AuxMath::JacobianSetup(contacts, Jsp, Jmap);
+	AuxMath::JacobianSetup(contacts, Jsp);
 	Jmap.resize(Jsp.size());
 	for (int i = 0; i < Jmap.size(); ++i)
 		Jmap[i].resize(2);
-
-	//1- Setup lambda
-	//Lambda holds S floats
-	std::vector<float> Lambda;
-	Lambda.resize(Jsp.size(), 0.0f);
 	
 	//Setup rigidbody vector and the indices on jmap
 	std::unordered_map<RigidbodyComponent*, unsigned> insertMap;
 	std::vector<RigidbodyComponent*> bodies;
 	int constraintIndex = 0, i = 0;
-	for (CollisionContact const& contact : contacts) 
+	for (ContactSet const& contact : contacts) 
 	{
 		for (int j = 0; j < contact.manifold.ptsA.size(); ++j)
 		{
@@ -727,23 +817,60 @@ void PhysicsManager::SequentialImpulseRoutine(float dt,
 		}
 	}
 
+	//1- Setup lambda
+	//Lambda holds S floats
+	std::vector<float> Lambda;
+	for (ContactSet const& contact : contacts)
+	{
+		for (int j = 0; j < contact.manifold.ptsA.size(); ++j)
+		{
+			if (contact.manifold.Lambdas.size() == contact.manifold.ptsA.size())
+				Lambda.push_back(contact.manifold.Lambdas[j]);
+			else 
+				Lambda.push_back(0.0f);
+		}
+	}
+
 	//Setup the velocity vector
-	AuxMath::VelocityVectorSetup(bodies, Vprev, Vcurr);
+	AuxMath::VelocityVectorSetup(bodies, Vcurr);
+
+
+	//-WARM-START-EXPERIMENT---
+	/// std::vector<LinearAngularPair> Fc0;
+	/// AuxMath::ImpulseSolver(Fc0, Lambda, bodies, Jsp, Jmap);
+	/// unsigned s = Jsp.size();
+	/// for (int i = 0; i < s; ++i)
+	/// {
+	/// 	unsigned b1 = Jmap[i][0];
+	/// 	unsigned b2 = Jmap[i][1];
+	/// 	RigidbodyComponent *A = bodies[b1];
+	/// 	RigidbodyComponent *B = bodies[b2];
+	/// 
+	/// 	if (A->GetMass() > 0.0f && (Fc0[b1].linear != glm::vec4(0) || Fc0[b1].angular != glm::vec4(0)))
+	/// 		A->ApplyImpulse(correctedDt, Fc0[b1].linear * correctedDt, Fc0[b1].angular * correctedDt);
+	/// 	if (B->GetMass() > 0.0f && (Fc0[b2].linear != glm::vec4(0) || Fc0[b2].angular != glm::vec4(0)))
+	/// 		B->ApplyImpulse(correctedDt, Fc0[b2].linear * correctedDt, Fc0[b2].angular * correctedDt);
+	/// }
+	//-------------------------
+
 
 	//Start iterations
 	unsigned iters = 0;
 	while (iters++ < SEQ_IMP_MAX_ITERATIONS)
 	{
+		///Update velocity vector //POTENTIALLY USELESS
+		AuxMath::VelocityVectorUpdate(bodies, Vcurr);
+
 		//3- Setup Cpos and Cvel
 		std::vector<float> Cpos;
 		std::vector<float> Cvel;
 		AuxMath::PositionConstraintSolver(Cpos, contacts);			//USING -N because of not yet having a normal for the contacts
-		AuxMath::VelocityConstraintSolver(dt, Cvel, Cpos,			//USING -N because of not yet having a normal for the contacts 
+		AuxMath::VelocityConstraintSolver(correctedDt, Cvel, Cpos,	//USING -N because of not yet having a normal for the contacts 
 			Vcurr, bodies, Jsp, Jmap);
 
 		//Run Gaus-Seidel to get the multipliers
-		AuxMath::LagrangeMultipliersSolver(dt, Lambda,
-			bodies, Vprev, Vcurr, Jsp, Jmap, Cpos, Cvel);
+		AuxMath::LagrangeMultipliersSolver( correctedDt, Lambda,
+			bodies, Vcurr, Jsp, Jmap, Cpos, Cvel);
 
 		//Calculate constraint forces
 		std::vector<LinearAngularPair> Fc;
@@ -759,13 +886,39 @@ void PhysicsManager::SequentialImpulseRoutine(float dt,
 			RigidbodyComponent *B = bodies[b2];
 
 			if (A->GetMass() > 0.0f && (Fc[b1].linear != glm::vec4(0) || Fc[b1].angular != glm::vec4(0)))
-				A->ApplyImpulse(dt, Fc[b1].linear * dt, Fc[b1].angular * dt);
+			{
+				A->ApplyImpulse(correctedDt, Fc[b1].linear * correctedDt, Fc[b1].angular  * correctedDt);
+			}
 			if (B->GetMass() > 0.0f && (Fc[b2].linear != glm::vec4(0) || Fc[b2].angular != glm::vec4(0)))
-				B->ApplyImpulse(dt, Fc[b2].linear * dt, Fc[b2].angular * dt);
+			{
+				B->ApplyImpulse(correctedDt, Fc[b2].linear * correctedDt, Fc[b2].angular * correctedDt);
+			}
 		}
-
-		//Update velocity vector
-		AuxMath::VelocityVectorUpdate(bodies, Vprev, Vcurr);
 	}
-	//END---------------------
+
+	//Store the lambda info on the contacts
+	CacheImpulsesOnContacts(contacts, Lambda);
+}
+
+
+
+void PhysicsManager::CacheImpulsesOnContacts(
+	std::vector<ContactSet>& contacts,
+	std::vector<float> const& Lambda) 
+{
+	int constraintIndex = 0;
+	for (ContactSet& contact : contacts)
+	{
+		contact.manifold.Lambdas.clear();
+
+		for (int i = 0; i < contact.manifold.ptsA.size(); ++i)
+		{
+			//Update the lambda for the constraint
+			contact.manifold.Lambdas.push_back(Lambda[constraintIndex]);
+
+			//Update contraintIndex
+			if (i == contact.manifold.ptsA.size() - 1)
+				constraintIndex += contact.manifold.ptsA.size();
+		}
+	}
 }

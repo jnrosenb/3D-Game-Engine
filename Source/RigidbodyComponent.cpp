@@ -66,12 +66,6 @@ RigidbodyComponent::~RigidbodyComponent()
 
 void RigidbodyComponent::DeserializeInit()
 {
-	//Start with zero forces
-	ResetForces();
-
-	//Rigidbody parameters
-	invMass = (mass == 0) ? 0.0f : 1.0f / mass;
-	L = glm::vec4(0);
 }
 
 
@@ -80,18 +74,31 @@ void RigidbodyComponent::Begin()
 	//Setup initial params (HERE BECAUSE IT DEPENDS ON OTHER COMPONENT)
 	Transform *T = this->m_owner->GetComponent<Transform>();
 
+	//Start with zero forces
+	ResetForces();
+
+	//Rigidbody parameters
+	invMass = (mass == 0) ? 0.0f : 1.0f / mass;
+
+	//Start as zero
 	Params[0] = T->GetPosition();
 	Params[1] = glm::vec4(0);
 	Params[2] = glm::vec4(0);
 	Params[3] = glm::vec4(0);
 
+	//Start as zero
 	dParams[0] = glm::vec4(0);
 	dParams[1] = glm::vec4(0);
 	dParams[2] = glm::vec4(0);
 	dParams[3] = glm::vec4(0);
-
-	//Starts at zero
+	
+	//Start as zero
+	V = glm::vec4(0);
+	W = glm::vec4(0);
+	P = glm::vec4(0);
+	L = glm::vec4(0);
 	prevVel = glm::vec4(0);
+	prevAngAccel = glm::vec4(0);
 
 	//Setup OBB stuff
 	ColliderSetup();
@@ -250,13 +257,13 @@ void RigidbodyComponent::Update(float dt)
 //CHECK THIS***************************
 glm::vec4 const& RigidbodyComponent::GetVelocity() const 
 {
-	return dParams[0];
+	return V;
 }
 
 //CHECK THIS***************************
 glm::vec4 const& RigidbodyComponent::GetAngularVelocity() const
 {
-	return Params[3];
+	return W;
 }
 
 //CHECK THIS***************************
@@ -275,42 +282,45 @@ glm::mat4 RigidbodyComponent::GetInertiaTensorWorldInv() const
 
 
 //EXPERIMENT*****************************
-void RigidbodyComponent::ApplyImpulse(float dt, glm::vec4 const& Linear,
-	glm::vec4 const& Angular)
+void RigidbodyComponent::ApplyImpulse(float dt, glm::vec4 const& linearImpulse,
+	glm::vec4 const& angularImpulse)
 {
-	//Initial stuff we need
 	Transform *T = this->m_owner->GetComponent<Transform>();
 
-	/// LINEAR STUFF ------------------------------
-	glm::vec4 dv = Linear * invMass;
-	glm::vec4& linearVel = dParams[0];
-	linearVel =dv;
+	// LINEAR STUFF ------------------------------
+	this->P = P + linearImpulse;
+	glm::vec4 acc = (linearImpulse / dt) * invMass;
+	glm::vec4 dv = (acc * dt);
+	
+	this->V = V + dv;
+	///this->V = dv;
 
 	//Integrate for position
 	glm::vec4& position = Params[0];
-	position = position + linearVel * dt;
-
-	T->translate((dt)*(linearVel + prevVel));
-	prevVel = linearVel;
+	position = position + V * dt;
+	T->SetPosition(position);
 
 
-	/// ANGULAR STUFF ------------------------------
+	// ANGULAR STUFF ------------------------------
 	glm::mat4 const& R = T->GetRotationMatrix();
 	AuxMath::Quaternion const& q0 = T->GetRotationQuaternion();
 	glm::mat4 Iinv = R * IbodyInv * glm::transpose(R);
 
-	//--Param[3] as w--
-	L = Angular;
-	Params[3] = Iinv * L;
-	AuxMath::Quaternion w(Params[3]);
+	this->L = L + angularImpulse;
+	glm::vec4 angAcc = Iinv * (angularImpulse / dt);
+	glm::vec4 dw = angAcc * dt;
+	
+	///this->W = dw;
+	this->W = W + dw;
 
-	//Get quaternion velocity (slope vector), then integrate
+	AuxMath::Quaternion w(W);
 	AuxMath::Quaternion qvel = 0.5f * (q0 * w);
 	AuxMath::Quaternion q = q0 + (dt * qvel);
 	q = q0.Conjugate() * q;
 	q = q.Normalize();
 
-	T->rotate(q);
+	//T->rotate(q);
+	T->rotate(dt * qvel);
 }
 
 
@@ -325,49 +335,49 @@ void RigidbodyComponent::PhysicsUpdate(float dt)
 	/////////////////////////////////
 	////    LINEAR STUFF         ////
 	/////////////////////////////////
-	if (Force != glm::vec4(0) || dParams[0] != glm::vec4(0))
+	if (Force != glm::vec4(0) || V != glm::vec4(0))
 	{
+		this->P = P + (Force * dt);
+		//V = P * invMass;
+		
 		glm::vec4 accel = Force * invMass;
-
-		//Integrate for velocity (of center of mass)
-		glm::vec4& linearVel = dParams[0];
-		linearVel = linearVel + accel * dt;
+		glm::vec4 dv = accel * dt;
+		V = V + dv;
 
 		//For now, damp the velocity to fake friction
-		DampVelocity(linearVel, 0.01f);
+		DampVelocity(V, 0.01f);//**********************
 
 		//Integrate for position
 		glm::vec4& position = Params[0];
-		position = position + linearVel*dt;
+		glm::vec4 dp = V * dt;
+		position = position + dp;
 
-		T->translate((0.5f*dt)*(linearVel+prevVel));
-		prevVel = linearVel;
+		T->translate(dp);
 	}
 
 	/////////////////////////////////
 	////    ANGULAR STUFF        ////
 	/////////////////////////////////
-	if (Torque != glm::vec4(0) || L != glm::vec4(0))
+	if (Torque != glm::vec4(0) || W != glm::vec4(0))
 	{
 		//Get rotation matrix, rotation quaternion, and Iinv in world space
 		glm::mat4 const& R = T->GetRotationMatrix();
 		AuxMath::Quaternion const& q0 = T->GetRotationQuaternion();
 		glm::mat4 Iinv = R * IbodyInv * glm::transpose(R);
-
-		///--Param[3] as w--
-		//glm::vec4 angAccel = Iinv * Torque;
-		//Params[3] = Params[3] + angAccel * dt;
-		//DampVelocity(Params[3], 0.25f);
-		//AuxMath::Quaternion w(Params[3]);
 		
-		///--Param[3] as L--
+		///--Param[3] as W--
 		assert(Torque.x == Torque.x && Torque.y == Torque.y && Torque.z == Torque.z);
-		L = L + Torque * dt;
-		Params[3] = Iinv * L;
-		AuxMath::Quaternion w(Params[3]);
-		DampVelocity(L, 0.1f);
+		this->L = L + (Torque * dt);
+		glm::vec4 angAcc = Iinv * Torque;
+		W = W + angAcc * dt;
+		//this->W = Iinv * L;
+		
+		DampVelocity(W, 0.025f);   //*******************
+		//DampVelocity(L, 0.025f); //*******************
+		
 
 		///Get quaternion velocity (slope vector), then integrate
+		AuxMath::Quaternion w(W);
 		AuxMath::Quaternion qvel = 0.5f * (q0 * w);
 		AuxMath::Quaternion q = q0 + (dt * qvel);
 		q = q0.Conjugate() * q;
@@ -409,9 +419,6 @@ void RigidbodyComponent::Draw()
 	AnimationComponent *animComp = this->m_owner->GetComponent<AnimationComponent>();
 	Transform *T = this->m_owner->GetComponent<Transform>();
 
-	////////////////////////////////////////////////
-	return;
-	////////////////////////////////////////////////
 
 	//ARROWS
 	//Local axis drawing test (FORWARD)
@@ -427,40 +434,8 @@ void RigidbodyComponent::Draw()
 		T->GetPosition(), 3.0f, { 1, 0, 0, 1 });
 
 	//FORCE
-	DrawMeshWithOrientation(debugRay->meshes[0], debugShader, this->dParams[0],
+	DrawMeshWithOrientation(debugRay->meshes[0], debugShader, this->V,
 		T->GetPosition(), 3.0f, { 0, 1, 1, 1 });
-
-	////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////
-
-	//CONTACT POINT TEST (all corners)
-	/// glm::mat4 const& R123 = T->GetRotationMatrix();
-	/// glm::mat4 dotModel(0.2f);
-	/// glm::vec3 xLocalDir = R123[0] * OBBRadius.x;
-	/// glm::vec3 yLocalDir = R123[1] * OBBRadius.y;
-	/// glm::vec3 zLocalDir = R123[2] * OBBRadius.z;
-	/// for (int i = -1; i <= 1; i += 2)
-	/// {
-	/// 	for (int j = -1; j <= 1; j += 2)
-	/// 	{
-	/// 		for (int k = -1; k <= 1; k += 2)
-	/// 		{
-	/// 			glm::vec3 vertex = glm::vec3(xLocalDir.x*i + yLocalDir.x*j + zLocalDir.x*k, 
-	/// 				xLocalDir.y*i + yLocalDir.y*j + zLocalDir.y*k, 
-	/// 				xLocalDir.z*i + yLocalDir.z*j + zLocalDir.z*k);
-	/// 			DrawDebugData data2 = {};
-	/// 			data2.diffuseColor = { 0, 1, 0, 1.0f };
-	/// 			
-	/// 			glm::mat4 const& R44 = T->GetRotationMatrix();
-	/// 			dotModel[3] = (R44*OBBCenterOffsetScaled) + T->GetPosition() + glm::vec4(vertex.x, vertex.y, vertex.z, 0.0f);
-	/// 			
-	/// 			data2.model = dotModel;
-	/// 			data2.mesh = debugPointMesh;
-	/// 			data2.shader = debugShader;
-	/// 			renderer->QueueForDebugDraw(data2);
-	/// 		}
-	/// 	}
-	/// }
 
 	////////////////////////////////////////////////
 	////////////////////////////////////////////////
@@ -469,7 +444,7 @@ void RigidbodyComponent::Draw()
 	DrawDebugData data = {};
 	data.diffuseColor = { 0, 0, 1, 0.5f };
 
-	data.model = T->GetModel(); 
+	data.model = T->GetModel();
 	glm::mat4 const& R44 = T->GetRotationMatrix();
 	data.model[3] = (R44*OBBCenterOffsetScaled) + T->GetPosition();
 	
@@ -478,24 +453,6 @@ void RigidbodyComponent::Draw()
 	//Bones experiment SHITTY WAY - NOT USING BONES FOR THIS
 	data.BoneTransformations = (animComp == 0) ? 0 : &(animComp->BoneTransformations);
 	renderer->QueueForDebugDraw(data);
-
-
-	////////////////////////////////////////////////
-	////////////////////////////////////////////////
-
-	//AABB
-	/// glm::vec3 sizeAABB = GetAABBRadiusFromOBB();
-	/// data.diffuseColor = { 0, 1, 1, 0.25f };
-	/// glm::mat4 tempMod(1);
-	/// tempMod[0][0] = sizeAABB.x;
-	/// tempMod[1][1] = sizeAABB.y;
-	/// tempMod[2][2] = sizeAABB.z;
-	/// tempMod[3] = T->GetPosition(); //Here we should be adding the displacement in order for it to work I think
-	/// data.model = tempMod;
-	/// data.mesh = debugMesh;
-	/// data.shader = debugShader;
-	/// data.BoneTransformations = 0;
-	/// renderer->QueueForDebugDraw(data);
 }
 
 
@@ -541,7 +498,7 @@ void RigidbodyComponent::handleInput(float dt)
 		return;
 
 	Transform *T = this->m_owner->GetComponent<Transform>();
-	float moveSpeed = 250000.0f * dt;
+	float moveSpeed = 2500.0f * mass * dt;
 	DeferredRenderer *deferred = static_cast<DeferredRenderer*>(renderer);
 	glm::vec3 fwd = deferred->GetCurrentCamera()->getLook();
 	fwd.y = 0.0f;
@@ -579,10 +536,10 @@ void RigidbodyComponent::handleInput(float dt)
 	}
 
 	//TOGGLE TREE
-	if (inputMgr->getKeyTrigger(SDL_SCANCODE_SPACE))
-	{
-		physicsMgr->publicToggleVBH();
-	}
+	/// if (inputMgr->getKeyTrigger(SDL_SCANCODE_SPACE))
+	/// {
+	/// 	physicsMgr->publicToggleVBH();
+	/// }
 }
 
 

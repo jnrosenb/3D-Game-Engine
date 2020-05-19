@@ -285,8 +285,8 @@ public:
 
 
 		/////////////////////////////////////////////////
-		//return;
 		//STRESS TEST***********************************
+		return;
 		//CREATE MANY RIGIDBODIES***********************
 		int range = 2; //13 for near 2000
 		for (int i = -(range / 2); i < (range / 2); ++i)
@@ -295,12 +295,12 @@ public:
 			{
 				for (int k = -(range / 2); k < (range / 2); ++k)
 				{
-					float separation = 10.0f;
+					float separation = 15.0f;
 					GameObject *go = new GameObject();
 					//Transform
 					Transform *transform = go->AddComponent<Transform>();
-					transform->m_position = glm::vec4(separation * i, separation * k + 30.0f, separation * j, 1);
-					transform->m_scale = glm::vec4(5, 5, 5, 1);
+					transform->m_position = glm::vec4(separation * i, separation * k + 50.0f, separation * j, 1);
+					transform->m_scale = glm::vec4(10, 10, 10, 1);
 					transform->DeserializeInit();
 					//Renderer
 					Render *render = go->AddComponent<Render>();
@@ -318,7 +318,7 @@ public:
 					render->DeserializeInit();
 					//Rigidbody
 					RigidbodyComponent *rgbdy = go->AddComponent<RigidbodyComponent>();
-					rgbdy->mass = 20.0f;
+					rgbdy->mass = 10.0f;
 					rgbdy->affectedByGravity = true;
 					rgbdy->hasParticleInteraction = false;
 					rgbdy->isPlayer = false;

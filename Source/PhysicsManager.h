@@ -20,11 +20,26 @@ class Mesh;
 class Shader;
 
 
-struct CollisionContact 
+struct ContactSet 
 {
 	RigidbodyComponent *rbdyA;
 	RigidbodyComponent *rbdyB;
 	AuxMath::GJK_Manifold_V1 manifold;
+};
+
+struct CollisionContact
+{
+	glm::vec4 worldA;
+	glm::vec4 bodyA;
+	glm::vec4 worldB;
+	glm::vec4 bodyB;
+
+	glm::vec4 nl;
+	glm::vec4 tg;
+	glm::vec4 biTg;
+
+	float penetrationDepth;
+	float lambda;
 };
 
 
@@ -89,17 +104,19 @@ private:
 	void RecursiveTreeCheck(AABBNode *current, AABBNode *starting);
 
 	//Collision resolution
-	void CollisionResolutionTest(CollisionContact& contact);
+	void CollisionResolutionTest(ContactSet& contact);
 	void SequentialImpulseRoutine(float dt,
-		std::vector<CollisionContact> const& contacts);
+		std::vector<ContactSet>& contacts);
+	void CacheImpulsesOnContacts(std::vector<ContactSet>& contacts,
+		std::vector<float> const& Lambda);
 
 	//Contact related methods
 	///glm::vec4 BodyToWorldContact(glm::vec4 const& body, RigidbodyComponent *rgbdy);
-	void CheckContactValidity(CollisionContact& contact);
+	void CheckContactValidity(ContactSet& contact);
 	void AddPersistentContactToManifold(RigidbodyComponent *A, RigidbodyComponent *B, 
-		CollisionContact& contact);
-	void ChooseFourContacts(CollisionContact const& persistentCt,
-		CollisionContact& contact);
+		ContactSet& contact);
+	void ChooseFourContacts(ContactSet const& persistentCt,
+		ContactSet& contact);
 
 private:
 	//VBH structure
@@ -127,6 +144,6 @@ private:
 	float timeAccumulator;
 
 	//Attempts at building persistent manifolds (first is the usual vector)
-	std::vector<CollisionContact> m_contacts;
-	std::unordered_map<std::string, CollisionContact> m_persistentContacts;
+	std::vector<ContactSet> m_contacts;
+	std::unordered_map<std::string, ContactSet> m_persistentContacts;
 };

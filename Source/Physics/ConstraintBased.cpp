@@ -13,14 +13,13 @@
 namespace AuxMath
 {
 	//SETUP ALL THE MATRICES USED FOR THE SOLVER
-	void JacobianSetup(std::vector<CollisionContact> const& contacts,
-		std::vector<std::vector<LinearAngularPair>>& Jsp,
-		std::vector<std::vector<unsigned>>& Jmap)
+	void JacobianSetup(std::vector<ContactSet> const& contacts,
+		std::vector<std::vector<LinearAngularPair>>& Jsp)
 	{
 		//Loop through all contact manifolds 
 		for (int index = 0; index < contacts.size(); ++index)
 		{
-			CollisionContact const& ct = contacts[index];
+			ContactSet const& ct = contacts[index];
 			RigidbodyComponent *rb1 = ct.rbdyA;
 			RigidbodyComponent *rb2 = ct.rbdyB;
 
@@ -33,6 +32,7 @@ namespace AuxMath
 				n += ct.manifold.ptsB[i].world - ct.manifold.ptsA[i].world;
 			n.w = 0.0f;
 			n = glm::normalize(-n);
+			///n = -glm::vec4(ct.manifold.restitution.x, ct.manifold.restitution.y, ct.manifold.restitution.z, 1.0f);/////////****
 
 			///IMPORTANT!!!
 			//For now Im making the normal negative to force it to be pointing away from body 1
@@ -65,7 +65,6 @@ namespace AuxMath
 
 	//Setup the velocity vectors
 	void VelocityVectorSetup(std::vector<RigidbodyComponent*> const& bodies,
-		std::vector<LinearAngularPair>& Vprev,
 		std::vector<LinearAngularPair>& Vcurr)
 	{
 		for (RigidbodyComponent *body : bodies) 
@@ -75,16 +74,15 @@ namespace AuxMath
 			vpair.linear = body->GetVelocity();
 			vpair.angular = body->GetAngularVelocity();
 
-			Vprev.push_back(vpair);
 			Vcurr.push_back(vpair);
 		}
 	}
 
 
 
+	//GONNA STOP USING THIS
 	//Update the velocity vectors
 	void VelocityVectorUpdate(std::vector<RigidbodyComponent*> const& bodies,
-		std::vector<LinearAngularPair>& Vprev,
 		std::vector<LinearAngularPair>& Vcurr) 
 	{
 		int index = 0;
@@ -94,8 +92,7 @@ namespace AuxMath
 			vpair.linear = body->GetVelocity();
 			vpair.angular = body->GetAngularVelocity();
 
-			Vprev[index] = Vcurr[index];
-			Vcurr[index] = vpair;
+			Vcurr[index++] = vpair;
 		}
 	}
 
@@ -103,12 +100,12 @@ namespace AuxMath
 
 	//Solving for position constraint
 	void PositionConstraintSolver(std::vector<float>& Cp,
-		std::vector<CollisionContact> const& contacts)
+		std::vector<ContactSet> const& contacts)
 	{
 		//Loop through all contact manifolds 
 		for (int index = 0; index < contacts.size(); ++index)
 		{
-			CollisionContact const& ct = contacts[index];
+			ContactSet const& ct = contacts[index];
 			RigidbodyComponent *rb1 = ct.rbdyA;
 			RigidbodyComponent *rb2 = ct.rbdyB;
 
@@ -116,13 +113,13 @@ namespace AuxMath
 			//(normal should go from body 1 to 2, that is to say, A to B)
 			glm::vec4 n(0);
 			for (int i = 0; i < ct.manifold.ptsA.size(); ++i)
-				n += ct.manifold.ptsB[i].world - ct.manifold.ptsA[i].world;
+				n += (ct.manifold.ptsB[i].world - ct.manifold.ptsA[i].world);
 			n.w = 0.0f;
 			n = glm::normalize(-n);
-
-			//CONSTRAINTS LOOP-----------------------------------------------------------
+			
+			//CONSTRAINTS LOOP (each A-B pair of points is a constraint)
 			for (int i = 0; i < ct.manifold.ptsA.size(); ++i)
-			{
+			{	
 				glm::vec4 const& p1 = rb1->BodyToWorldContact(ct.manifold.ptsA[i].body);
 				glm::vec4 const& p2 = rb2->BodyToWorldContact(ct.manifold.ptsB[i].body);
 
@@ -151,15 +148,13 @@ namespace AuxMath
 			RigidbodyComponent *rb1 = bodies[b1];
 			RigidbodyComponent *rb2 = bodies[b2];
 
-			float sum = 0.0f;
-			if (rb1->getMassInv() > 0.0f) 
-				sum += Jsp[i][0] * Vcurr[b1];
-			if (rb2->getMassInv() > 0.0f) 
-				sum += Jsp[i][1] * Vcurr[b2];
+			float sum = 0.0f; 
+			sum += Jsp[i][0] * Vcurr[b1]; 
+			sum += Jsp[i][1] * Vcurr[b2];
 
 			//Baumgarte stabilization test
-			float beta = 0.75f;
-			sum += (beta/dt) * Cp[i];
+			///float beta = 0.0005f / dt;
+			///sum = sum + beta * Cp[i];
 
 			Cv.push_back(sum);
 		}
@@ -187,12 +182,6 @@ namespace AuxMath
 
 			Fc[b1] += Jsp[i][0] * Lambda[i];
 			Fc[b2] += Jsp[i][1] * Lambda[i];
-
-			//DEBUGGING
-			float len1 = glm::length(Fc[b2].linear);
-			float len2 = glm::length(Fc[b2].angular);
-			if (len1 > 20.0f || len2 > 20.0f)
-				int a = 123;
 		}
 	}
 
@@ -202,7 +191,6 @@ namespace AuxMath
 	void LagrangeMultipliersSolver(float dt, 
 		std::vector<float>& Lambda,
 		std::vector <RigidbodyComponent*> const& bodies,
-		std::vector<LinearAngularPair>& Vprev,
 		std::vector<LinearAngularPair>& Vcurr,
 		std::vector<std::vector<LinearAngularPair>> const& Jsp,
 		std::vector<std::vector<unsigned>> const& Jmap,
@@ -266,34 +254,43 @@ namespace AuxMath
 			RigidbodyComponent *rb2 = bodies[b2];
 
 			//--------------------------------------------------------
-			///glm::mat4 IdMassInv_1 = glm::mat4(1) * rb1->getMassInv();
-			///glm::mat4 IwInv_1 = rb1->GetInertiaTensorWorldInv();
-			///glm::mat4 IdMassInv_2 = glm::mat4(1) * rb2->getMassInv();
-			///glm::mat4 IwInv_2 = rb2->GetInertiaTensorWorldInv();
-			///LinearAngularPair MassTimesForceTorque1 = {};
-			///MassTimesForceTorque1.linear = IdMassInv_1 * rb1->Force;
-			///MassTimesForceTorque1.angular = IwInv_1 * rb2->Torque;
-			///LinearAngularPair MassTimesForceTorque2 = {};
-			///MassTimesForceTorque2.linear = IdMassInv_2 * rb1->Force;
-			///MassTimesForceTorque2.angular = IwInv_2 * rb2->Torque;
+			glm::mat4 IdMassInv_1 = glm::mat4(1) * rb1->getMassInv();
+			glm::mat4 IwInv_1 = rb1->GetInertiaTensorWorldInv();
+			glm::mat4 IdMassInv_2 = glm::mat4(1) * rb2->getMassInv();
+			glm::mat4 IwInv_2 = rb2->GetInertiaTensorWorldInv();
+			LinearAngularPair MinvFext_b1 = {};
+			MinvFext_b1.linear = IdMassInv_1 * (rb1->Force);
+			MinvFext_b1.angular = IwInv_1 * (rb1->Torque);
+			LinearAngularPair MinvFext_b2 = {};
+			MinvFext_b2.linear = IdMassInv_2 * (rb2->Force);
+			MinvFext_b2.angular = IwInv_2 * (rb2->Torque);
 			//--------------------------------------------------------
 
-			float beta = -Cv[i];				   ////////////////************************
-			//float beta = (-1)*(1.00f/dt) *(Cp[i]); ////////////////************************
-			
-			float Nu = (beta - (Jsp[i][0] * Vprev[b1] + Jsp[i][1] * Vprev[b2]));//dt;
+			float slope = -0.0f;
+			if (Cp[i] > slope)
+			{
+				Lambda[i] = 0.0f;
+			}
+			else 
+			{
+				//float beta = -(0.05f / dt) * (Cp[i]); //kinda works
+				float beta = -(0.1f / dt) * (Cp[i] - slope);
 
-			float DeltaLambda = (Nu - (Jsp[i][0] * a[b1]) - (Jsp[i][1] * a[b2])) / d[i];
-			float prevLambda = Lambda[i];
-			
-			Lambda[i] = std::max(0.0f, prevLambda + DeltaLambda);
-			if (std::abs(Lambda[i]) > 600.0f)
-				int a = 123;
+				float JspMinvFext = (Jsp[i][0] * MinvFext_b1 + Jsp[i][1] * MinvFext_b2);
+				float JspVcurr = (Jsp[i][0] * Vcurr[b1] + Jsp[i][1] * Vcurr[b2]);
 
-			DeltaLambda = Lambda[i] - prevLambda;
+				float Ni = ((beta - JspVcurr) / dt) - JspMinvFext;
+				if (std::abs(d[i]) < 0.000001f)
+					d[i] = 0.0f;
+				float DeltaLambda = (d[i] == 0.0f) ? 0.0f : (Ni - (Jsp[i][0] * a[b1]) - (Jsp[i][1] * a[b2])) / d[i];
 
-			a[b1] += Bsp[i][0] * DeltaLambda; // BSP ACTS AS TRANSPOSED!!!
-			a[b2] += Bsp[i][1] * DeltaLambda; // BSP ACTS AS TRANSPOSED!!!
+				float previous = Lambda[i];
+				Lambda[i] = std::max(0.0f, previous + DeltaLambda);
+				DeltaLambda = Lambda[i] - previous;
+
+				a[b1] = a[b1] + Bsp[i][0] * DeltaLambda; // BSP ACTS AS TRANSPOSED!!!
+				a[b2] = a[b2] + Bsp[i][1] * DeltaLambda; // BSP ACTS AS TRANSPOSED!!!
+			}
 		}
 	}
 }
